@@ -2,6 +2,7 @@
 #include <psp2/io/fcntl.h>
 #include <psp2/io/stat.h>
 #include <strings.h>
+#include <string.h>   /* strlen/memset: no longer pulled in transitively by GCC 15 */
 #include <stdlib.h>
 #include <stdio.h>
 #include "filesystem.h"

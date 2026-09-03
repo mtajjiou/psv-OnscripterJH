@@ -15,15 +15,10 @@ message("in project " ${PROJECT_NAME})
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -O3 -Wno-unused-variable -Wno-unused-but-set-variable -Wno-format-truncation -fno-lto")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -fno-rtti -fno-exceptions")
 
-# vita-elf-create appends the SCE module data after the last section of the
-# first segment, and fails outright ("Cannot allocate N bytes for SCE data at
-# end of segment 0; segment 1 overlaps") when the next segment starts too
-# soon after it.  The default page alignment leaves a gap of 0-4095 bytes,
-# so whether a build links is decided by how the code happens to end -- one
-# added string table is enough to lose.  A 64K page size makes the gap large
-# enough that the module data always fits; the cost is zero padding in the
-# file, not code.
-set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-z,max-page-size=0x10000")
+# See script/sce_gap.ld: vita-elf-create needs room after the code segment
+# for the module data, and how much room ld leaves is otherwise a matter of
+# where the code happens to end.
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-T,${CMAKE_CURRENT_SOURCE_DIR}/../../script/sce_gap.ld")
 # set(VITA_MKSFOEX_FLAGS "${VITA_MKSFOEX_FLAGS} -d PARENTAL_LEVEL=1")
 # set(VITA_MAKE_FSELF_FLAGS "${VITA_MAKE_FSELF_FLAGS} -a 0x2808000000000000")
 

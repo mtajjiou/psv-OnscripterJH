@@ -9,6 +9,7 @@
  */
 
 #include <psp2/ctrl.h>
+#include <psp2/gxm.h>
 
 #include "GUI_Theme.h"
 #include "GUI_common.h"
@@ -26,16 +27,34 @@ vita2d_texture *th_glyph_select   = NULL;
 vita2d_texture *th_glyph_dpad     = NULL;
 vita2d_texture *th_glyph_lstick   = NULL;
 
+/* Loads one glyph, smoothly.
+ *
+ * vita2d leaves a new texture point-sampled, and these are drawn at a
+ * fraction of the size they are stored at, so every drawn pixel would be
+ * one texel picked out of several and the edges would crawl.  Asking for
+ * linear sampling is the difference between an icon and a chewed icon. */
+static vita2d_texture *load_glyph(const char *path)
+{
+    vita2d_texture *tex = vita2d_load_PNG_file(path);
+    if (tex)
+        vita2d_texture_set_filters(tex, SCE_GXM_TEXTURE_FILTER_LINEAR,
+                                   SCE_GXM_TEXTURE_FILTER_LINEAR);
+    return tex;
+}
+
 void th_load_glyphs()
 {
-    th_glyph_circle   = vita2d_load_PNG_file("app0:btn_circle.png");
-    th_glyph_cross    = vita2d_load_PNG_file("app0:btn_cross.png");
-    th_glyph_square   = vita2d_load_PNG_file("app0:btn_square.png");
-    th_glyph_triangle = vita2d_load_PNG_file("app0:btn_triangle.png");
+    th_glyph_circle   = load_glyph("app0:btn_circle.png");
+    th_glyph_cross    = load_glyph("app0:btn_cross.png");
+    th_glyph_square   = load_glyph("app0:btn_square.png");
+    th_glyph_triangle = load_glyph("app0:btn_triangle.png");
 
-    /* The named buttons -- L, R, START, SELECT -- are drawn as chips of
-     * their letters instead; see th_chip.  The pointers stay so a build
-     * that wants to put images back has somewhere to put them. */
+    th_glyph_l        = load_glyph("app0:btn_l.png");
+    th_glyph_r        = load_glyph("app0:btn_r.png");
+    th_glyph_start    = load_glyph("app0:btn_start.png");
+    th_glyph_select   = load_glyph("app0:btn_select.png");
+    th_glyph_dpad     = load_glyph("app0:btn_dpad.png");
+    th_glyph_lstick   = load_glyph("app0:btn_lstick.png");
 
     /* Which button confirms is a system setting, and the launcher already
      * follows it for the input.  The glyphs follow the same answer, so the
@@ -93,7 +112,7 @@ void th_glyph(vita2d_texture *glyph, int x, int baseline, int size,
  * size a filled button icon towers over the word it belongs to. */
 static int glyph_size(int size)
 {
-    return size * 3 / 4;
+    return size * 7 / 8;
 }
 
 int th_chip_width(const char *label, int size)
@@ -113,6 +132,18 @@ int th_chip(int x, int baseline, const char *label, int size)
     th_text_center(x, w, baseline, TH_TEXT, text_size, label);
 
     return w;
+}
+
+int th_button(int x, int baseline, vita2d_texture *glyph, const char *label,
+              int size)
+{
+    if (glyph){
+        const int h = glyph_size(size);
+        th_glyph(glyph, x, baseline, h, TH_TEXT);
+        return th_glyph_width(glyph, h);
+    }
+    if (label) return th_chip(x, baseline, label, size);
+    return 0;
 }
 
 int th_hint_width(vita2d_texture *glyph, const char *label, int size)

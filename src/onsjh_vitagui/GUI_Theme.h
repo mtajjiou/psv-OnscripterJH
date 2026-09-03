@@ -105,6 +105,11 @@ int  th_hint_width(vita2d_texture *glyph, const char *label, int size);
 int  th_chip(int x, int baseline, const char *label, int size);
 int  th_chip_width(const char *label, int size);
 
+/* A button: its icon if the vpk carries one, otherwise a chip of the
+ * letters.  Returns how wide it was drawn. */
+int  th_button(int x, int baseline, vita2d_texture *glyph, const char *label,
+               int size);
+
 /* --- motion -----------------------------------------------------------
  *
  * Everything that moves does it the same way: a value chases a target by a

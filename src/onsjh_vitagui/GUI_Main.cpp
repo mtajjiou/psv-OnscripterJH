@@ -288,20 +288,21 @@ void draw_help() {
 		return;
 	}
 
-	/* Chip, word, gap.  The named buttons are chips rather than the icon
-	 * set's pictures of them -- see th_chip. */
+	/* Icon, word, gap.  A chip of the button's letters stands in for any
+	 * icon that is not in the vpk, so a build without them still reads. */
 	int x = TH_PAD;
-	x += th_chip(x, baseline, "L", TH_FONT_S) + 5;
+	x += th_button(x, baseline, th_glyph_l, "L", TH_FONT_S) + 5;
 	x += th_hint(x, baseline, NULL, ui_text(UI_HINT_SETTINGS), TH_TEXT_DIM,
 		     TH_FONT_S) + TH_PAD;
-	x += th_chip(x, baseline, "R", TH_FONT_S) + 5;
+	x += th_button(x, baseline, th_glyph_r, "R", TH_FONT_S) + 5;
 	x += th_hint(x, baseline, NULL, ui_text(UI_HINT_HELP), TH_TEXT_DIM,
 		     TH_FONT_S) + TH_PAD;
-	x += th_chip(x, baseline, "SELECT", TH_FONT_S) + 5;
+	x += th_button(x, baseline, th_glyph_select, "SELECT", TH_FONT_S) + 5;
 	x += th_hint(x, baseline, NULL, ui_text(UI_HINT_ABOUT), TH_TEXT_DIM,
 		     TH_FONT_S) + TH_PAD;
-	x += th_hint(x, baseline, th_glyph_enter, ui_text(UI_BTN_START),
-		     TH_TEXT_DIM, TH_FONT_S);
+	x += th_button(x, baseline, th_glyph_enter, "O", TH_FONT_S) + 5;
+	x += th_hint(x, baseline, NULL, ui_text(UI_BTN_START), TH_TEXT_DIM,
+		     TH_FONT_S);
 
 	static char position[32];
 	snprintf(position, sizeof(position), ui_text(UI_FOOTER_HINTS),
@@ -632,16 +633,16 @@ void draw_help_screen() {
 		UIStringId description;
 	};
 	const help_row rows[] = {
-		{ &th_glyph_circle,   NULL,     NULL,             UI_HELP_CONFIRM },
-		{ &th_glyph_cross,    NULL,     NULL,             UI_HELP_SKIP },
-		{ &th_glyph_square,   NULL,     NULL,             UI_HELP_AUTO },
-		{ &th_glyph_triangle, NULL,     NULL,             UI_HELP_MENU },
-		{ NULL,               "L",      NULL,             UI_HELP_SKIP_PAGE },
-		{ NULL,               "R",      NULL,             UI_HELP_TOGGLE_SKIP },
-		{ NULL,               NULL,     "left, right",    UI_HELP_BACKLOG },
-		{ NULL,               NULL,     "up, down",       UI_HELP_CURSOR },
-		{ NULL,               NULL,     "left stick",     UI_HELP_STICK },
-		{ NULL,               "SELECT", "hold",           UI_HELP_OVERLAY },
+		{ &th_glyph_circle,   "O",      NULL,     UI_HELP_CONFIRM },
+		{ &th_glyph_cross,    "X",      NULL,     UI_HELP_SKIP },
+		{ &th_glyph_square,   "[]",     NULL,     UI_HELP_AUTO },
+		{ &th_glyph_triangle, "/\\",    NULL,     UI_HELP_MENU },
+		{ &th_glyph_l,        "L",      NULL,     UI_HELP_SKIP_PAGE },
+		{ &th_glyph_r,        "R",      NULL,     UI_HELP_TOGGLE_SKIP },
+		{ &th_glyph_dpad,     NULL,     NULL,     UI_HELP_BACKLOG },
+		{ &th_glyph_dpad,     NULL,     NULL,     UI_HELP_CURSOR },
+		{ &th_glyph_lstick,   NULL,     NULL,     UI_HELP_STICK },
+		{ &th_glyph_select,   "SELECT", "hold",   UI_HELP_OVERLAY },
 	};
 	const int count = (int)(sizeof(rows) / sizeof(rows[0]));
 
@@ -679,20 +680,13 @@ void draw_help_screen() {
 		const int baseline = top + padding + 40 + (i + 1) * row_h;
 
 		int cx = left + padding;
-		if (rows[i].glyph && *rows[i].glyph) {
-			th_glyph(*rows[i].glyph, cx, baseline, TH_FONT_M, TH_TEXT);
+		/* "hold" first where a row has it, so it reads as a sentence. */
+		if (rows[i].text) {
+			th_text(cx, baseline, TH_TEXT_DIM, TH_FONT_S, rows[i].text);
+			cx += vita2d_font_text_width(font, TH_FONT_S, rows[i].text) + 6;
 		}
-		else {
-			/* "hold" then the chip, so the row reads as a sentence. */
-			if (rows[i].text && rows[i].chip) {
-				th_text(cx, baseline, TH_TEXT_DIM, TH_FONT_S, rows[i].text);
-				cx += vita2d_font_text_width(font, TH_FONT_S, rows[i].text) + 6;
-			}
-			if (rows[i].chip)
-				th_chip(cx, baseline, rows[i].chip, TH_FONT_S);
-			else if (rows[i].text)
-				th_text(cx, baseline, TH_TEXT, TH_FONT_S, rows[i].text);
-		}
+		th_button(cx, baseline, rows[i].glyph ? *rows[i].glyph : NULL,
+			  rows[i].chip, TH_FONT_M);
 
 		th_text(left + padding + col_w, baseline, TH_TEXT_DIM, TH_FONT_S,
 			ui_text(rows[i].description));

@@ -38,17 +38,13 @@ const ControlRow kRows[] = {
     { "app0:btn_cross.png",    NULL,          "hold to fast-forward" },
     { "app0:btn_square.png",   NULL,          "auto mode" },
     { "app0:btn_triangle.png", NULL,          "menu, leaves the backlog" },
-    /* Written rather than drawn.  The icon set has pictures for these, but
-     * they are pictures of the physical buttons -- a shoulder seen at an
-     * angle, an oval with SELECT set inside it -- and at the height of a
-     * line of text they are blobs.  The console writes them too. */
-    { NULL,                    "L",           "skip to the end of the page" },
-    { NULL,                    "R",           "start or stop skipping" },
-    { NULL,                    "Start",       "click through a wait" },
-    { NULL,                    "Select",      "tap: text speed, hold: this" },
-    { NULL,                    "left, right", "backlog" },
-    { NULL,                    "up, down",    "move between choices" },
-    { NULL,                    "left stick",  "same as the d-pad" },
+    { "app0:btn_l.png",        "L",           "skip to the end of the page" },
+    { "app0:btn_r.png",        "R",           "start or stop skipping" },
+    { "app0:btn_start.png",    "Start",       "click through a wait" },
+    { "app0:btn_select.png",   "Select",      "tap: text speed, hold: this" },
+    { "app0:btn_dpad.png",     "left, right", "backlog" },
+    { "app0:btn_dpad.png",     "up, down",    "move between choices" },
+    { "app0:btn_lstick.png",   "left stick",  "same as the d-pad" },
 };
 const int kNumRows = (int)(sizeof(kRows) / sizeof(kRows[0]));
 
@@ -56,7 +52,61 @@ const int kFontSize = 20;
 const int kLineGap  = 28;
 const int kPadding  = 24;
 const int kColumn   = 170;   /* where the descriptions start */
-const int kGlyph    = 20;    /* the button images are drawn this big */
+const int kGlyph    = 22;    /* how tall the button images are drawn */
+
+/* Shrinks an icon onto the panel by averaging, rather than by picking one
+ * source pixel per drawn pixel.
+ *
+ * SDL_BlitScaled samples nearest, and these are stored several times the
+ * size they are drawn at, so its edges come out ragged -- which is what a
+ * button icon looks worst as.  Averaging the block each destination pixel
+ * covers is the same thing the asset script does offline, and is cheap
+ * enough for a handful of small icons.
+ */
+void blitIconScaled(SDL_Surface *src, SDL_Surface *dst, int x, int y,
+                    int w, int h)
+{
+    SDL_Surface *rgba = SDL_ConvertSurfaceFormat(src, SDL_PIXELFORMAT_ARGB8888, 0);
+    if (rgba == NULL) return;
+
+    SDL_LockSurface(rgba);
+    for (int dy = 0; dy < h; dy++){
+        for (int dx = 0; dx < w; dx++){
+            const int sx0 = dx * rgba->w / w;
+            const int sx1 = (dx + 1) * rgba->w / w > sx0 ? (dx + 1) * rgba->w / w
+                                                         : sx0 + 1;
+            const int sy0 = dy * rgba->h / h;
+            const int sy1 = (dy + 1) * rgba->h / h > sy0 ? (dy + 1) * rgba->h / h
+                                                         : sy0 + 1;
+            unsigned int a = 0, r = 0, g = 0, b = 0, n = 0;
+            for (int sy = sy0; sy < sy1 && sy < rgba->h; sy++){
+                const Uint32 *row = (const Uint32 *)((Uint8 *)rgba->pixels +
+                                                     sy * rgba->pitch);
+                for (int sx = sx0; sx < sx1 && sx < rgba->w; sx++){
+                    const Uint32 p = row[sx];
+                    const unsigned int pa = (p >> 24) & 0xFF;
+                    /* Colour weighted by coverage: transparent pixels carry
+                     * whatever colour they like and must not vote. */
+                    r += ((p >> 16) & 0xFF) * pa;
+                    g += ((p >>  8) & 0xFF) * pa;
+                    b += ( p        & 0xFF) * pa;
+                    a += pa;
+                    n++;
+                }
+            }
+            if (n == 0 || a == 0) continue;
+
+            const int px = x + dx, py = y + dy;
+            if (px < 0 || py < 0 || px >= dst->w || py >= dst->h) continue;
+
+            Uint32 *out = (Uint32 *)((Uint8 *)dst->pixels + py * dst->pitch);
+            out[px] = ((a / n) << 24) | ((r / a) << 16) | ((g / a) << 8) |
+                      (b / a);
+        }
+    }
+    SDL_UnlockSurface(rgba);
+    SDL_FreeSurface(rgba);
+}
 
 }  /* namespace */
 
@@ -119,9 +169,9 @@ void ONScripter::showControlsOverlay()
             /* As tall as the text, as wide as the icon is: the shoulder and
              * start/select icons are wide shapes with a word in them. */
             int gw = g->h > 0 ? g->w * kGlyph / g->h : kGlyph;
-            SDL_Rect dst = { kPadding, y, gw, kGlyph };
-            SDL_SetSurfaceBlendMode(g, SDL_BLENDMODE_BLEND);
-            SDL_BlitScaled(g, NULL, panel, &dst);
+            SDL_LockSurface(panel);
+            blitIconScaled(g, panel, kPadding, y, gw, kGlyph);
+            SDL_UnlockSurface(panel);
             SDL_FreeSurface(g);
         }
         else if (kRows[i].button){

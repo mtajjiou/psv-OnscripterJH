@@ -1,12 +1,18 @@
 #!/usr/bin/env python3
 """Turns a set of downloaded PS Vita button icons into the launcher's assets.
 
-The icons that circulate for these buttons are drawn for light backgrounds:
-a dark filled body with the symbol knocked out of it in a lighter shade.
-The launcher's interface is nearly black, so used as they are they would be
-a dark shape on a dark panel.  Each one is therefore inverted in luminance
-and kept at its own alpha, which turns the body light and the symbol dark --
-the way a button prompt is drawn on a dark interface.
+Most of these icons are drawn for light backgrounds: a dark filled body with
+the symbol knocked out of it in a lighter shade.  The launcher's interface is
+nearly black, so used as they are they would be a dark shape on a dark panel,
+and they are inverted in luminance -- light body, dark symbol, the way a
+button prompt is drawn on a dark interface.
+
+Not all of them, though, and that matters: in the set this was written for
+the shoulder buttons are already light-bodied while everything else is dark.
+Inverting the whole set turns those two dark, which is precisely the bug this
+paragraph exists to prevent.  So each icon is measured and inverted only if
+its body is the dark kind, which leaves every one of them light-bodied
+whatever it started as.
 
 They are also trimmed to what they actually draw and scaled to a common
 height, so a row of them lines up regardless of how much empty margin each
@@ -26,7 +32,11 @@ import struct
 import sys
 import zlib
 
-OUT_HEIGHT = 64
+# Close to the size they are drawn at -- the interface asks for roughly 15
+# to 22 pixels of height -- so the console is minifying by about two rather
+# than by five.  Scaling a 100 pixel icon straight down to 15 is what makes
+# it look chewed.
+OUT_HEIGHT = 40
 MAX_WIDTH = 256
 
 # The file each of the launcher's glyphs comes from.  Names follow the set
@@ -148,6 +158,20 @@ def resample(width, height, px, box):
     return dst_w, dst_h, bytes(out)
 
 
+def body_is_dark(px):
+    """Is the icon's body the dark kind?
+
+    Averaged over what it actually draws, weighted by coverage, so the
+    answer is about the body and not about a few bright pixels of symbol."""
+    total = weight = 0
+    for i in range(0, len(px), 4):
+        a = px[i + 3]
+        if a > 16:
+            total += px[i] * a
+            weight += a
+    return weight > 0 and (total // weight) < 128
+
+
 def invert_luminance(px):
     """Light body, dark symbol: the same drawing, read on a dark screen."""
     out = bytearray(px)
@@ -200,10 +224,16 @@ def main():
         width, height, px = decode_png(source)
         box = alpha_bounds(width, height, px)
         dst_w, dst_h, scaled = resample(width, height, px, box)
+        dark = body_is_dark(scaled)
+        if dark:
+            scaled = invert_luminance(scaled)
+
         out_path = os.path.join(out_dir, name + ".png")
-        write_png(out_path, dst_w, dst_h, invert_luminance(scaled))
-        print("%-17s %3dx%-3d <- %s" % (name + ".png", dst_w, dst_h,
-                                        os.path.basename(source)))
+        write_png(out_path, dst_w, dst_h, scaled)
+        print("%-17s %3dx%-3d %-18s <- %s"
+              % (name + ".png", dst_w, dst_h,
+                 "inverted" if dark else "already light",
+                 os.path.basename(source)))
 
     for m in missing:
         print("skipped: %s" % m, file=sys.stderr)

@@ -1,16 +1,23 @@
 # Button glyphs
 
-`btn_circle.png`, `btn_cross.png`, `btn_square.png` and `btn_triangle.png`
-are the face-button prompts the launcher and the in-game overlay draw their
-hints with.
+The ten `btn_*.png` files are the button prompts the launcher and the
+in-game overlay draw their hints with: the four face buttons, both
+shoulders, start, select, the d-pad and the left stick.
 
-Only the face buttons. `import_button_icons.py` will produce the shoulder,
-start, select, d-pad and stick icons too, and they are deliberately not
-used: those files are pictures of the physical buttons -- a shoulder seen at
-an angle, an oval with SELECT set inside it -- which read at the size a
-manual prints them and turn to blobs at the height of a line of text. The
-interface draws those as chips of their letters instead, which is legible at
-any size and is how the console writes them as well.
+Two things about them are worth knowing before regenerating or replacing
+them.
+
+They are exported at 40 pixels tall, which is close to the 15-22 the
+interface asks for. Storing them much larger looks like it should be
+better and is not: the console would be throwing away most of every icon
+to draw it, and the result is the chewed edges these had in their first
+build.
+
+They are inverted per icon, not as a set. Most are drawn dark-bodied for
+light backgrounds and have to be flipped for this interface; the shoulder
+buttons in this set are already light and must be left alone. Inverting
+everything is why the bumpers came out dark the first time. The script
+measures each one.
 
 They were produced by `script/import_button_icons.py` from a set of PS Vita
 button icons supplied for this project. That script trims each icon to what

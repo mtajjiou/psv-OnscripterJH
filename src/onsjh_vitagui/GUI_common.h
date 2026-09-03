@@ -175,6 +175,8 @@ typedef enum {
 	CONFIG_SCREEN,
 	RELOAD_MAINSCREEN,
 	HELP_MSG,
+	/* The same screen's second page: what this build can open. */
+	FORMATS_MSG,
 	ABOUT_MSG,
 	/* Installing a game from a .zip.  These sit before PRINT_APPINFO so the
 	 * game list still draws behind them but the per-game info panel, which

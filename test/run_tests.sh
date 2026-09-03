@@ -38,6 +38,14 @@ ${CC:-cc} -std=c99 -Wall -Wextra -g \
 
 "$work/test_videofmt"
 
+# --- format support table -------------------------------------------------
+${CC:-cc} -std=c99 -Wall -Wextra -g \
+  -I"$root/src/common" \
+  "$root/test/test_formats.c" "$root/src/common/formats.c" \
+  -o "$work/test_formats"
+
+"$work/test_formats" "$root/README.md"
+
 # --- game metadata cache --------------------------------------------------
 ${CC:-cc} -std=c99 -Wall -Wextra -g \
   -I"$root/src/common" \

@@ -156,6 +156,16 @@ const char *g_strings[UI_STRING_COUNT][UI_LANG_COUNT] = {
     /* UI_HELP_STICK         */ { "same as the d-pad",      "\xE7\xAD\x89\xE5\x90\x8C\xE6\x96\xB9\xE5\x90\x91\xE9\x94\xAE" },
     /* UI_HELP_OVERLAY       */ { "show this list in game", "\xE6\xB8\xB8\xE6\x88\x8F\xE4\xB8\xAD\xE6\x98\xBE\xE7\xA4\xBA\xE6\x9C\xAC\xE5\x88\x97\xE8\xA1\xA8" },
 
+    /* UI_FORMATS_TITLE      */ { "Formats this build can open",
+                                  "\xE6\x9C\xAC\xE7\x89\x88\xE6\x9C\xAC\xE6\x94\xAF\xE6\x8C\x81\xE7\x9A\x84\xE6\xA0\xBC\xE5\xBC\x8F" },
+    /* UI_FORMATS_LEGEND     */ { "convert anything marked \"convert\" on a PC first",
+                                  "\xE6\xA0\x87\xE4\xB8\xBA\xE9\x9C\x80\xE8\xBD\xAC\xE6\x8D\xA2\xE7\x9A\x84\xE8\xAF\xB7\xE5\x85\x88\xE5\x9C\xA8\xE7\x94\xB5\xE8\x84\x91\xE4\xB8\x8A\xE8\xBD\xAC\xE6\x8D\xA2" },
+    /* UI_FORMATS_PLAYS      */ { "plays",                  "\xE6\x94\xAF\xE6\x8C\x81" },
+    /* UI_FORMATS_SLOW       */ { "slow",                   "\xE8\xBE\x83\xE6\x85\xA2" },
+    /* UI_FORMATS_CONVERT    */ { "convert",                "\xE9\x9C\x80\xE8\xBD\xAC\xE6\x8D\xA2" },
+    /* UI_PROMPT_FORMATS     */ { "formats",                "\xE6\xA0\xBC\xE5\xBC\x8F" },
+    /* UI_PROMPT_CONTROLS    */ { "controls",               "\xE6\x93\x8D\xE4\xBD\x9C" },
+
     /* UI_ABOUT */
     { "About ONS Easy Setup\n\n"
       "ONScripter        <Ogapee>\n"

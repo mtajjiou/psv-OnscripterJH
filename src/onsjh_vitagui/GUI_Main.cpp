@@ -43,6 +43,10 @@
 #include "GUI_Theme.h"
 #include "build_version.h"
 #include "GUI_Text.h"
+
+extern "C" {
+#include "formats.h"
+}
 #include "GUI_Utils.h"
 #include "version.h"
 #include "iniparser.h"
@@ -385,7 +389,7 @@ static ScreenState layer_last = UNKNOWN;
 
 static bool state_is_layer(ScreenState state) {
 	return state >= PRINT_APPINFO || state == CONFIG_SCREEN ||
-	       state == HELP_MSG || state == ABOUT_MSG;
+	       state == HELP_MSG || state == FORMATS_MSG || state == ABOUT_MSG;
 }
 
 /* Defined with the install code further down, which is where the number it
@@ -781,10 +785,122 @@ void draw_help_screen() {
 
 	vita2d_draw_rectangle(left + padding, top + height - 44,
 		width - padding * 2, 1, TH_LINE);
+
+	/* The second page is only findable if this says it is there. */
+	int formats_w = th_hint_width(th_glyph_square, ui_text(UI_PROMPT_FORMATS),
+				      TH_FONT_S);
 	int close_w = th_hint_width(th_glyph_enter, ui_text(UI_PROMPT_CLOSE),
 				    TH_FONT_S);
-	th_hint(left + (width - close_w) / 2, top + height - padding + 6,
-		th_glyph_enter, ui_text(UI_PROMPT_CLOSE), TH_TEXT_DIM, TH_FONT_S);
+	int hx = left + (width - (formats_w + 20 + close_w)) / 2;
+	hx += th_hint(hx, top + height - padding + 6, th_glyph_square,
+		      ui_text(UI_PROMPT_FORMATS), TH_TEXT_DIM, TH_FONT_S);
+	th_hint(hx + 20, top + height - padding + 6, th_glyph_enter,
+		ui_text(UI_PROMPT_CLOSE), TH_TEXT_DIM, TH_FONT_S);
+}
+
+/*
+ * The help screen's second page: which of a game's files this build can
+ * open.  It is the question people hit after copying a game across and
+ * finding a silent opening or a missing picture, and the answer used to
+ * live only in a build script.
+ *
+ * The rows come from the shared table in src/common/formats.c, so this
+ * screen and the README say the same thing.
+ */
+static int draw_format_block(int left, int top, int width, FormatCategory cat)
+{
+	int first = 0, count = 0;
+	if (!formats_category_range(cat, &first, &count)) return 0;
+
+	const int row_h = 24;
+	int y = top;
+
+	th_text(left, y + TH_FONT_S, TH_TEXT, TH_FONT_S,
+		formats_category_name(cat));
+	y += 26;
+	vita2d_draw_rectangle(left, y - 8, width, 1, TH_LINE);
+
+	for (int i = first; i < first + count; i++) {
+		const FormatEntry *e = formats_get(i);
+		const char *word;
+		unsigned int color;
+
+		switch (e->support) {
+		case FORMAT_PLAYS:
+			word = ui_text(UI_FORMATS_PLAYS);
+			color = TH_ACCENT;
+			break;
+		case FORMAT_SLOW:
+			word = ui_text(UI_FORMATS_SLOW);
+			color = TH_TEXT_DIM;
+			break;
+		default:
+			word = ui_text(UI_FORMATS_CONVERT);
+			color = TH_DANGER;
+			break;
+		}
+
+		th_text(left, y + TH_FONT_S, TH_TEXT, TH_FONT_S, e->name);
+		th_text(left + 132, y + TH_FONT_S, TH_TEXT_FAINT, TH_FONT_S,
+			e->extensions);
+
+		/* The verdict is right-aligned, so the three words line up as a
+		 * column the eye can run down rather than three scattered
+		 * labels. */
+		int word_w = vita2d_font_text_width(font, TH_FONT_S, word);
+		th_text(left + width - word_w, y + TH_FONT_S, color, TH_FONT_S, word);
+
+		y += row_h;
+	}
+
+	return y - top + 8;
+}
+
+void draw_formats_screen() {
+	const int padding = 28;
+	const int col_w   = 380;
+	const int width   = padding * 2 + col_w * 2 + 24;
+	const int height  = 500;
+	const int left    = (SCREEN_WIDTH - width) / 2;
+	const int top     = (SCREEN_HEIGHT - height) / 2;
+
+	vita2d_draw_rectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, TH_SCRIM);
+	th_shadow(left, top, width, height);
+	th_card(left, top, width, height, TH_SURFACE, TH_BG);
+	th_border(left, top, width, height, 1, TH_LINE);
+
+	last_dialog_area.left = left;
+	last_dialog_area.top = top;
+	last_dialog_area.right = left + width;
+	last_dialog_area.bottom = top + height;
+
+	th_text(left + padding, top + padding + TH_FONT_M, TH_TEXT, TH_FONT_M,
+		ui_text(UI_FORMATS_TITLE));
+	th_text(left + padding, top + padding + TH_FONT_M + 24, TH_TEXT_DIM,
+		TH_FONT_S, ui_text(UI_FORMATS_LEGEND));
+
+	/* Video on the left, the two shorter lists stacked on the right: the
+	 * whole table at once, with nothing to scroll. */
+	const int body = top + padding + TH_FONT_M + 46;
+	draw_format_block(left + padding, body, col_w, FORMAT_CATEGORY_VIDEO);
+
+	const int right = left + padding + col_w + 24;
+	int used = draw_format_block(right, body, col_w, FORMAT_CATEGORY_AUDIO);
+	draw_format_block(right, body + used + 12, col_w, FORMAT_CATEGORY_IMAGE);
+
+	vita2d_draw_rectangle(left + padding, top + height - 44,
+		width - padding * 2, 1, TH_LINE);
+
+	/* Two ways out, side by side: back to the controls page, or done. */
+	int back_w  = th_hint_width(th_glyph_square, ui_text(UI_PROMPT_CONTROLS),
+				    TH_FONT_S);
+	int close_w = th_hint_width(th_glyph_enter, ui_text(UI_PROMPT_CLOSE),
+				    TH_FONT_S);
+	int x = left + (width - (back_w + 20 + close_w)) / 2;
+	x += th_hint(x, top + height - padding + 6, th_glyph_square,
+		     ui_text(UI_PROMPT_CONTROLS), TH_TEXT_DIM, TH_FONT_S);
+	th_hint(x + 20, top + height - padding + 6, th_glyph_enter,
+		ui_text(UI_PROMPT_CLOSE), TH_TEXT_DIM, TH_FONT_S);
 }
 
 void draw_message(char *msg, int choose, int fontsize) {
@@ -1034,6 +1150,9 @@ void draw_screen(ScreenState state, int curr, int choose, int slot) {
 	}
 	if (state == HELP_MSG) {
 		draw_help_screen();
+	}
+	if (state == FORMATS_MSG) {
+		draw_formats_screen();
 	}
 	if (state == ABOUT_MSG) {
 		draw_alert((char*)about_msg, FONT_SIZE);
@@ -1814,6 +1933,29 @@ ScreenState on_alert_event(ScreenState state) {
 	return state;
 }
 
+/* The controls list and the format list are two pages of one screen:
+ * SQUARE turns to the other, anything else closes, so neither page is a
+ * dead end and the pair costs one button. */
+ScreenState on_help_event(ScreenState other_page) {
+	while (1) {
+		int btn = read_buttons();
+		if (btn & SCE_CTRL_HOLD) {
+			continue;
+		}
+		if (btn & SCE_CTRL_SQUARE) {
+			return other_page;
+		}
+		if (btn & SCE_CTRL_ENTER || btn & SCE_CTRL_CANCEL) {
+			break;
+		}
+		{
+			point p;
+			if (read_touchscreen(&p)) break;
+		}
+	}
+	return MAIN_SCREEN;
+}
+
 void prepare_delete_confirm(int choose) {
 	if (choose < 0 || choose >= (int)rom_list.size()) return;
 
@@ -2287,7 +2429,10 @@ int mainloop() {
 				new_state = on_config_event();
 				break;
 			case HELP_MSG:
-				new_state = on_alert_event(MAIN_SCREEN);
+				new_state = on_help_event(FORMATS_MSG);
+				break;
+			case FORMATS_MSG:
+				new_state = on_help_event(HELP_MSG);
 				break;
 			case ABOUT_MSG:
 				new_state = on_alert_event(MAIN_SCREEN);

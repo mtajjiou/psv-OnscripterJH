@@ -134,6 +134,16 @@ enum UIStringId {
     UI_HELP_STICK,
     UI_HELP_OVERLAY,
 
+    /* The help screen's second page: what this build can open, and how
+     * to get between the two pages.  See draw_formats_screen(). */
+    UI_FORMATS_TITLE,
+    UI_FORMATS_LEGEND,
+    UI_FORMATS_PLAYS,
+    UI_FORMATS_SLOW,
+    UI_FORMATS_CONVERT,
+    UI_PROMPT_FORMATS,
+    UI_PROMPT_CONTROLS,
+
     /* Long text */
     UI_ABOUT,
 

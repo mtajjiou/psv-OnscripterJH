@@ -104,6 +104,52 @@ video and leaves the original alone — the engine prefers the `.mp4` when both
 are there, so nothing in the game's script changes and you can delete the
 originals whenever you are satisfied.
 
+## Formats
+
+What this build can open, and what to convert before copying a game across.
+The same list is in the launcher: press R2 for the help screen, then SQUARE
+for its second page.
+
+*plays* needs nothing done to it, *slow* is decoded on the CPU and is fine
+for the short clips a visual novel ships, *convert* will not open at all.
+
+### Video
+
+| Format | Files | | Notes |
+|---|---|---|---|
+| H.264 in MP4 | `.mp4 .m4v .mov` | plays | hardware decoded |
+| MPEG-1/2 | `.mpg .mpeg` | slow | software decoded |
+| MPEG-4 / DivX | `.avi` | slow | software decoded |
+| WMV / VC-1 | `.wmv .asf` | slow | software decoded |
+| VP8/VP9, Theora | `.webm .mkv .ogv` | slow | software decoded |
+| RealVideo | `.rm .rmvb` | slow | software decoded |
+
+### Audio
+
+| Format | Files | | Notes |
+|---|---|---|---|
+| Ogg Vorbis | `.ogg` | plays | — |
+| MP3 | `.mp3` | plays | — |
+| WAV / PCM | `.wav` | plays | — |
+| Opus | `.opus` | plays | — |
+| FLAC | `.flac` | plays | — |
+| Modules | `.mod .xm .it .s3m` | plays | — |
+| MIDI | `.mid .midi` | convert | no soundfont on the Vita; convert to Ogg |
+
+### Images
+
+| Format | Files | | Notes |
+|---|---|---|---|
+| PNG | `.png` | plays | — |
+| JPEG | `.jpg .jpeg` | plays | — |
+| BMP | `.bmp` | plays | — |
+| GIF | `.gif` | plays | first frame only |
+| WebP | `.webp` | plays | — |
+| TGA, TIFF | `.tga .tif .tiff` | convert | not linked in; convert to PNG |
+
+The list comes from `src/common/formats.c`, which is also what the launcher
+draws; change it there and both follow.
+
 ## Per-game files
 
 Two optional files can sit in a game's folder, and neither has to be there.
@@ -162,7 +208,7 @@ harmless.
 - [ ] **Graceful Degradation** — Skips missing/broken videos instead of crashing
 - [ ] **Video Conversion Helper** — Bundles `ffmpeg` instructions or helper script
 - [ ] **Audio-Only Fallback** — Extracts audio if video fails
-- [ ] **Format Support List** — Shows which formats are playable
+- [x] **Format Support List** — Shows which formats are playable
 
 ### Touch & Input Optimization
 - [ ] **Auto-Detect Touch Needs** — Analyzes scripts for touch-dependent commands

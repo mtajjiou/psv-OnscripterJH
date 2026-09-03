@@ -38,10 +38,13 @@ const ControlRow kRows[] = {
     { "app0:btn_cross.png",    NULL,          "hold to fast-forward" },
     { "app0:btn_square.png",   NULL,          "auto mode" },
     { "app0:btn_triangle.png", NULL,          "menu, leaves the backlog" },
-    { NULL,                    "L",           "skip to the end of the page" },
-    { NULL,                    "R",           "start or stop skipping" },
-    { NULL,                    "Start",       "click through a wait" },
-    { NULL,                    "Select",      "tap: text speed, hold: this" },
+    /* These four are only drawn if someone has put images in the vpk; the
+     * name is what is shown otherwise, which is how the console writes
+     * them anyway. */
+    { "app0:btn_l.png",        "L",           "skip to the end of the page" },
+    { "app0:btn_r.png",        "R",           "start or stop skipping" },
+    { "app0:btn_start.png",    "Start",       "click through a wait" },
+    { "app0:btn_select.png",   "Select",      "tap: text speed, hold: this" },
     { NULL,                    "left right",  "backlog" },
     { NULL,                    "up down",     "move between choices" },
     { NULL,                    "left stick",  "same as the d-pad" },
@@ -107,16 +110,15 @@ void ONScripter::showControlsOverlay()
     for (int i = 0; i < kNumRows; i++){
         const int y = kPadding + 44 + i * kLineGap;
 
-        if (kRows[i].glyph){
-            /* The same images the launcher draws its hints with, packed in
-             * the vpk beside this binary. */
-            SDL_Surface *g = IMG_Load(kRows[i].glyph);
-            if (g){
-                SDL_Rect dst = { kPadding, y, kGlyph, kGlyph };
-                SDL_SetSurfaceBlendMode(g, SDL_BLENDMODE_BLEND);
-                SDL_BlitScaled(g, NULL, panel, &dst);
-                SDL_FreeSurface(g);
-            }
+        /* The same images the launcher draws its hints with, packed in the
+         * vpk beside this binary.  A file that is not there loads as NULL,
+         * and the button's name is drawn instead. */
+        SDL_Surface *g = kRows[i].glyph ? IMG_Load(kRows[i].glyph) : NULL;
+        if (g){
+            SDL_Rect dst = { kPadding, y, kGlyph, kGlyph };
+            SDL_SetSurfaceBlendMode(g, SDL_BLENDMODE_BLEND);
+            SDL_BlitScaled(g, NULL, panel, &dst);
+            SDL_FreeSurface(g);
         }
         else if (kRows[i].button){
             SDL_Surface *b = TTF_RenderUTF8_Blended(font, kRows[i].button, fg);

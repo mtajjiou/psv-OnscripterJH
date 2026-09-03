@@ -66,12 +66,18 @@ extern vita2d_font *font;
  * with the shape in the alpha channel, so they take the colour of whatever
  * they sit in.  See script/make_button_glyphs.py.
  */
-#define TH_GLYPH_SOURCE 32   /* the pngs are 32x32 */
-
 extern vita2d_texture *th_glyph_circle;
 extern vita2d_texture *th_glyph_cross;
 extern vita2d_texture *th_glyph_square;
 extern vita2d_texture *th_glyph_triangle;
+/* Optional, and NULL when the file is not in the vpk: the launcher writes
+ * the name of the button instead.  Drop a png in asset/ under the matching
+ * name and it is used with no code change, at whatever resolution it is --
+ * the glyphs are scaled from their own size. */
+extern vita2d_texture *th_glyph_l;
+extern vita2d_texture *th_glyph_r;
+extern vita2d_texture *th_glyph_start;
+extern vita2d_texture *th_glyph_select;
 /* Which of the two confirms is a system setting; these follow it. */
 extern vita2d_texture *th_glyph_enter;
 extern vita2d_texture *th_glyph_cancel;

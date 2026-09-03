@@ -19,6 +19,10 @@ vita2d_texture *th_glyph_square   = NULL;
 vita2d_texture *th_glyph_triangle = NULL;
 vita2d_texture *th_glyph_enter    = NULL;
 vita2d_texture *th_glyph_cancel   = NULL;
+vita2d_texture *th_glyph_l        = NULL;
+vita2d_texture *th_glyph_r        = NULL;
+vita2d_texture *th_glyph_start    = NULL;
+vita2d_texture *th_glyph_select   = NULL;
 
 void th_load_glyphs()
 {
@@ -26,6 +30,14 @@ void th_load_glyphs()
     th_glyph_cross    = vita2d_load_PNG_file("app0:btn_cross.png");
     th_glyph_square   = vita2d_load_PNG_file("app0:btn_square.png");
     th_glyph_triangle = vita2d_load_PNG_file("app0:btn_triangle.png");
+
+    /* These four have no shape of their own, so the launcher writes their
+     * names unless someone supplies images.  vita2d_load_PNG_file returns
+     * NULL for a file that is not there, which is exactly the fallback. */
+    th_glyph_l      = vita2d_load_PNG_file("app0:btn_l.png");
+    th_glyph_r      = vita2d_load_PNG_file("app0:btn_r.png");
+    th_glyph_start  = vita2d_load_PNG_file("app0:btn_start.png");
+    th_glyph_select = vita2d_load_PNG_file("app0:btn_select.png");
 
     /* Which button confirms is a system setting, and the launcher already
      * follows it for the input.  The glyphs follow the same answer, so the
@@ -45,7 +57,11 @@ void th_glyph(vita2d_texture *glyph, int x, int baseline, int size,
 {
     if (glyph == NULL) return;
 
-    float scale = (float)size / (float)TH_GLYPH_SOURCE;
+    /* Scaled from the image's own size, so a set of 64px or 128px icons
+     * dropped into asset/ draws at the same size as these do. */
+    unsigned int source = vita2d_texture_get_width(glyph);
+    if (source == 0) return;
+    float scale = (float)size / (float)source;
     /* Sat on the text's baseline rather than on the line box, so a glyph
      * and the word beside it look like one thing. */
     vita2d_draw_texture_tint_scale(glyph, (float)x,

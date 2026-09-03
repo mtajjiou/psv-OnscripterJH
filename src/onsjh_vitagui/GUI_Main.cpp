@@ -291,13 +291,16 @@ void draw_help() {
 	/* Button, word, gap -- the shoulder buttons have no glyph of their own,
 	 * so they are written, which is how the console writes them too. */
 	int x = TH_PAD;
-	x += th_hint(x, baseline, NULL, "L", TH_TEXT, TH_FONT_S) + 5;
+	x += th_hint(x, baseline, th_glyph_l,
+		     th_glyph_l ? NULL : "L", TH_TEXT, TH_FONT_S) + 5;
 	x += th_hint(x, baseline, NULL, ui_text(UI_HINT_SETTINGS), TH_TEXT_DIM,
 		     TH_FONT_S) + TH_PAD + 6;
-	x += th_hint(x, baseline, NULL, "R", TH_TEXT, TH_FONT_S) + 5;
+	x += th_hint(x, baseline, th_glyph_r,
+		     th_glyph_r ? NULL : "R", TH_TEXT, TH_FONT_S) + 5;
 	x += th_hint(x, baseline, NULL, ui_text(UI_HINT_HELP), TH_TEXT_DIM,
 		     TH_FONT_S) + TH_PAD + 6;
-	x += th_hint(x, baseline, NULL, "Select", TH_TEXT, TH_FONT_S) + 5;
+	x += th_hint(x, baseline, th_glyph_select,
+		     th_glyph_select ? NULL : "Select", TH_TEXT, TH_FONT_S) + 5;
 	x += th_hint(x, baseline, NULL, ui_text(UI_HINT_ABOUT), TH_TEXT_DIM,
 		     TH_FONT_S) + TH_PAD + 6;
 	x += th_hint(x, baseline, th_glyph_enter, ui_text(UI_BTN_START),
@@ -635,12 +638,12 @@ void draw_help_screen() {
 		{ &th_glyph_cross,    NULL,          UI_HELP_SKIP },
 		{ &th_glyph_square,   NULL,          UI_HELP_AUTO },
 		{ &th_glyph_triangle, NULL,          UI_HELP_MENU },
-		{ NULL,               "L",           UI_HELP_SKIP_PAGE },
-		{ NULL,               "R",           UI_HELP_TOGGLE_SKIP },
+		{ &th_glyph_l,        "L",           UI_HELP_SKIP_PAGE },
+		{ &th_glyph_r,        "R",           UI_HELP_TOGGLE_SKIP },
 		{ NULL,               "left right",  UI_HELP_BACKLOG },
 		{ NULL,               "up down",     UI_HELP_CURSOR },
 		{ NULL,               "left stick",  UI_HELP_STICK },
-		{ NULL,               "hold Select", UI_HELP_OVERLAY },
+		{ &th_glyph_select,   "hold Select", UI_HELP_OVERLAY },
 	};
 	const int count = (int)(sizeof(rows) / sizeof(rows[0]));
 
@@ -677,6 +680,9 @@ void draw_help_screen() {
 	for (int i = 0; i < count; i++) {
 		const int baseline = top + padding + 40 + (i + 1) * row_h;
 
+		/* The image when there is one, the name when there is not: the
+		 * face buttons ship with the launcher, the rest only if someone
+		 * puts them in asset/. */
 		if (rows[i].glyph && *rows[i].glyph)
 			th_glyph(*rows[i].glyph, left + padding, baseline, TH_FONT_S,
 				 TH_TEXT);

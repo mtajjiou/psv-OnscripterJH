@@ -80,20 +80,40 @@ int ONScripter::playSoftwareVideo(const char *path, bool click_flag,
 
     videodec_info info;
     videodec_get_info(dec, &info);
-    utils::printInfo("video: playing [%s] in software, %dx%d %s%s%s\n",
-                     path, info.width, info.height, info.video_codec,
-                     info.has_audio ? " + " : " (silent)",
-                     info.has_audio ? info.audio_codec : "");
+    if (info.has_video)
+        utils::printInfo("video: playing [%s] in software, %dx%d %s%s%s\n",
+                         path, info.width, info.height, info.video_codec,
+                         info.has_audio ? " + " : " (silent)",
+                         info.has_audio ? info.audio_codec : "");
+    else
+        utils::printInfo("video: [%s] has no picture this build can decode; "
+                         "playing its sound over the current scene (%s)\n",
+                         path, info.audio_codec);
+
+    /* A file with sound and no picture is worth playing for the sound: the
+     * scene keeps its dialogue, and the screen keeps whatever the engine
+     * last drew rather than going black for the length of the clip.  With
+     * no mixer to play it into there is nothing left to do, so say so and
+     * carry on instead of spinning for the file's duration. */
+    if (!info.has_video && !(info.has_audio && audio_open_flag)) {
+        utils::printError("video: [%s] has neither picture nor a mixer to "
+                          "play its sound; skipped\n", path);
+        videodec_close(dec);
+        return 0;
+    }
 
     /* Named apart from the engine's own `texture` member, which the rest of
      * the renderer draws from and which is restored at the end. */
-    SDL_Texture *frame_tex = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ABGR8888,
-                                               SDL_TEXTUREACCESS_STREAMING,
-                                               info.width, info.height);
-    if (frame_tex == NULL) {
-        utils::printError("video: no texture for [%s]: %s\n", path, SDL_GetError());
-        videodec_close(dec);
-        return 0;
+    SDL_Texture *frame_tex = NULL;
+    if (info.has_video) {
+        frame_tex = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ABGR8888,
+                                      SDL_TEXTUREACCESS_STREAMING,
+                                      info.width, info.height);
+        if (frame_tex == NULL) {
+            utils::printError("video: no texture for [%s]: %s\n", path, SDL_GetError());
+            videodec_close(dec);
+            return 0;
+        }
     }
 
     /* Letterbox into the same rectangle the engine draws the game into, so
@@ -129,6 +149,10 @@ int ONScripter::playSoftwareVideo(const char *path, bool click_flag,
         /* Decode a little ahead before the mixer starts pulling, so the
          * first moment of sound is not silence. */
         for (int i = 0; i < 4 && videodec_audio_available(dec) < 8192; i++) {
+            if (!info.has_video) {
+                if (videodec_pump(dec) <= 0) break;
+                continue;
+            }
             const uint8_t *ignore_rgba = NULL;
             int ignore_pitch = 0;
             double ignore_pts = 0.0;
@@ -145,7 +169,50 @@ int ONScripter::playSoftwareVideo(const char *path, bool click_flag,
     bool quit = false;
     Uint32 started = SDL_GetTicks();
 
-    while (!quit) {
+    while (!quit && !info.has_video) {
+        /* No frames to pace against, so the loop is paced by the mixer: keep
+         * roughly a second of decoded sound ahead of it and sleep otherwise.
+         * The clip is over once the file is drained and the buffer with it. */
+        int rc, buffered;
+
+        if (g_sw_audio.lock) SDL_LockMutex(g_sw_audio.lock);
+        rc = ((int)videodec_audio_available(dec) < info.audio_rate)
+                 ? videodec_pump(dec) : 1;
+        buffered = (int)videodec_audio_available(dec);
+        if (g_sw_audio.lock) SDL_UnlockMutex(g_sw_audio.lock);
+
+        if (rc < 0) {
+            utils::printError("video: [%s] stopped early: %s\n",
+                              path, videodec_error_string(rc));
+            break;
+        }
+        if (rc == 0 && buffered == 0) {
+            if (!loop_flag) break;
+            if (g_sw_audio.lock) SDL_LockMutex(g_sw_audio.lock);
+            videodec_close(dec);
+            dec = videodec_open(path, &err);
+            g_sw_audio.dec = dec;
+            if (g_sw_audio.lock) SDL_UnlockMutex(g_sw_audio.lock);
+            if (dec == NULL) break;
+            continue;
+        }
+
+        SDL_Delay(10);
+
+        SDL_Event event;
+        while (SDL_PollEvent(&event)) {
+            if (click_flag && event.type == SDL_JOYBUTTONDOWN) {
+                Uint8 button = event.jbutton.button;
+                if (button == 2 || button == 11) quit = true;   /* cross, start */
+            }
+            else if (event.type == SDL_QUIT) {
+                ret = 1;
+                quit = true;
+            }
+        }
+    }
+
+    while (!quit && info.has_video) {
         const uint8_t *rgba = NULL;
         int pitch = 0;
         double pts = 0.0;
@@ -242,7 +309,7 @@ int ONScripter::playSoftwareVideo(const char *path, bool click_flag,
     }
 
     videodec_close(dec);
-    SDL_DestroyTexture(frame_tex);
+    if (frame_tex) SDL_DestroyTexture(frame_tex);
 
     /* Let the engine repaint, so the scene after the video comes from the
      * accumulated screen rather than the last video frame -- and at the

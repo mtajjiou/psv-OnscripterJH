@@ -43,6 +43,10 @@ enum {
 };
 
 typedef struct {
+    /* A file opens when either its picture or its sound can be decoded.
+     * has_video says which of the two you have; width and height are 0
+     * when there is no picture. */
+    int      has_video;
     int      width;
     int      height;
     double   duration;        /* seconds; 0 when the container does not say */
@@ -54,7 +58,9 @@ typedef struct {
     char     audio_codec[32];
 } videodec_info;
 
-/* Opens path for decoding.  Returns NULL and sets *err on failure. */
+/* Opens path for decoding.  Returns NULL and sets *err only when neither
+ * the video nor the audio can be decoded: a file whose video codec is
+ * missing from this build still opens for its sound. */
 videodec *videodec_open(const char *path, int *err);
 
 void videodec_close(videodec *v);
@@ -78,6 +84,11 @@ size_t videodec_read_audio(videodec *v, int16_t *dst, size_t max_samples);
 /* How many sample frames are waiting.  Lets a caller decode ahead until the
  * audio buffer is deep enough to start. */
 size_t videodec_audio_available(const videodec *v);
+
+/* Advances a file that has no picture, filling the audio buffer.  Returns 1
+ * while there is more to come, 0 at the end, negative on error.  Callers
+ * with video use videodec_next_frame, which pumps the audio as it goes. */
+int videodec_pump(videodec *v);
 
 const char *videodec_error_string(int err);
 

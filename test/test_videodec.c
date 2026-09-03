@@ -169,14 +169,61 @@ int main(int argc, char **argv)
               "a file that is not a video does not open");
     }
     {
-        /* An audio-only file has no video track; that is a distinct error
-         * from a codec this build lacks. */
+        /* A file with sound and no picture opens for its sound.  It used to
+         * be refused with ERR_NO_VIDEO, which is why the expectation here
+         * changed: a scene with its dialogue and none of its picture is
+         * closer to the game than a scene that was skipped. */
         char path[1024];
+        videodec *v;
+        int pumped = 0;
+        size_t audio_seen = 0;
+
         snprintf(path, sizeof(path), "%s/audio_only.wav", dir);
         err = 0;
-        check(videodec_open(path, &err) == NULL && err == VIDEODEC_ERR_NO_VIDEO,
-              "an audio-only file reports ERR_NO_VIDEO");
+        v = videodec_open(path, &err);
+        check(v != NULL, "an audio-only file opens");
+
+        if (v) {
+            videodec_info info;
+            videodec_get_info(v, &info);
+            check(info.has_video == 0, "and says it has no picture");
+            check(info.width == 0 && info.height == 0,
+                  "with no dimensions to draw into");
+            check(info.has_audio == 1, "and does have sound");
+
+            /* next_frame must not be an error here, and must not loop. */
+            {
+                const uint8_t *rgba = NULL;
+                int pitch = 0;
+                double pts = 0.0;
+                check(videodec_next_frame(v, &rgba, &pitch, &pts) == 0,
+                      "next_frame reports the end rather than an error");
+            }
+
+            while (videodec_pump(v) == 1 && pumped < 10000) {
+                pumped++;
+                audio_seen = videodec_audio_available(v);
+                if (audio_seen > 0) break;
+            }
+            check(audio_seen > 0, "pumping it produces audio");
+
+            /* Run it to the end; it has to stop. */
+            pumped = 0;
+            while (videodec_pump(v) == 1 && pumped < 100000) pumped++;
+            check(pumped < 100000, "and reaches the end");
+
+            videodec_close(v);
+        }
     }
+    {
+        /* A file that is neither still fails, and says which. */
+        char path[1024];
+        snprintf(path, sizeof(path), "%s/notazip.bin", dir);
+        err = 0;
+        check(videodec_open(path, &err) == NULL && err != VIDEODEC_OK,
+              "a file with neither picture nor sound still fails");
+    }
+    check(videodec_pump(NULL) < 0, "pump(NULL) is an error, not a crash");
 
     videodec_close(NULL);   /* must be a no-op */
     check(videodec_read_audio(NULL, NULL, 0) == 0, "read_audio(NULL) is 0");

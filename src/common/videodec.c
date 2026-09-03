@@ -165,14 +165,17 @@ static void fill_info(videodec *v)
 
     memset(&v->info, 0, sizeof(v->info));
 
-    v->info.width  = v->vdec->width;
-    v->info.height = v->vdec->height;
-    snprintf(v->info.video_codec, sizeof(v->info.video_codec), "%s",
-             avcodec_get_name(v->vdec->codec_id));
+    if (v->vdec) {
+        v->info.has_video = 1;
+        v->info.width  = v->vdec->width;
+        v->info.height = v->vdec->height;
+        snprintf(v->info.video_codec, sizeof(v->info.video_codec), "%s",
+                 avcodec_get_name(v->vdec->codec_id));
 
-    st = v->fmt->streams[v->vstream];
-    if (st->avg_frame_rate.den > 0 && st->avg_frame_rate.num > 0)
-        v->info.frame_rate = av_q2d(st->avg_frame_rate);
+        st = v->fmt->streams[v->vstream];
+        if (st->avg_frame_rate.den > 0 && st->avg_frame_rate.num > 0)
+            v->info.frame_rate = av_q2d(st->avg_frame_rate);
+    }
 
     if (v->fmt->duration > 0)
         v->info.duration = (double)v->fmt->duration / AV_TIME_BASE;
@@ -190,6 +193,7 @@ videodec *videodec_open(const char *path, int *err)
 {
     videodec *v;
     int rc;
+    int video_error = VIDEODEC_OK;
 
     if (err) *err = VIDEODEC_OK;
     if (path == NULL) {
@@ -215,24 +219,25 @@ videodec *videodec_open(const char *path, int *err)
         return NULL;
     }
 
+    /* Why the video did not open, kept in case the audio does not either
+     * and there is a failure to explain. */
     rc = open_stream(v, AVMEDIA_TYPE_VIDEO, &v->vdec, &v->vstream);
-    if (rc < 0) {
-        /* Tell "no video track" apart from "this build cannot decode it":
-         * the first is a broken file, the second is a build to fix. */
-        if (err) *err = (rc == AVERROR_STREAM_NOT_FOUND ||
-                         rc == AVERROR_DECODER_NOT_FOUND)
-                        ? (av_find_best_stream(v->fmt, AVMEDIA_TYPE_VIDEO,
-                                               -1, -1, NULL, 0) < 0
-                           ? VIDEODEC_ERR_NO_VIDEO : VIDEODEC_ERR_CODEC)
-                        : VIDEODEC_ERR_NO_VIDEO;
-        videodec_close(v);
-        return NULL;
+    if (rc == 0 && (v->vdec->width <= 0 || v->vdec->height <= 0)) {
+        avcodec_free_context(&v->vdec);
+        v->vstream = -1;
+        rc = AVERROR_DECODER_NOT_FOUND;
     }
-    if (v->vdec->width <= 0 || v->vdec->height <= 0) {
-        if (err) *err = VIDEODEC_ERR_OPEN;
-        videodec_close(v);
-        return NULL;
-    }
+
+    /* Tell "no video track" apart from "this build cannot decode it": the
+     * first is an audio file or a broken one, the second is a build to
+     * fix. */
+    video_error = (rc == 0) ? VIDEODEC_OK
+                : ((rc == AVERROR_STREAM_NOT_FOUND ||
+                    rc == AVERROR_DECODER_NOT_FOUND)
+                   ? (av_find_best_stream(v->fmt, AVMEDIA_TYPE_VIDEO,
+                                          -1, -1, NULL, 0) < 0
+                      ? VIDEODEC_ERR_NO_VIDEO : VIDEODEC_ERR_CODEC)
+                   : VIDEODEC_ERR_NO_VIDEO);
 
     /* Audio is optional: a video with a codec we cannot decode still plays
      * silently, which is better than not playing. */
@@ -258,11 +263,24 @@ videodec *videodec_open(const char *path, int *err)
         }
     }
 
+    /* Neither picture nor sound is something to play.  With one of the
+     * two, there is: a file whose video codec is missing from this build
+     * still has its dialogue and its music, and a scene with sound and no
+     * picture is closer to the game than a scene that was skipped. */
+    if (v->vdec == NULL && v->adec == NULL) {
+        if (err) *err = video_error;
+        videodec_close(v);
+        return NULL;
+    }
+
     v->pkt   = av_packet_alloc();
     v->frame = av_frame_alloc();
-    v->rgba_pitch = v->vdec->width * 4;
-    v->rgba = (uint8_t *)av_malloc((size_t)v->rgba_pitch * v->vdec->height);
-    if (v->pkt == NULL || v->frame == NULL || v->rgba == NULL) {
+    if (v->vdec) {
+        v->rgba_pitch = v->vdec->width * 4;
+        v->rgba = (uint8_t *)av_malloc((size_t)v->rgba_pitch * v->vdec->height);
+    }
+    if (v->pkt == NULL || v->frame == NULL ||
+        (v->vdec != NULL && v->rgba == NULL)) {
         if (err) *err = VIDEODEC_ERR_MEMORY;
         videodec_close(v);
         return NULL;
@@ -318,6 +336,9 @@ int videodec_next_frame(videodec *v, const uint8_t **rgba, int *pitch,
                         double *pts)
 {
     if (v == NULL) return VIDEODEC_ERR_DECODE;
+    /* Nothing to show.  Reported as the end rather than as an error, so a
+     * caller that does not check has_video stops instead of looping. */
+    if (v->vdec == NULL) return 0;
 
     for (;;) {
         int rc = avcodec_receive_frame(v->vdec, v->frame);
@@ -392,6 +413,50 @@ int videodec_next_frame(videodec *v, const uint8_t **rgba, int *pitch,
         }
         av_packet_unref(v->pkt);
     }
+}
+
+int videodec_pump(videodec *v)
+{
+    if (v == NULL) return VIDEODEC_ERR_DECODE;
+    if (v->adec == NULL) return 0;
+
+    if (v->eof) {
+        /* Drained once, then finished: the buffered audio is still there
+         * to be read out by the caller. */
+        if (v->eof == 1) {
+            AVFrame *af = av_frame_alloc();
+            avcodec_send_packet(v->adec, NULL);
+            if (af) {
+                while (avcodec_receive_frame(v->adec, af) == 0) {
+                    decode_audio_frame(v, af);
+                    av_frame_unref(af);
+                }
+                av_frame_free(&af);
+            }
+            v->eof = 2;
+        }
+        return 0;
+    }
+
+    if (av_read_frame(v->fmt, v->pkt) < 0) {
+        v->eof = 1;
+        return 1;                     /* one more call drains the decoder */
+    }
+
+    if (v->pkt->stream_index == v->astream) {
+        if (avcodec_send_packet(v->adec, v->pkt) == 0) {
+            AVFrame *af = av_frame_alloc();
+            if (af) {
+                while (avcodec_receive_frame(v->adec, af) == 0) {
+                    decode_audio_frame(v, af);
+                    av_frame_unref(af);
+                }
+                av_frame_free(&af);
+            }
+        }
+    }
+    av_packet_unref(v->pkt);
+    return 1;
 }
 
 const char *videodec_error_string(int err)

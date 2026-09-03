@@ -242,6 +242,7 @@ int load_rom_list() {
 					}
 				}
 			} while (res > 0);
+			sceIoDclose(dfd);
 		}
 	}
 

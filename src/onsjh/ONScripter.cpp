@@ -488,7 +488,8 @@ int ONScripter::reportTextSpeed()
 	if (counted >= 0 && ++counted == 100) {
 		const Uint32 elapsed = SDL_GetTicks() - started;
 		utils::printInfo("text: 100 characters took %ums, %ums each "
-		                 "(asked %dms)\n", elapsed, elapsed / 100, wait);
+		                 "(asked %dms, %d screen flushes)\n",
+		                 elapsed, elapsed / 100, wait, flush_calls);
 		counted = -1;
 	}
 
@@ -893,12 +894,29 @@ void ONScripter::flushDirect(SDL_Rect &rect, int refresh_mode)
     if (AnimationInfo::doClipping(&dst_rect, &screen_rect) || (dst_rect.w == 2 && dst_rect.h == 2)) return;
 #endif
 
+    /* Timed in four steps, once, over the first hundred calls.
+     *
+     * Text costs about 41ms a character beyond the delay it asks for, and
+     * this is where that goes: every character redraws its region, uploads
+     * it, draws the whole screen and presents it.  Which of the four is
+     * expensive decides what the fix is -- presenting less often, or
+     * refreshing less -- so it is measured rather than guessed at. */
+    flush_calls++;
+    static int    timed_calls = 0;
+    static Uint64 t_refresh = 0, t_upload = 0, t_copy = 0, t_present = 0;
+    const bool    timing = (timed_calls >= 0);
+    const Uint64  freq = SDL_GetPerformanceFrequency();
+    Uint64 t0 = timing ? SDL_GetPerformanceCounter() : 0, t1 = 0, t2 = 0, t3 = 0;
+
     refreshSurface(accumulation_surface, &rect, refresh_mode);
+    if (timing) t1 = SDL_GetPerformanceCounter();
+
     SDL_LockSurface(accumulation_surface);
     SDL_UpdateTexture(texture, (SDL_Rect*)&rect, 
         (unsigned char*)accumulation_surface->pixels+accumulation_surface->pitch*rect.y+rect.x*sizeof(ONSBuf), 
         accumulation_surface->pitch);
     SDL_UnlockSurface(accumulation_surface);
+    if (timing) t2 = SDL_GetPerformanceCounter();
 
     screen_dirty_flag = true;
 #if defined(ANDROID) || defined(PSV)      
@@ -915,7 +933,34 @@ void ONScripter::flushDirect(SDL_Rect &rect, int refresh_mode)
 #else
         SDL_RenderCopy(renderer, texture, &dst_rect, &dst_rect);
 #endif
+    if (timing) t3 = SDL_GetPerformanceCounter();
     SDL_RenderPresent(renderer);
+
+    if (timing) {
+        const Uint64 t4 = SDL_GetPerformanceCounter();
+        t_refresh += t1 - t0;
+        t_upload  += t2 - t1;
+        t_copy    += t3 - t2;
+        t_present += t4 - t3;
+
+        if (++timed_calls == 100) {
+            /* Integer microseconds per call: the console's printf cannot be
+             * relied on for %f, and this is a number, not a measurement of
+             * anything that needs decimals. */
+            const Uint64 scale = (freq > 0) ? freq * 100 : 1;
+            const int refresh_us = (int)(t_refresh * 1000000 / scale);
+            const int upload_us  = (int)(t_upload  * 1000000 / scale);
+            const int copy_us    = (int)(t_copy    * 1000000 / scale);
+            const int present_us = (int)(t_present * 1000000 / scale);
+
+            utils::printInfo("flush: per call -- refresh %dus, upload %dus, "
+                             "copy %dus, present %dus, total %dus (vsync %s)\n",
+                             refresh_us, upload_us, copy_us, present_us,
+                             refresh_us + upload_us + copy_us + present_us,
+                             vsync ? "on" : "off");
+            timed_calls = -1;
+        }
+    }
 }
 
 #ifdef USE_SMPEG

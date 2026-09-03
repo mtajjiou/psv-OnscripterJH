@@ -836,6 +836,9 @@ private:
     int  textDisplaySpeed();
     int  reportTextSpeed();
     void reportInstantText();
+    /* How many times the screen has been pushed out; read beside the
+     * per-character timing, to see how many of these one character costs. */
+    int  flush_calls = 0;
     int  default_music_volume = DEFAULT_VOLUME;
     int  default_se_volume    = DEFAULT_VOLUME;
     int  default_voice_volume = DEFAULT_VOLUME;

@@ -168,7 +168,10 @@ public:
     void pushVariable();
     int  getIntVariable( VariableInfo *var_info=NULL );
 
-    int  getStringFromInteger( char *buffer, int no, int num_column, bool is_zero_inserted=false );
+    /* one_byte writes ascii digits instead of the code page's fullwidth
+     * ones -- for the system menu on a game whose font has no japanese
+     * glyphs.  Script-facing callers leave it alone. */
+    int  getStringFromInteger( char *buffer, int no, int num_column, bool is_zero_inserted=false, bool one_byte=false );
 
     int  openScript( char *path );
 

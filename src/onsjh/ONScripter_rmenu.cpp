@@ -33,19 +33,56 @@
 #define DIALOG_BUTTON_W 96
 #define DIALOG_BUTTON_H 42
 
-#if defined(ENABLE_1BYTE_CHAR) && defined(FORCE_1BYTE_CHAR)
-#define MESSAGE_SAVE_EXIST "`%s%s    Date %s/%s    Time %s:%s"
-#define MESSAGE_SAVE_EMPTY "`%s%s    ------------------------"
-#define MESSAGE_SAVE_CONFIRM "`Save in slot %s%s?"
-#define MESSAGE_LOAD_CONFIRM "`Load from slot %s%s?"
-#define MESSAGE_RESET_CONFIRM "`Return to Title Menu?"
-#define MESSAGE_END_CONFIRM "`Quit?"
-#define MESSAGE_YES "Yes"
-#define MESSAGE_NO "No"
-#define MESSAGE_OK "OK"
-#define MESSAGE_CANCEL "Cancel"
-#else
+/* The system menu's wording.
+ *
+ * The code page tables carry it in japanese or chinese -- MESSAGE_SAVE_EMPTY
+ * is a row of fullwidth dashes, MESSAGE_SAVE_EXIST puts the japanese
+ * year/month/day/hour characters around the date -- which is right for the games those tables are for.  It is not right
+ * for an english release: its default.ttf has no japanese glyphs, so the save
+ * menu draws as a row of small boxes after the slot name, with nothing to say
+ * why.  Hence the second set below, and useAsciiSystemMenu() to choose.
+ */
 extern Coding2UTF16 *coding2utf16;
+
+#ifdef ENABLE_1BYTE_CHAR
+/* The leading backtick is NScripter's one-byte text marker; without
+ * ENABLE_1BYTE_CHAR there is no such marker and no ascii fallback to offer. */
+#define ASCII_SAVE_EXIST     "`%s%s    Date %s/%s    Time %s:%s"
+#define ASCII_SAVE_EMPTY     "`%s%s    ------------------------"
+#define ASCII_SAVE_CONFIRM   "`Save in slot %s%s?"
+#define ASCII_LOAD_CONFIRM   "`Load from slot %s%s?"
+#define ASCII_RESET_CONFIRM  "`Return to Title Menu?"
+#define ASCII_END_CONFIRM    "`Quit?"
+#define ASCII_YES            "Yes"
+#define ASCII_NO             "No"
+#define ASCII_OK             "OK"
+#define ASCII_CANCEL         "Cancel"
+#endif
+
+#if defined(ENABLE_1BYTE_CHAR) && defined(FORCE_1BYTE_CHAR)
+/* Everything is one-byte in this build, so there is nothing to choose. */
+#define MESSAGE_SAVE_EXIST   ASCII_SAVE_EXIST
+#define MESSAGE_SAVE_EMPTY   ASCII_SAVE_EMPTY
+#define MESSAGE_SAVE_CONFIRM ASCII_SAVE_CONFIRM
+#define MESSAGE_LOAD_CONFIRM ASCII_LOAD_CONFIRM
+#define MESSAGE_RESET_CONFIRM ASCII_RESET_CONFIRM
+#define MESSAGE_END_CONFIRM  ASCII_END_CONFIRM
+#define MESSAGE_YES          ASCII_YES
+#define MESSAGE_NO           ASCII_NO
+#define MESSAGE_OK           ASCII_OK
+#define MESSAGE_CANCEL       ASCII_CANCEL
+#elif defined(ENABLE_1BYTE_CHAR)
+#define MESSAGE_SAVE_EXIST   (useAsciiSystemMenu() ? ASCII_SAVE_EXIST     : coding2utf16->MESSAGE_SAVE_EXIST)
+#define MESSAGE_SAVE_EMPTY   (useAsciiSystemMenu() ? ASCII_SAVE_EMPTY     : coding2utf16->MESSAGE_SAVE_EMPTY)
+#define MESSAGE_SAVE_CONFIRM (useAsciiSystemMenu() ? ASCII_SAVE_CONFIRM   : coding2utf16->MESSAGE_SAVE_CONFIRM)
+#define MESSAGE_LOAD_CONFIRM (useAsciiSystemMenu() ? ASCII_LOAD_CONFIRM   : coding2utf16->MESSAGE_LOAD_CONFIRM)
+#define MESSAGE_RESET_CONFIRM (useAsciiSystemMenu() ? ASCII_RESET_CONFIRM : coding2utf16->MESSAGE_RESET_CONFIRM)
+#define MESSAGE_END_CONFIRM  (useAsciiSystemMenu() ? ASCII_END_CONFIRM    : coding2utf16->MESSAGE_END_CONFIRM)
+#define MESSAGE_YES          (useAsciiSystemMenu() ? ASCII_YES            : coding2utf16->MESSAGE_YES)
+#define MESSAGE_NO           (useAsciiSystemMenu() ? ASCII_NO             : coding2utf16->MESSAGE_NO)
+#define MESSAGE_OK           (useAsciiSystemMenu() ? ASCII_OK             : coding2utf16->MESSAGE_OK)
+#define MESSAGE_CANCEL       (useAsciiSystemMenu() ? ASCII_CANCEL         : coding2utf16->MESSAGE_CANCEL)
+#else
 #define MESSAGE_SAVE_EXIST coding2utf16->MESSAGE_SAVE_EXIST
 #define MESSAGE_SAVE_EMPTY coding2utf16->MESSAGE_SAVE_EMPTY
 #define MESSAGE_SAVE_CONFIRM coding2utf16->MESSAGE_SAVE_CONFIRM
@@ -57,6 +94,35 @@ extern Coding2UTF16 *coding2utf16;
 #define MESSAGE_OK coding2utf16->MESSAGE_OK
 #define MESSAGE_CANCEL coding2utf16->MESSAGE_CANCEL
 #endif
+
+bool ONScripter::useAsciiSystemMenu()
+{
+#ifdef ENABLE_1BYTE_CHAR
+    if (ascii_system_menu >= 0) return ascii_system_menu != 0;
+
+    ascii_system_menu = 0;
+    if (font_file && TTF_WasInit()){
+        TTF_Font *font = TTF_OpenFont(font_file, 16);
+        if (font){
+            /* U+5E74 is the "year" of the date line, U+FF0D the dash the empty
+             * slots are filled with.  A font that cannot draw those cannot
+             * draw the menu, whatever language the game is in. */
+            if (!TTF_GlyphIsProvided(font, 0x5E74) ||
+                !TTF_GlyphIsProvided(font, 0xFF0D))
+                ascii_system_menu = 1;
+            TTF_CloseFont(font);
+        }
+    }
+
+    if (ascii_system_menu)
+        utils::printInfo("system menu: %s has no japanese glyphs, "
+                         "using the english wording\n", font_file);
+
+    return ascii_system_menu != 0;
+#else
+    return false;
+#endif
+}
 
 #ifdef ANDROID
 #include <stdarg.h>

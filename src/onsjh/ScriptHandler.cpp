@@ -769,7 +769,7 @@ void ScriptHandler::setNumVariable( int no, int val )
     vd.num = val;
 }
 
-int ScriptHandler::getStringFromInteger( char *buffer, int no, int num_column, bool is_zero_inserted )
+int ScriptHandler::getStringFromInteger( char *buffer, int no, int num_column, bool is_zero_inserted, bool one_byte )
 {
     int i, num_space=0, num_minus = 0;
     if (no < 0){
@@ -789,6 +789,19 @@ int ScriptHandler::getStringFromInteger( char *buffer, int no, int num_column, b
         for (i=0 ; i<num_digit+num_minus-num_column ; i++)
             no /= 10;
         num_digit -= num_digit+num_minus-num_column;
+    }
+
+    if (one_byte){
+        /* Same as the FORCE_1BYTE_CHAR path below, asked for per call. */
+        if (num_minus == 1) no = -no;
+        char fmt[8];
+        if (is_zero_inserted)
+            sprintf(fmt, "%%0%dd", num_column);
+        else
+            sprintf(fmt, "%%%dd", num_column);
+        sprintf(buffer, fmt, no);
+
+        return num_column;
     }
 
 #if defined(ENABLE_1BYTE_CHAR) && defined(FORCE_1BYTE_CHAR)

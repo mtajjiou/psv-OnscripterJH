@@ -756,6 +756,12 @@ private:
     /* Draws the button list over the game and waits for a press.  Changes
      * no engine state; see ONScripter_help.cpp. */
     void showControlsOverlay();
+
+    /* The system menu's wording is japanese, from the code page tables.  A
+     * game whose font cannot draw it gets the english wording instead; see
+     * ONScripter_rmenu.cpp.  -1 until the font has been asked. */
+    int ascii_system_menu;
+    bool useAsciiSystemMenu();
     int playMPEG(const char *filename, bool click_flag, bool loop_flag=false);
     int playAVI( const char *filename, bool click_flag );
     enum { WAVE_PLAY        = 0,

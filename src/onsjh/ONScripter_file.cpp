@@ -52,7 +52,10 @@ void ONScripter::searchSaveFile( SaveFileInfo &save_file_info, int no )
 {
     char file_name[256];
 
-    script_h.getStringFromInteger( save_file_info.sjis_no, no, (num_save_file >= 10)?2:1 );
+    /* The menu's numbers have to be drawable by the same font as its
+     * wording, so they follow the same decision. */
+    bool one_byte = useAsciiSystemMenu();
+    script_h.getStringFromInteger( save_file_info.sjis_no, no, (num_save_file >= 10)?2:1, false, one_byte );
 #if defined(LINUX) || defined(MACOSX) || defined(IOS)
     sprintf( file_name, "%ssave%d.dat", save_dir?save_dir:archive_path, no );
     struct stat buf;
@@ -166,10 +169,10 @@ void ONScripter::searchSaveFile( SaveFileInfo &save_file_info, int no )
     save_file_info.minute = 0;
 #endif
     save_file_info.valid = true;
-    script_h.getStringFromInteger( save_file_info.sjis_month,  save_file_info.month,  2 );
-    script_h.getStringFromInteger( save_file_info.sjis_day,    save_file_info.day,    2 );
-    script_h.getStringFromInteger( save_file_info.sjis_hour,   save_file_info.hour,   2 );
-    script_h.getStringFromInteger( save_file_info.sjis_minute, save_file_info.minute, 2, true );
+    script_h.getStringFromInteger( save_file_info.sjis_month,  save_file_info.month,  2, false, one_byte );
+    script_h.getStringFromInteger( save_file_info.sjis_day,    save_file_info.day,    2, false, one_byte );
+    script_h.getStringFromInteger( save_file_info.sjis_hour,   save_file_info.hour,   2, false, one_byte );
+    script_h.getStringFromInteger( save_file_info.sjis_minute, save_file_info.minute, 2, true,  one_byte );
 }
 
 char *ONScripter::readSaveStrFromFile( int no )

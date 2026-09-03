@@ -287,6 +287,7 @@ void ONScripter::openAudio(int freq)
 ONScripter::ONScripter()
 {
     is_script_read = false;
+    ascii_system_menu = -1;   /* decided on first use, from the font */
 
     cdrom_drive_number = 0;
     cdaudio_flag = false;

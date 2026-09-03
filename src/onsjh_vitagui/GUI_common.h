@@ -125,6 +125,14 @@
 #define GREEN               RGBA8(0x00, 0x80, 0x00, 0xFF)
 
 #define CONFIG_FILE "ux0:data/onsemu/ONSConfig.ini"
+/* Arguments handed to the engine.
+ *
+ * The five the settings can produce, --root and its path, --touch-mode and
+ * its value, the terminating NULL -- that is ten, which is exactly what the
+ * array used to hold. There was no room for an eleventh, and a per-game
+ * ons_args file is nothing but eleventh arguments. */
+#define CMD_MAX 32
+
 #define CONFIG_NUM 8   /* order, language, then the covers row */
 
 #define PACKAGE_TEMP "ux0:onsemu/temp/"

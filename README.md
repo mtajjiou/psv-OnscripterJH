@@ -84,6 +84,29 @@ once the game runs.
 
 ---
 
+## Per-game files
+
+Two optional files can sit in a game's folder, and neither has to be there.
+
+`caption.txt` names the game in the list. One line; the folder's own name is
+used when it is missing or empty.
+
+`ons_args` carries arguments for the engine, for anything the launcher has no
+setting for. One per line, or several separated by spaces, and a line
+starting with `#` is a note rather than an argument:
+
+    # this game ships its own font
+    --font-size 22
+    --window
+
+They are passed after everything the launcher sets, so a game that insists on
+something has the final word on it.
+
+The launcher writes two files of its own beside a game: `sittings.txt` holds
+the settings chosen for it, and `lastplayed.txt` is a timestamp, which is
+what the list sorts by in "recently played" order. Deleting either is
+harmless.
+
 ## What's Improved (Detailed Checklist)
 
 ### Launcher UI/UX
@@ -108,7 +131,7 @@ once the game runs.
 ### Game Detection & Config
 - [x] **Script Finder** — Searches for `0.txt`, `00.txt`, `nscript.dat`, `nscr_sec.dat`, `nscript.___`, `onscript.nt2`, `onscript.nt3`
 - [x] **Nested Structure Handler** — Finds game in subdirectories
-- [ ] **Config Parser** — Reads `ons_args`, `caption.txt`, config files
+- [x] **Config Parser** — Reads `ons_args`, `caption.txt`, config files
 - [ ] **Game Metadata Cache** — Stores game info in `game_manifest.json`
 - [ ] **Auto-Config Generator** — Creates optimal `ons_args` per game
 

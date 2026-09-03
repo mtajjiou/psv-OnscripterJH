@@ -74,7 +74,7 @@ string startup_cmd;
 int cmd_default[] = { 0,1,0,1,0,0,0,0,0,0 };
 int cmd[10] = {0};
 int cmd_num = 0;
-char *cmd_str[10];
+char *cmd_str[CMD_MAX];
 string sittings[SLOT_BUTTON];
 
 /* Filled at startup, once the language is known. */
@@ -2506,6 +2506,9 @@ int main()
 		cmd_str[cmd_num++] = (char*)(config.use_btouch == 0 ? 
 			"use_not_touch" : (config.use_btouch == 1 
 				? "use_front_only_touch" : "use_front_back_touch"));
+		/* Last, so a game that carries its own arguments has the final
+		 * word on anything the launcher also set. */
+		cmd_num = appendGameArgs(rom_path, cmd_str, cmd_num, CMD_MAX);
 		cmd_str[cmd_num] = NULL;
 		for(int i=0; i<cmd_num; i++)
 		{

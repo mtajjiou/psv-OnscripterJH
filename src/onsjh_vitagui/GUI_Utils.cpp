@@ -464,7 +464,61 @@ int load_rom_list() {
 	return rom_list.size();
 }
 
-int parseOption(string &cmdstr,int (&cmd)[10],char *cmd_str[10],int flag = 0) {
+/* A game's own arguments, from an ons_args file beside it.
+ *
+ * Some games need a flag the launcher has no setting for -- a font size, a
+ * window mode, an option this fork has never heard of -- and the honest way
+ * to allow that is to let the game carry its own. One argument per line, or
+ * several separated by spaces; a line starting with # is a note to whoever
+ * reads the file later.
+ *
+ * They go on last, so a game that insists on something overrides the
+ * launcher's idea of it. */
+int appendGameArgs(const string &game_path, char *cmd_str[], int index, int max) {
+	FILE *file = fopen((game_path + "/ons_args").c_str(), "r");
+	if (file == NULL) return index;
+
+	char line[512];
+	while (fgets(line, sizeof(line), file) != NULL) {
+		char *cursor = line;
+
+		while (*cursor == ' ' || *cursor == '\t') cursor++;
+		if (*cursor == '#' || *cursor == '\n' || *cursor == '\r' || *cursor == '\0')
+			continue;
+
+		while (*cursor != '\0') {
+			while (*cursor == ' ' || *cursor == '\t' ||
+			       *cursor == '\n' || *cursor == '\r') cursor++;
+			if (*cursor == '\0') break;
+
+			char *start = cursor;
+			while (*cursor != '\0' && *cursor != ' ' && *cursor != '\t' &&
+			       *cursor != '\n' && *cursor != '\r') cursor++;
+
+			const size_t length = (size_t)(cursor - start);
+			if (*cursor != '\0') *cursor++ = '\0';
+
+			/* One slot kept back for the NULL the argument list ends
+			 * with; silently writing past it is how this array was one
+			 * setting away from trouble already. */
+			if (index >= max - 1) {
+				printf("ons_args: too many arguments, ignoring the rest\n");
+				fclose(file);
+				return index;
+			}
+
+			char *copy = new char[length + 1];
+			memcpy(copy, start, length);
+			copy[length] = '\0';
+			cmd_str[index++] = copy;
+		}
+	}
+
+	fclose(file);
+	return index;
+}
+
+int parseOption(string &cmdstr,int (&cmd)[10],char *cmd_str[],int flag = 0) {
 	if (!flag) {
 		string tmp = "";
 		int i = 0;

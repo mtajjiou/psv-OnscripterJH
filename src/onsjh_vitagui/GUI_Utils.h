@@ -136,19 +136,32 @@ public:
 			fclose(stamp);
 		}
 
+		/* A game can name itself in caption.txt.  This read had three
+		 * faults worth naming, since all three are the kind that work
+		 * until the day they do not: it read up to 511 bytes into a 256
+		 * byte buffer, released a new[] allocation with free(), and kept
+		 * the newline fgets leaves behind, so every game named this way
+		 * carried one in its title. */
+		name.clear();
+
 		FILE *fp = fopen((path_ + "/caption.txt").c_str(), "r");
-		if (fp)
-		{
-			char* chs = new char[256];
-			fgets(chs, 512, fp);
-			name = chs;
-			free(chs);
+		if (fp) {
+			char caption[256];
+			if (fgets(caption, sizeof(caption), fp) != NULL) {
+				char *end = caption + strlen(caption);
+				while (end > caption &&
+				       (end[-1] == '\n' || end[-1] == '\r' ||
+					end[-1] == ' '  || end[-1] == '\t'))
+					*--end = '\0';
+				name = caption;
+			}
 			fclose(fp);
 		}
-		else
-		{
+
+		/* An empty or unreadable caption.txt leaves the folder's own name,
+		 * rather than a game with no name at all. */
+		if (name.empty())
 			name = path_.substr(path_.find_last_of("/\\") + 1);
-		}
 			
 		w = sceGxmTextureGetWidth(&icon->gxm_tex);
 		h = sceGxmTextureGetHeight(&icon->gxm_tex);
@@ -214,7 +227,9 @@ int read_touchscreen(point *p);
 int read_touch_raw(point *p);
 
 int load_rom_list();
-int parseOption(string &cmdstr, int(&cmd)[10], char *cmd_str[10], int flag);
+int parseOption(string &cmdstr, int(&cmd)[10], char *cmd_str[], int flag);
+/* Appends a game's own ons_args, if it has one.  Returns the new count. */
+int appendGameArgs(const string &game_path, char *cmd_str[], int index, int max);
 void sittings_file(string path, string &str, char mode, int nowrite = 0);
 
 void convertUtcToLocalTime(SceDateTime *time_local, SceDateTime *time_utc);

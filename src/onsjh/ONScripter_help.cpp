@@ -25,29 +25,34 @@
 
 namespace {
 
-/* Kept in one place, in the order the buttons sit on the console. */
-const char *const kLines[] = {
-    "Controls",
-    "",
-    "Circle          advance, confirm",
-    "Cross           hold to fast-forward",
-    "Square          auto mode",
-    "Triangle        menu, and leaves the backlog",
-    "L               skip to the end of the page",
-    "R               start or stop skipping",
-    "Start           click through a wait",
-    "Select          tap for text speed, hold for this",
-    "Left, Right     backlog",
-    "Up, Down        move between choices",
-    "Left stick      same as the d-pad",
-    "",
-    "Any button closes this."
+/* One line of the list: a face button drawn from its image, or the name the
+ * console gives the control, and what it does. */
+struct ControlRow {
+    const char *glyph;   /* file in app0:, or NULL */
+    const char *button;  /* used when there is no glyph */
+    const char *action;
 };
-const int kNumLines = (int)(sizeof(kLines) / sizeof(kLines[0]));
+
+const ControlRow kRows[] = {
+    { "app0:btn_circle.png",   NULL,          "advance, confirm" },
+    { "app0:btn_cross.png",    NULL,          "hold to fast-forward" },
+    { "app0:btn_square.png",   NULL,          "auto mode" },
+    { "app0:btn_triangle.png", NULL,          "menu, leaves the backlog" },
+    { NULL,                    "L",           "skip to the end of the page" },
+    { NULL,                    "R",           "start or stop skipping" },
+    { NULL,                    "Start",       "click through a wait" },
+    { NULL,                    "Select",      "tap: text speed, hold: this" },
+    { NULL,                    "left right",  "backlog" },
+    { NULL,                    "up down",     "move between choices" },
+    { NULL,                    "left stick",  "same as the d-pad" },
+};
+const int kNumRows = (int)(sizeof(kRows) / sizeof(kRows[0]));
 
 const int kFontSize = 20;
-const int kLineGap  = 26;
+const int kLineGap  = 28;
 const int kPadding  = 24;
+const int kColumn   = 170;   /* where the descriptions start */
+const int kGlyph    = 20;    /* the button images are drawn this big */
 
 }  /* namespace */
 
@@ -64,17 +69,21 @@ void ONScripter::showControlsOverlay()
         return;
     }
 
-    SDL_Color fg = { 255, 255, 255, 255 };
+    SDL_Color fg  = { 255, 255, 255, 255 };
+    SDL_Color dim = { 170, 178, 192, 255 };
 
-    /* Wide enough for the longest line, tall enough for all of them. */
+    /* Wide enough for the longest description; the button column is fixed,
+     * so the two columns line up whatever is in them.  Lining columns up
+     * with spaces in a proportional font lines up nothing. */
     int text_w = 0;
-    for (int i = 0; i < kNumLines; i++){
+    for (int i = 0; i < kNumRows; i++){
         int w = 0, h = 0;
-        if (kLines[i][0] != '\0' && TTF_SizeUTF8(font, kLines[i], &w, &h) == 0 && w > text_w)
+        if (TTF_SizeUTF8(font, kRows[i].action, &w, &h) == 0 && w > text_w)
             text_w = w;
     }
-    int panel_w = text_w + kPadding * 2;
-    int panel_h = kNumLines * kLineGap + kPadding * 2;
+
+    int panel_w = kColumn + text_w + kPadding * 2;
+    int panel_h = kNumRows * kLineGap + kPadding * 2 + 44;
     if (panel_w > 960) panel_w = 960;
     if (panel_h > 544) panel_h = 544;
 
@@ -87,14 +96,45 @@ void ONScripter::showControlsOverlay()
     }
     SDL_FillRect(panel, NULL, SDL_MapRGBA(panel->format, 0, 0, 0, 220));
 
-    for (int i = 0; i < kNumLines; i++){
-        if (kLines[i][0] == '\0') continue;
-        SDL_Surface *line = TTF_RenderUTF8_Blended(font, kLines[i], fg);
-        if (line == NULL) continue;
-        SDL_Rect dst = { kPadding, kPadding + i * kLineGap, line->w, line->h };
-        SDL_SetSurfaceBlendMode(line, SDL_BLENDMODE_BLEND);
-        SDL_BlitSurface(line, NULL, panel, &dst);
-        SDL_FreeSurface(line);
+    SDL_Surface *title = TTF_RenderUTF8_Blended(font, "Controls", fg);
+    if (title){
+        SDL_Rect dst = { kPadding, kPadding, title->w, title->h };
+        SDL_SetSurfaceBlendMode(title, SDL_BLENDMODE_BLEND);
+        SDL_BlitSurface(title, NULL, panel, &dst);
+        SDL_FreeSurface(title);
+    }
+
+    for (int i = 0; i < kNumRows; i++){
+        const int y = kPadding + 44 + i * kLineGap;
+
+        if (kRows[i].glyph){
+            /* The same images the launcher draws its hints with, packed in
+             * the vpk beside this binary. */
+            SDL_Surface *g = IMG_Load(kRows[i].glyph);
+            if (g){
+                SDL_Rect dst = { kPadding, y, kGlyph, kGlyph };
+                SDL_SetSurfaceBlendMode(g, SDL_BLENDMODE_BLEND);
+                SDL_BlitScaled(g, NULL, panel, &dst);
+                SDL_FreeSurface(g);
+            }
+        }
+        else if (kRows[i].button){
+            SDL_Surface *b = TTF_RenderUTF8_Blended(font, kRows[i].button, fg);
+            if (b){
+                SDL_Rect dst = { kPadding, y, b->w, b->h };
+                SDL_SetSurfaceBlendMode(b, SDL_BLENDMODE_BLEND);
+                SDL_BlitSurface(b, NULL, panel, &dst);
+                SDL_FreeSurface(b);
+            }
+        }
+
+        SDL_Surface *a = TTF_RenderUTF8_Blended(font, kRows[i].action, dim);
+        if (a){
+            SDL_Rect dst = { kPadding + kColumn, y, a->w, a->h };
+            SDL_SetSurfaceBlendMode(a, SDL_BLENDMODE_BLEND);
+            SDL_BlitSurface(a, NULL, panel, &dst);
+            SDL_FreeSurface(a);
+        }
     }
 
     SDL_Texture *panel_tex = SDL_CreateTextureFromSurface(renderer, panel);

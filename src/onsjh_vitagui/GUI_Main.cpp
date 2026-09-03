@@ -66,7 +66,6 @@ int g_choose = -1;
 vita2d_font* font;
 /* The interface text lives in GUI_Text.cpp, in every language the launcher
  * speaks; these keep the old names so the drawing code reads the same. */
-#define help_msg  ui_text(UI_HELP)
 #define about_msg ui_text(UI_ABOUT)
 
 int game_start_select = -1;
@@ -621,6 +620,82 @@ static void dialog_box(const char *msg, const char *no_label,
 	}
 }
 
+/* The controls, as a table: the button in the first column and what it does
+ * in the second.  It used to be one string with the buttons written as
+ * box-drawing characters and the columns lined up with spaces, which in a
+ * proportional font lines up nothing. */
+void draw_help_screen() {
+	struct help_row {
+		vita2d_texture **glyph;   /* a face button, or */
+		const char *text;         /* what the console calls it */
+		UIStringId description;
+	};
+	const help_row rows[] = {
+		{ &th_glyph_circle,   NULL,          UI_HELP_CONFIRM },
+		{ &th_glyph_cross,    NULL,          UI_HELP_SKIP },
+		{ &th_glyph_square,   NULL,          UI_HELP_AUTO },
+		{ &th_glyph_triangle, NULL,          UI_HELP_MENU },
+		{ NULL,               "L",           UI_HELP_SKIP_PAGE },
+		{ NULL,               "R",           UI_HELP_TOGGLE_SKIP },
+		{ NULL,               "left right",  UI_HELP_BACKLOG },
+		{ NULL,               "up down",     UI_HELP_CURSOR },
+		{ NULL,               "left stick",  UI_HELP_STICK },
+		{ NULL,               "hold Select", UI_HELP_OVERLAY },
+	};
+	const int count = (int)(sizeof(rows) / sizeof(rows[0]));
+
+	const int row_h  = 30;
+	const int col_w  = 150;   /* the button column, wide enough for the words */
+	const int padding = 28;
+
+	/* Wide enough for the longest description, so nothing is trimmed. */
+	int desc_w = 0;
+	for (int i = 0; i < count; i++) {
+		int w = vita2d_font_text_width(font, TH_FONT_S,
+			ui_text(rows[i].description));
+		if (w > desc_w) desc_w = w;
+	}
+
+	const int width  = padding * 2 + col_w + desc_w;
+	const int height = padding * 2 + 40 + count * row_h + 34;
+	const int left   = (SCREEN_WIDTH - width) / 2;
+	const int top    = (SCREEN_HEIGHT - height) / 2;
+
+	vita2d_draw_rectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, TH_SCRIM);
+	th_shadow(left, top, width, height);
+	th_card(left, top, width, height, TH_SURFACE, TH_BG);
+	th_border(left, top, width, height, 1, TH_LINE);
+
+	last_dialog_area.left = left;
+	last_dialog_area.top = top;
+	last_dialog_area.right = left + width;
+	last_dialog_area.bottom = top + height;
+
+	th_text(left + padding, top + padding + TH_FONT_M, TH_TEXT, TH_FONT_M,
+		ui_text(UI_HELP_TITLE));
+
+	for (int i = 0; i < count; i++) {
+		const int baseline = top + padding + 40 + (i + 1) * row_h;
+
+		if (rows[i].glyph && *rows[i].glyph)
+			th_glyph(*rows[i].glyph, left + padding, baseline, TH_FONT_S,
+				 TH_TEXT);
+		else if (rows[i].text)
+			th_text(left + padding, baseline, TH_TEXT, TH_FONT_S,
+				rows[i].text);
+
+		th_text(left + padding + col_w, baseline, TH_TEXT_DIM, TH_FONT_S,
+			ui_text(rows[i].description));
+	}
+
+	vita2d_draw_rectangle(left + padding, top + height - 44,
+		width - padding * 2, 1, TH_LINE);
+	int close_w = th_hint_width(th_glyph_enter, ui_text(UI_PROMPT_CLOSE),
+				    TH_FONT_S);
+	th_hint(left + (width - close_w) / 2, top + height - padding + 6,
+		th_glyph_enter, ui_text(UI_PROMPT_CLOSE), TH_TEXT_DIM, TH_FONT_S);
+}
+
 void draw_message(char *msg, int choose, int fontsize) {
 	/* Two answers: cancel on the left, confirm on the right -- the order
 	 * the touch handling splits the box in. */
@@ -791,7 +866,7 @@ void draw_screen(ScreenState state, int curr, int choose, int slot) {
 		draw_config();
 	}
 	if (state == HELP_MSG) {
-		draw_alert((char*)help_msg, FONT_SIZE);
+		draw_help_screen();
 	}
 	if (state == ABOUT_MSG) {
 		draw_alert((char*)about_msg, FONT_SIZE);

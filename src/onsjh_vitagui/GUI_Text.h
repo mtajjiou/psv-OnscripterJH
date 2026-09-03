@@ -90,8 +90,21 @@ enum UIStringId {
     UI_COVERS_ALL_DONE,
     UI_COVERS_START,
 
+    /* The help screen is a table now: a button in the first column, what it
+     * does in the second.  See draw_help_screen(). */
+    UI_HELP_TITLE,
+    UI_HELP_CONFIRM,
+    UI_HELP_SKIP,
+    UI_HELP_AUTO,
+    UI_HELP_MENU,
+    UI_HELP_SKIP_PAGE,
+    UI_HELP_TOGGLE_SKIP,
+    UI_HELP_BACKLOG,
+    UI_HELP_CURSOR,
+    UI_HELP_STICK,
+    UI_HELP_OVERLAY,
+
     /* Long text */
-    UI_HELP,
     UI_ABOUT,
 
     UI_STRING_COUNT

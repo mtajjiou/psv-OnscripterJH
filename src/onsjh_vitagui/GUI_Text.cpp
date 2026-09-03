@@ -93,30 +93,18 @@ const char *g_strings[UI_STRING_COUNT][UI_LANG_COUNT] = {
                                   "\xE6\x88\x90\xE5\x8A\x9F %d\xEF\xBC\x8C\xE6\x9C\xAA\xE6\x89\xBE\xE5\x88\xB0 %d\xEF\xBC\x8C\xE5\xB7\xB2\xE6\x9C\x89 %d" },
     /* UI_COVERS_START       */ { "start",                  "\xE5\xBC\x80\xE5\xA7\x8B" },
 
-    /* UI_HELP */
-    { "In-game controls\n\n"
-      "\xE2\x97\x8B         confirm / continue\n"
-      "\xC3\x97         hold to skip\n"
-      "\xE2\x96\xA1         auto mode\n"
-      "\xE2\x96\xB3         menu / leave backlog\n"
-      "L         skip this page\n"
-      "R         toggle skipping\n"
-      "left right    backlog\n"
-      "up down      move the cursor\n"
-      "left stick    same as the d-pad\n"
-      "hold Select   show this list in game\n",
-
-      "使用帮助(游戏内)\n\n"
-      "○　　　　确认/继续\n"
-      "╳　　　　按住快进\n"
-      "□　　　　自动模式\n"
-      "△　　　　菜单/关闭回想模式\n"
-      "Ｌ　　　　快进当前页\n"
-      "Ｒ　　　　开启/停止快进\n"
-      "←→　　　回想模式选择\n"
-      "↑↓　　　选项/按钮选择\n"
-      "左摇杆　　等同方向键\n"
-      "长按 Select　游戏中显示本列表\n" },
+    /* UI_HELP_TITLE         */ { "In-game controls",       "\xE4\xBD\xBF\xE7\x94\xA8\xE5\xB8\xAE\xE5\x8A\xA9(\xE6\xB8\xB8\xE6\x88\x8F\xE5\x86\x85)" },
+    /* UI_HELP_CONFIRM       */ { "confirm, continue",      "\xE7\xA1\xAE\xE8\xAE\xA4/\xE7\xBB\xA7\xE7\xBB\xAD" },
+    /* UI_HELP_SKIP          */ { "hold to fast-forward",   "\xE6\x8C\x89\xE4\xBD\x8F\xE5\xBF\xAB\xE8\xBF\x9B" },
+    /* UI_HELP_AUTO          */ { "auto mode",              "\xE8\x87\xAA\xE5\x8A\xA8\xE6\xA8\xA1\xE5\xBC\x8F" },
+    /* UI_HELP_MENU          */ { "menu, leaves the backlog",
+                                  "\xE8\x8F\x9C\xE5\x8D\x95/\xE5\x85\xB3\xE9\x97\xAD\xE5\x9B\x9E\xE6\x83\xB3\xE6\xA8\xA1\xE5\xBC\x8F" },
+    /* UI_HELP_SKIP_PAGE     */ { "skip this page",         "\xE5\xBF\xAB\xE8\xBF\x9B\xE5\xBD\x93\xE5\x89\x8D\xE9\xA1\xB5" },
+    /* UI_HELP_TOGGLE_SKIP   */ { "start or stop skipping", "\xE5\xBC\x80\xE5\xA7\x8B/\xE5\x81\x9C\xE6\xAD\xA2\xE5\xBF\xAB\xE8\xBF\x9B" },
+    /* UI_HELP_BACKLOG       */ { "backlog",                "\xE5\x9B\x9E\xE6\x83\xB3\xE6\xA8\xA1\xE5\xBC\x8F" },
+    /* UI_HELP_CURSOR        */ { "move between choices",   "\xE9\x80\x89\xE9\xA1\xB9\xE9\x80\x89\xE6\x8B\xA9" },
+    /* UI_HELP_STICK         */ { "same as the d-pad",      "\xE7\xAD\x89\xE5\x90\x8C\xE6\x96\xB9\xE5\x90\x91\xE9\x94\xAE" },
+    /* UI_HELP_OVERLAY       */ { "show this list in game", "\xE6\xB8\xB8\xE6\x88\x8F\xE4\xB8\xAD\xE6\x98\xBE\xE7\xA4\xBA\xE6\x9C\xAC\xE5\x88\x97\xE8\xA1\xA8" },
 
     /* UI_ABOUT */
     { "About ONS Easy Setup\n\n"

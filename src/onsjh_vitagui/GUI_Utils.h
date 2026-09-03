@@ -101,6 +101,20 @@ public:
 			icon = vita2d_load_PNG_file("app0:/sce_sys/icon1.png");
 		}
 			
+		/* Written by the launcher when the game is started; absent until
+		 * it has been. */
+		FILE *stamp = fopen((path_ + "/lastplayed.txt").c_str(), "r");
+		if (stamp) {
+			char line[64] = { 0 };
+			if (fgets(line, sizeof(line), stamp)) {
+				char *end = line + strlen(line);
+				while (end > line && (end[-1] == '\n' || end[-1] == '\r'))
+					*--end = '\0';
+				last_date = line;
+			}
+			fclose(stamp);
+		}
+
 		FILE *fp = fopen((path_ + "/caption.txt").c_str(), "r");
 		if (fp)
 		{

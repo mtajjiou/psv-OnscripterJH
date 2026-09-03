@@ -99,6 +99,12 @@ enum UIStringId {
     UI_DELETE_FAIL,
     UI_FREE_SPACE,
 
+    /* What the game panel knows about a row */
+    UI_LAST_PLAYED,
+    UI_NEVER_PLAYED,
+    UI_ZIP_INFO,
+    UI_ZIP_INFO_TIME,
+
     /* The help screen is a table now: a button in the first column, what it
      * does in the second.  See draw_help_screen(). */
     UI_HELP_TITLE,

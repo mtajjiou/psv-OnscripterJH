@@ -362,6 +362,10 @@ static bool state_is_layer(ScreenState state) {
 	       state == HELP_MSG || state == ABOUT_MSG;
 }
 
+/* Defined with the install code further down, which is where the number it
+ * reports is learned; the game panel needs it up here. */
+static int estimated_install_seconds(const std::string &zip_path);
+
 /* Where the last dialog was drawn, so a tap can be tested against it.  The
  * box is sized from its text every frame, so recording it keeps the touch
  * area and the drawing from drifting apart. */
@@ -510,16 +514,47 @@ void draw_appinfo(ScreenState state, int choose) {
 	 * old panel put all of it in one sprintf with labels on every line;
 	 * what a player wants first is which game this is. */
 	static char detail_str[512];
+	static char history_str[128];
 	static int old_choose = -1;
 	if (choose != old_choose) {
 		old_choose = choose;
-		uint64_t size = 0;
-		uint32_t file_num = 0, floder_num = 0;
 		char size_str[16];
-		getPathInfo(rom_list[choose].char_path(), &size, &floder_num, &file_num);
-		getSizeString(size_str, size);
-		snprintf(detail_str, sizeof(detail_str), "%s   %d files, %d folders",
-			size_str, file_num, floder_num);
+
+		if (rom_list[choose].is_zip) {
+			/* An archive has nothing installed to measure, so the panel
+			 * says what it is and what it will cost: the archive's own
+			 * size, what it unpacks to, and -- once there is anything to
+			 * base it on -- how long that is likely to take. */
+			char unpacked_str[16];
+			getSizeString(size_str, rom_list[choose].size);
+			getSizeString(unpacked_str,
+				      ZipHandler::installedSize(rom_list[choose].path));
+			snprintf(detail_str, sizeof(detail_str), ui_text(UI_ZIP_INFO),
+				 size_str, unpacked_str);
+
+			int seconds = estimated_install_seconds(rom_list[choose].path);
+			if (seconds > 0)
+				snprintf(history_str, sizeof(history_str),
+					 ui_text(UI_ZIP_INFO_TIME), seconds / 60, seconds % 60);
+			else
+				history_str[0] = '\0';
+		}
+		else {
+			uint64_t size = 0;
+			uint32_t file_num = 0, floder_num = 0;
+			getPathInfo(rom_list[choose].char_path(), &size, &floder_num, &file_num);
+			getSizeString(size_str, size);
+			snprintf(detail_str, sizeof(detail_str), "%s   %d files, %d folders",
+				size_str, file_num, floder_num);
+
+			if (rom_list[choose].last_date.empty())
+				snprintf(history_str, sizeof(history_str), "%s",
+					 ui_text(UI_NEVER_PLAYED));
+			else
+				snprintf(history_str, sizeof(history_str),
+					 ui_text(UI_LAST_PLAYED),
+					 rom_list[choose].last_date.c_str());
+		}
 	}
 
 	const int text_left = APPINFO_DESC_LEFT;
@@ -531,6 +566,8 @@ void draw_appinfo(ScreenState state, int choose) {
 		TH_FONT_S, th_fit(rom_list[choose].char_path(), TH_FONT_S, text_width));
 	th_text(text_left, APPINFO_DESC_TOP + TH_FONT_L + 50, TH_TEXT_FAINT,
 		TH_FONT_S, detail_str);
+	th_text(text_left, APPINFO_DESC_TOP + TH_FONT_L + 72, TH_TEXT_FAINT,
+		TH_FONT_S, history_str);
 }
 
 void draw_slots(int index_, int slot) {
@@ -820,6 +857,56 @@ static bool install_progress_callback(const ZipInstallProgress &progress, void *
 }
 
 /* Text for the confirmation shown before an install starts. */
+/* How fast the last install actually ran, in kilobytes per second.
+ *
+ * Rather than guess at a number for the card and the compression, the
+ * launcher remembers what the last one managed and estimates from that.  It
+ * says nothing at all until there is something to base it on: a made-up
+ * figure that turns out to be half the real time is worse than no figure. */
+static int install_rate_kbs() {
+	dictionary *ini = iniparser_load(CONFIG_FILE);
+	if (ini == NULL) return 0;
+	int rate = iniparser_getint(ini, "GAME:install_rate_kbs", 0);
+	iniparser_freedict(ini);
+	return rate;
+}
+
+static void remember_install_rate(uint64_t bytes, uint32_t milliseconds) {
+	if (bytes == 0 || milliseconds < 500) return;   /* too short to learn from */
+
+	int rate = (int)(bytes / milliseconds);          /* bytes/ms == KB/s */
+	if (rate <= 0) return;
+
+	dictionary *ini = iniparser_load(CONFIG_FILE);
+	if (ini == NULL) return;
+
+	/* Averaged with what was there, so one unusual archive does not become
+	 * the estimate for every archive after it. */
+	int previous = iniparser_getint(ini, "GAME:install_rate_kbs", 0);
+	if (previous > 0) rate = (previous + rate) / 2;
+
+	char value[16];
+	snprintf(value, sizeof(value), "%d", rate);
+	iniparser_set(ini, "GAME:install_rate_kbs", value);
+
+	FILE *file = fopen(CONFIG_FILE, "w");
+	if (file) {
+		iniparser_dump_ini(ini, file);
+		fclose(file);
+	}
+	iniparser_freedict(ini);
+}
+
+static int estimated_install_seconds(const std::string &zip_path) {
+	const int rate = install_rate_kbs();
+	if (rate <= 0) return 0;
+
+	const uint64_t bytes = ZipHandler::installedSize(zip_path);
+	if (bytes == 0) return 0;
+
+	return (int)(bytes / 1024 / rate);
+}
+
 void prepare_install_confirm(int choose) {
 	const std::string &zip_path = rom_list[choose].path;
 	uint64_t needed = ZipHandler::installedSize(zip_path);
@@ -847,8 +934,16 @@ ScreenState run_install(int choose) {
 	install_progress.percent     = 0;
 	install_progress.current_file.clear();
 
+	/* Timed, so the next archive can be given an estimate based on what
+	 * this card and this console actually managed. */
+	const uint64_t started_us = sceKernelGetProcessTimeWide();
+
 	install_status = ZipHandler::install(rom_list[choose].path, installed_path,
 		install_progress_callback, NULL);
+
+	if (install_status == ZIP_INSTALL_OK)
+		remember_install_rate(install_progress.bytes_done,
+			(uint32_t)((sceKernelGetProcessTimeWide() - started_us) / 1000));
 
 	if (install_status == ZIP_INSTALL_OK) {
 		snprintf(install_message, sizeof(install_message),
@@ -1782,6 +1877,27 @@ int game_cover(int choose) {
 }
 
 void  game_start(int choose) {
+	/* Stamp the folder so the panel can say when this was last played.
+	 * A file beside the game rather than a list somewhere central: a game
+	 * moved to another card, or deleted, takes its own history with it. */
+	if (choose >= 0 && choose < (int)rom_list.size() && !rom_list[choose].is_zip) {
+		SceDateTime now;
+		char date_str[24], time_str[16];
+		sceRtcGetCurrentClock(&now, 0);
+		getDateString(date_str, SCE_SYSTEM_PARAM_DATE_FORMAT_YYYYMMDD, &now);
+		getTimeString(time_str, 24, &now);
+
+		string stamp_path = rom_list[choose].path + "/lastplayed.txt";
+		SceUID fd = sceIoOpen(stamp_path.c_str(),
+				      SCE_O_WRONLY | SCE_O_CREAT | SCE_O_TRUNC, 0777);
+		if (fd >= 0) {
+			char line[48];
+			int len = snprintf(line, sizeof(line), "%s %s", date_str, time_str);
+			sceIoWrite(fd, line, len);
+			sceIoClose(fd);
+		}
+	}
+
 	game_start_select = choose;
 }
 

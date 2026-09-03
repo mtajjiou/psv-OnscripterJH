@@ -1,16 +1,22 @@
 name: build vita vpk
 on:
+  # Tagging still cuts a release, as before.
   push: {tags:  ['v*']} #  Push events to matching v*, i.e. v1.0, v20.15.10
+  # Build on demand, and on pushes that touch the sources, so breakage is
+  # caught without having to tag a release first.
+  workflow_dispatch:
+  pull_request:
+    paths: ['src/**', 'CMakeLists.txt', 'script/**', '.github/workflows/**']
 env:
   VITASDK: /opt/vitasdk
 jobs:
   install_vitasdk:
     runs-on: ubuntu-latest # default batch, powershell
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: check or make vitasdk cache
       id: check_vitasdk
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with: 
         path: ${{ env.VITASDK }} 
         key: vitasdk
@@ -22,24 +28,27 @@ jobs:
     runs-on: ubuntu-latest
     needs: install_vitasdk
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Setup cmake
-      uses: jwlawson/actions-setup-cmake@v1.12
+      uses: jwlawson/actions-setup-cmake@v2
       with:
         cmake-version: '3.16.x' # the default cmake has error! to generate like onsjh.self-self
     - name: get vitasdk cache
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with: 
         path: ${{ env.VITASDK }} 
         key: vitasdk
     - name: build vpk
       run: cd ./script && bash build_vitavpk.sh vpk
-    # - name: upload build
-    #   uses: actions/upload-artifact@v3
-    #   with:
-    #     name: build
-    #     path: build/
+    - name: upload build
+      uses: actions/upload-artifact@v4
+      with:
+        name: VitaOns-vpk
+        path: build/VitaOns.vpk
+        if-no-files-found: error
+    # Only tagged builds are published as a release.
     - name: create a release
+      if: startsWith(github.ref, 'refs/tags/v')
       uses: ncipollo/release-action@v1
       with:
         artifacts: "./build/VitaOns.vpk"

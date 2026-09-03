@@ -242,9 +242,9 @@ harmless.
 ### Performance & Optimization
 - [x] **Lazy Loading** — Loads game list asynchronously
 - [x] **Icon Caching** — Pre-cache game icons for faster UI
-- [ ] **Background Tasks** — Extraction happens without blocking UI
+- [~] **Background Tasks** — Extraction happens without blocking UI *(not planned: the bar and cancel already stay responsive; a worker thread would mean synchronising the game list for a convenience — see #49)*
 - [x] **Memory Pooling** — Pre-allocate buffers for ZIP operations
-- [ ] **Parallel Extraction** — Multi-threaded ZIP if PSVita allows
+- [~] **Parallel Extraction** — Multi-threaded ZIP if PSVita allows *(not planned: extraction is bound by the memory card, not by inflate — see #51)*
 
 ### Documentation & Help
 - [ ] **In-App Help** — Press SELECT for quick tips

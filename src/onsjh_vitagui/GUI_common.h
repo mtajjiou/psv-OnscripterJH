@@ -188,6 +188,9 @@ typedef enum {
 	COVERS_ALL_CONFIRM,
 	COVERS_ALL_RUN,
 	COVERS_ALL_DONE,
+	/* Removing an installed game, or an archive. */
+	DELETE_RUN,
+	DELETE_DONE,
 } ScreenState;
 typedef enum {
 	USE_ICON = 1,

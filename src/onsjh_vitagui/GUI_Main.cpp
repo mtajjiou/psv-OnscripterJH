@@ -274,6 +274,26 @@ void draw_title() {
 	sceRtcGetCurrentClock(&time, 0);
 	getTimeString(time_str, 24, &time);
 	th_text_right(SCREEN_WIDTH - TH_PAD, 27, TH_TEXT_DIM, TH_FONT_M, time_str);
+
+	/* What is left on the card, beside the clock.
+	 *
+	 * Installing a game is the one thing here that can run the card out,
+	 * and finding that out from a failed extraction is finding out too
+	 * late.  Asked for every couple of seconds rather than every frame:
+	 * it is a syscall, and the number does not move that fast. */
+	static char free_str[16] = { '\0' };
+	static int free_countdown = 0;
+	if (free_countdown <= 0) {
+		getSizeString(free_str, ZipHandler::freeSpace());
+		free_countdown = 120;
+	}
+	free_countdown--;
+
+	char free_line[32];
+	snprintf(free_line, sizeof(free_line), ui_text(UI_FREE_SPACE), free_str);
+	th_text_right(SCREEN_WIDTH - TH_PAD -
+		      vita2d_font_text_width(font, TH_FONT_M, time_str) - TH_PAD,
+		      27, TH_TEXT_FAINT, TH_FONT_S, free_line);
 }
 
 void draw_help() {
@@ -477,7 +497,7 @@ void draw_appinfo(ScreenState state, int choose) {
 		(state == PRINT_APPINFO && select_appinfo_button == 2));
 	draw_button(APPINFO_BUTTON_LEFT, APPINFO_BUTTON_TOP(3),
 		APPINFO_BUTTON_WIDTH, APPINFO_BUTTON_HEIGHT,
-		RomInfo::to_char(ui_text(UI_NOT_IMPLEMENTED)), TH_FONT_S,
+		RomInfo::to_char(ui_text(UI_BTN_DELETE)), TH_FONT_S,
 		(state == DELETE_MODE) ||
 		(state == PRINT_APPINFO && select_appinfo_button == 3));
 	draw_button(APPINFO_BUTTON_LEFT, APPINFO_BUTTON_TOP(4),
@@ -724,6 +744,11 @@ static ZipInstallProgress install_progress;
 static ZipInstallStatus  install_status = ZIP_INSTALL_OK;
 static char install_message[512];
 static char install_confirm_message[512];
+/* What the delete prompt says, built when the button is pressed so the
+ * folder is measured once rather than every frame, and what it said
+ * afterwards. */
+static char delete_confirm_message[512];
+static char delete_result_message[256];
 
 void draw_install_progress(const ZipInstallProgress &progress) {
 	const int width  = 700;
@@ -905,7 +930,13 @@ void draw_screen(ScreenState state, int curr, int choose, int slot) {
 		draw_slots(choose, -1);
 		break;
 	case DELETE_MODE:
-		draw_message((char*)ui_text(UI_NOT_IMPLEMENTED), choose, FONT_SIZE);
+		draw_message(delete_confirm_message, choose, FONT_SIZE);
+		break;
+	case DELETE_RUN:
+		draw_alert((char*)ui_text(UI_DELETE_RUN), FONT_SIZE);
+		break;
+	case DELETE_DONE:
+		draw_alert(delete_result_message, FONT_SIZE);
 		break;
 	case SHORTCUT_MODE:
 		draw_message((char*)ui_text(UI_MAKE_PACKAGE_ASK), choose, FONT_SIZE);
@@ -1568,7 +1599,54 @@ ScreenState on_alert_event(ScreenState state) {
 	return state;
 }
 
-int  game_delete(int choose) {
+void prepare_delete_confirm(int choose) {
+	if (choose < 0 || choose >= (int)rom_list.size()) return;
+
+	char size_str[16];
+
+	if (rom_list[choose].is_zip) {
+		getSizeString(size_str, rom_list[choose].size);
+		snprintf(delete_confirm_message, sizeof(delete_confirm_message),
+			ui_text(UI_DELETE_ASK_ZIP),
+			rom_list[choose].char_name(), size_str);
+		return;
+	}
+
+	uint64_t size = 0;
+	uint32_t files = 0, folders = 0;
+	getPathInfo(rom_list[choose].char_path(), &size, &folders, &files);
+	getSizeString(size_str, size);
+	snprintf(delete_confirm_message, sizeof(delete_confirm_message),
+		ui_text(UI_DELETE_ASK),
+		rom_list[choose].char_name(), size_str, (unsigned)files);
+}
+
+/* Deletes the game folder, or the archive if the row is one.
+ *
+ * The whole folder goes, saves included -- which the prompt says in as many
+ * words, because a save is the one thing here that cannot be downloaded
+ * again. */
+int game_delete(int choose) {
+	if (choose < 0 || choose >= (int)rom_list.size()) return 0;
+
+	const std::string path = rom_list[choose].path;
+	int ok;
+
+	if (rom_list[choose].is_zip)
+		ok = (sceIoRemove(path.c_str()) >= 0);
+	else
+		ok = (removePath(path) > 0);   /* negative is an errno, not a yes */
+
+	if (!ok) {
+		snprintf(delete_result_message, sizeof(delete_result_message), "%s",
+			ui_text(UI_DELETE_FAIL));
+		return 0;
+	}
+
+	char free_str[16];
+	getSizeString(free_str, ZipHandler::freeSpace());
+	snprintf(delete_result_message, sizeof(delete_result_message),
+		ui_text(UI_DELETE_OK), free_str);
 	return 1;
 }
 
@@ -1867,6 +1945,9 @@ int mainloop() {
 					need_load = 0;
 				}
 				new_state = on_appinfo_event();
+				/* Measuring the folder is a directory walk, so it happens
+				 * once here rather than in every frame of the prompt. */
+				if (new_state == DELETE_MODE) prepare_delete_confirm(choose);
 				break;
 			case START_MODE:
 				game_start(choose);
@@ -1877,9 +1958,18 @@ int mainloop() {
 				if (!need_save) need_save = 1;
 				new_state = on_slot_event(slot);
 				break;
-			case DELETE_MODE:				
-				new_state = on_message_event(choose, game_delete, PRINT_APPINFO, PRINT_APPINFO, PRINT_APPINFO);
+			case DELETE_MODE:
+				new_state = on_message_event(choose, NULL, DELETE_RUN,
+							    PRINT_APPINFO, PRINT_APPINFO, 1);
 				break;
+			case DELETE_RUN:
+				game_delete(choose);
+				new_state = DELETE_DONE;
+				break;
+			case DELETE_DONE:
+				on_alert_event(MAIN_SCREEN);
+				/* The row that was just deleted has to go. */
+				return 1;
 			case SHORTCUT_MODE:
 				new_state = on_message_event(choose, game_shortcut, SHORTCUT_WAIT, PRINT_APPINFO, PRINT_APPINFO,1);
 				break;

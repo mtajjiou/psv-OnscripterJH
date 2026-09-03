@@ -61,6 +61,7 @@ enum UIStringId {
     UI_BTN_CONFIG,
     UI_BTN_INSTALL,
     UI_BTN_COVER,
+    UI_BTN_DELETE,
     UI_PROMPT_NO,
     UI_PROMPT_YES,
     UI_PROMPT_CLOSE,
@@ -89,6 +90,14 @@ enum UIStringId {
     UI_COVERS_ALL_RUN,
     UI_COVERS_ALL_DONE,
     UI_COVERS_START,
+
+    /* Removing an installed game, and what is left on the card */
+    UI_DELETE_ASK,
+    UI_DELETE_ASK_ZIP,
+    UI_DELETE_RUN,
+    UI_DELETE_OK,
+    UI_DELETE_FAIL,
+    UI_FREE_SPACE,
 
     /* The help screen is a table now: a button in the first column, what it
      * does in the second.  See draw_help_screen(). */

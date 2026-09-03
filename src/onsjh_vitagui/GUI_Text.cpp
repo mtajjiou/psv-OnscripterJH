@@ -52,6 +52,7 @@ const char *g_strings[UI_STRING_COUNT][UI_LANG_COUNT] = {
     /* UI_BTN_CONFIG         */ { "config",                 "设置" },
     /* UI_BTN_INSTALL        */ { "install",                "安装" },
     /* UI_BTN_COVER          */ { "cover",                  "封面" },
+    /* UI_BTN_DELETE         */ { "delete",                 "\xE5\x88\xA0\xE9\x99\xA4" },
     /* UI_PROMPT_NO          */ { "no",                     "取消" },
     /* UI_PROMPT_YES         */ { "yes",                    "确定" },
     /* UI_PROMPT_CLOSE       */ { "close",                  "关闭" },
@@ -92,6 +93,25 @@ const char *g_strings[UI_STRING_COUNT][UI_LANG_COUNT] = {
     /* UI_COVERS_ALL_DONE    */ { "%d fetched, %d not found, %d already had one",
                                   "\xE6\x88\x90\xE5\x8A\x9F %d\xEF\xBC\x8C\xE6\x9C\xAA\xE6\x89\xBE\xE5\x88\xB0 %d\xEF\xBC\x8C\xE5\xB7\xB2\xE6\x9C\x89 %d" },
     /* UI_COVERS_START       */ { "start",                  "\xE5\xBC\x80\xE5\xA7\x8B" },
+
+    /* UI_DELETE_ASK         */ { "Delete %s?\n\n"
+                                  "  %s in %u files\n"
+                                  "  from ux0:onsemu\n\n"
+                                  "  saved games in the folder go too",
+                                  "\xE5\x88\xA0\xE9\x99\xA4 %s\xEF\xBC\x9F\n\n"
+                                  "  %s\xEF\xBC\x8C%u \xE4\xB8\xAA\xE6\x96\x87\xE4\xBB\xB6\n"
+                                  "  \xE4\xBD\x8D\xE4\xBA\x8E ux0:onsemu\n\n"
+                                  "  \xE5\xAD\x98\xE6\xA1\xA3\xE4\xB9\x9F\xE4\xBC\x9A\xE4\xB8\x80\xE5\xB9\xB6\xE5\x88\xA0\xE9\x99\xA4" },
+    /* UI_DELETE_ASK_ZIP     */ { "Delete the archive %s?\n\n"
+                                  "  %s\n\n"
+                                  "  the installed game is not touched",
+                                  "\xE5\x88\xA0\xE9\x99\xA4\xE5\x8E\x8B\xE7\xBC\xA9\xE5\x8C\x85 %s\xEF\xBC\x9F\n\n  %s\n\n"
+                                  "  \xE5\xB7\xB2\xE5\xAE\x89\xE8\xA3\x85\xE7\x9A\x84\xE6\xB8\xB8\xE6\x88\x8F\xE4\xB8\x8D\xE5\x8F\x97\xE5\xBD\xB1\xE5\x93\x8D" },
+    /* UI_DELETE_RUN         */ { "Deleting...",            "\xE5\x88\xA0\xE9\x99\xA4\xE4\xB8\xAD..." },
+    /* UI_DELETE_OK          */ { "Deleted. %s free now.",  "\xE5\x88\xA0\xE9\x99\xA4\xE5\xAE\x8C\xE6\x88\x90\xEF\xBC\x8C\xE5\x89\xA9\xE4\xBD\x99 %s" },
+    /* UI_DELETE_FAIL        */ { "Could not delete it. Some files may remain.",
+                                  "\xE5\x88\xA0\xE9\x99\xA4\xE5\xA4\xB1\xE8\xB4\xA5\xEF\xBC\x8C\xE9\x83\xA8\xE5\x88\x86\xE6\x96\x87\xE4\xBB\xB6\xE5\x8F\xAF\xE8\x83\xBD\xE4\xBB\x8D\xE5\x9C\xA8" },
+    /* UI_FREE_SPACE         */ { "%s free",                "\xE5\x89\xA9\xE4\xBD\x99 %s" },
 
     /* UI_HELP_TITLE         */ { "In-game controls",       "\xE4\xBD\xBF\xE7\x94\xA8\xE5\xB8\xAE\xE5\x8A\xA9(\xE6\xB8\xB8\xE6\x88\x8F\xE5\x86\x85)" },
     /* UI_HELP_CONFIRM       */ { "confirm, continue",      "\xE7\xA1\xAE\xE8\xAE\xA4/\xE7\xBB\xA7\xE7\xBB\xAD" },

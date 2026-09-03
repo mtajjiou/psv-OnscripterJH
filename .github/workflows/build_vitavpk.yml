@@ -71,6 +71,18 @@ jobs:
         fail-on-cache-miss: true
     - name: build vpk
       run: cd ./script && bash build_vitavpk.sh vpk
+    # vita-elf-create needs a few kilobytes of address space after the code
+    # segment for the SCE module data, and refuses to run when the next
+    # segment starts sooner. Print the segment table whether the build
+    # succeeded or not, so that failure is diagnosable from the log instead
+    # of by guesswork.
+    - name: segment layout of the linked binaries
+      if: always()
+      run: |
+        for f in build/src/onsjh_vitagui/onsjh_vitagui build/src/onsjh/onsjh; do
+          echo "=== $f"
+          [ -f "$f" ] && $VITASDK/bin/arm-vita-eabi-readelf -lW "$f" | sed -n '1,30p' || echo "not built"
+        done
     - name: upload build
       uses: actions/upload-artifact@v4
       with:

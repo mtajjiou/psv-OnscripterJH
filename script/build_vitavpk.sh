@@ -1,6 +1,10 @@
 #!/bin/sh 
 # sh ./build_vitasdk target [SDKDIR]
 
+# Without this a failed cmake or make still exits 0, so CI reported a
+# green build that had produced no vpk.
+set -e
+
 # prepare env
 if [ -z $1 ]; then
     TARGET=all

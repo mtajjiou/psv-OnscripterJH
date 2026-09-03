@@ -9,20 +9,33 @@ on:
     paths: ['src/**', 'CMakeLists.txt', 'script/**', '.github/workflows/**']
 env:
   VITASDK: /opt/vitasdk
+  # Changing install_vitasdk.sh invalidates the cached SDK, so a fix to the
+  # install never has to fight a stale cache.
+  VITASDK_CACHE_KEY: vitasdk-2
 jobs:
   install_vitasdk:
     runs-on: ubuntu-latest # default batch, powershell
     steps:
     - uses: actions/checkout@v4
-    - name: check or make vitasdk cache
+    - name: check for a cached vitasdk
       id: check_vitasdk
-      uses: actions/cache@v4
-      with: 
-        path: ${{ env.VITASDK }} 
-        key: vitasdk
+      uses: actions/cache/restore@v4
+      with:
+        path: ${{ env.VITASDK }}
+        key: ${{ env.VITASDK_CACHE_KEY }}-${{ hashFiles('script/install_vitasdk.sh') }}
+        lookup-only: true
     - name: install vitasdk
       if: steps.check_vitasdk.outputs.cache-hit != 'true'
       run: cd ./script && bash install_vitasdk.sh ${{ env.VITASDK }}
+    # Saved explicitly, and only on success: a failed install used to be
+    # cached anyway, so every later run restored a broken SDK and skipped
+    # reinstalling it.
+    - name: save vitasdk cache
+      if: success() && steps.check_vitasdk.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: ${{ env.VITASDK }}
+        key: ${{ env.VITASDK_CACHE_KEY }}-${{ hashFiles('script/install_vitasdk.sh') }}
 
   build_vitaonsjh:
     runs-on: ubuntu-latest
@@ -34,10 +47,11 @@ jobs:
       with:
         cmake-version: '3.16.x' # the default cmake has error! to generate like onsjh.self-self
     - name: get vitasdk cache
-      uses: actions/cache@v4
-      with: 
-        path: ${{ env.VITASDK }} 
-        key: vitasdk
+      uses: actions/cache/restore@v4
+      with:
+        path: ${{ env.VITASDK }}
+        key: ${{ env.VITASDK_CACHE_KEY }}-${{ hashFiles('script/install_vitasdk.sh') }}
+        fail-on-cache-miss: true
     - name: build vpk
       run: cd ./script && bash build_vitavpk.sh vpk
     - name: upload build

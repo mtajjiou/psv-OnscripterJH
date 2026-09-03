@@ -27,19 +27,38 @@ cd ./../build/vdpm
 ./bootstrap-vitasdk.sh
 
 # bootstrap-vitasdk.sh puts pacman in libexec/vdpm on Linux, but the vdpm
-# wrapper that install-all.sh calls defaults to looking in bin/. Without
-# this it dies with "package client is not executable" and installs none of
-# the libraries the build links against.
+# wrapper defaults to looking in bin/. Without this it dies with
+# "package client is not executable" and installs nothing.
 if [ -x "$VITASDK/libexec/vdpm/pacman" ]; then
     export VDPM_PACMAN="$VITASDK/libexec/vdpm/pacman"
 fi
 export VDPM_NONINTERACTIVE=1
-./install-all.sh
+
+# Install what this project links against, rather than vdpm's install-all.sh.
+# That script installs every package vdpm knows about, which is both far
+# slower and not actually installable: openssl 1.0.2 and 1.1.1 are both in
+# the set and conflict, so the transaction aborts with "unresolvable package
+# conflicts detected". Nothing here needs openssl or curl.
+#
+# pacman resolves dependencies, so only the directly linked libraries are
+# listed. Set VITASDK_INSTALL_ALL=1 to get the old behaviour anyway.
+PACKAGES="zlib bzip2 libpng libjpeg-turbo libwebp freetype \
+    libvita2d libvita2d_ext \
+    sdl2 sdl2_image sdl2_mixer sdl2_ttf \
+    libogg libvorbis flac mpg123 libmikmod libmodplug \
+    luajit taihen"
+
+if [ "${VITASDK_INSTALL_ALL:-0}" = "1" ]; then
+    ./install-all.sh
+else
+    # shellcheck disable=SC2086
+    ./vdpm install $PACKAGES
+fi
 cd ./../../script
 
 # Check the SDK is actually usable before anything depends on it.
 missing=""
-for header in vita2d.h vita2d_ext.h; do
+for header in vita2d.h vita2d_ext.h zlib.h png.h SDL2/SDL.h; do
     if [ ! -f "$VITASDK/arm-vita-eabi/include/$header" ]; then
         missing="$missing $header"
     fi

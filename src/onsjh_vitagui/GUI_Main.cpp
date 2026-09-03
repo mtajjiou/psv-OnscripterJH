@@ -39,6 +39,7 @@
 #include "VndbCovers.h"
 
 #include "GUI_common.h"
+#include "GUI_Theme.h"
 #include "build_version.h"
 #include "GUI_Text.h"
 #include "GUI_Utils.h"
@@ -103,105 +104,88 @@ static void cycle_sitting(int slot)
 		cmd[slot] = !cmd[slot];
 }
 
+/* One game in the grid: its cover filling a card, with the name on a band
+ * across the bottom.  The old grid drew the image letterboxed inside its box
+ * and no name at all, which for a shelf of games is the wrong way round. */
 void draw_icon(int curr, int row, int col) {
-	if (row == select_row && col == select_col) 
-	{
-		vita2d_draw_rectangle(ICON_LEFT(col) - ITEM_BOX_MARGIN,
-			ICON_TOP(row) - ITEM_BOX_MARGIN,
-			ICON_WIDTH + ITEM_BOX_MARGIN * 2,
-			ICON_HEIGHT + ITEM_BOX_MARGIN * 2,
-			WHITE);
-	}
-	rom_list[curr].touch_area.left = ICON_LEFT(col);
-	rom_list[curr].touch_area.top = ICON_TOP(row);
-	rom_list[curr].touch_area.right = rom_list[curr].touch_area.left + ICON_WIDTH;
-	rom_list[curr].touch_area.bottom = rom_list[curr].touch_area.top + ICON_HEIGHT;
+	const int x = ICON_LEFT(col);
+	const int y = ICON_TOP(row);
+	const int w = ICON_WIDTH;
+	const int h = ICON_HEIGHT;
+	const bool selected = (row == select_row && col == select_col);
 
-	if (!rom_list[curr].icon) {
-		return;
+	rom_list[curr].touch_area.left = x;
+	rom_list[curr].touch_area.top = y;
+	rom_list[curr].touch_area.right = x + w;
+	rom_list[curr].touch_area.bottom = y + h;
+
+	th_shadow(x, y, w, h);
+	th_card(x, y, w, h, TH_SURFACE, TH_BG);
+
+	th_cover(rom_list[curr].icon, rom_list[curr].w, rom_list[curr].h,
+		 x, y, w, h);
+
+	/* A band the name can be read on whatever the cover is doing behind
+	 * it, taller than the text so nothing sits against the edge. */
+	const int band = TH_FONT_S + 10;
+	if (h > band * 2) {
+		vita2d_draw_rectangle(x, y + h - band, w, band, TH_CAPTION);
+		th_text(x + 6, y + h - band + TH_FONT_S + 1,
+			selected ? TH_TEXT : TH_TEXT_DIM, TH_FONT_S,
+			th_fit(rom_list[curr].char_name(), TH_FONT_S, w - 12));
 	}
-	float w = rom_list[curr].w;
-	float h = rom_list[curr].h;
-	float z0 = ICON_WIDTH / w;
-	float z1 = ICON_HEIGHT / h;
-	float zoom = z0 < z1 ? z0 : z1;
-	vita2d_draw_texture_scale_rotate_hotspot(rom_list[curr].icon,
-		ICON_LEFT(col) + (ICON_WIDTH / 2),
-		ICON_TOP(row) + (ICON_HEIGHT / 2),
-		zoom, zoom,
-		0,
-		w / 2,
-		h / 2
-	);
+
+	/* An archive is not installed yet; saying so on the card saves the
+	 * player finding out by opening it. */
+	if (rom_list[curr].is_zip) {
+		const int tag_w = vita2d_font_text_width(font, TH_FONT_S, ".zip") + 12;
+		vita2d_draw_rectangle(x + w - tag_w - 6, y + 6, tag_w, TH_FONT_S + 6,
+			TH_ACCENT);
+		th_text_center(x + w - tag_w - 6, tag_w, y + TH_FONT_S + 7,
+			TH_BG, TH_FONT_S, ".zip");
+	}
+
+	if (selected) th_focus(x, y, w, h);
 }
 
-void draw_icons(int curr) {
-	// __________tm_bat
-	// |__|__|__|__|__|
-	// |__|__|__|__|__|
-	// |__|__|__|__|__|
-	// |__|__|__|__|__|
-	// ------helps-----
-	vita2d_draw_rectangle(ITEMS_PANEL_LEFT, ITEMS_PANEL_TOP,
-		ITEMS_PANEL_WIDTH, ITEMS_PANEL_HEIGHT, BLACK);
-
-	for (int i = 0; i + curr < rom_list.size() && i < (ICONS_COL * ICONS_ROW); i++) {
-		draw_icon(i + curr, i / ICONS_COL, i % ICONS_COL);
-	}
-}
-
+/* One game as a row: thumbnail, name, and where it lives underneath in the
+ * quiet weight.  The selected row is a lighter surface with an accent edge,
+ * rather than an inverted block. */
 void draw_list_row(int curr, int row) {
-	if (row == select_row) {
-		g_choose = curr;
-		vita2d_draw_rectangle(LIST_LEFT - ITEM_BOX_MARGIN,
-			LIST_TOP(row) - ITEM_BOX_MARGIN,
-			LIST_WIDTH + ITEM_BOX_MARGIN * 2,
-			LIST_HEIGHT + ITEM_BOX_MARGIN * 2,
-			WHITE);
-		vita2d_draw_rectangle(LIST_LEFT,
-			LIST_TOP(row),
-			LIST_WIDTH,
-			LIST_HEIGHT,
-			BLACK);
+	const int x = LIST_LEFT;
+	const int y = LIST_TOP(row);
+	const int w = LIST_WIDTH;
+	const int h = LIST_HEIGHT;
+	const bool selected = (row == select_row);
+
+	if (selected) g_choose = curr;
+
+	rom_list[curr].touch_area.left = x;
+	rom_list[curr].touch_area.top = y;
+	rom_list[curr].touch_area.right = x + w;
+	rom_list[curr].touch_area.bottom = y + h;
+
+	th_card(x, y, w, h, selected ? TH_SURFACE_HI : TH_SURFACE, TH_BG);
+	if (selected) vita2d_draw_rectangle(x, y, TH_RING, h, TH_ACCENT);
+
+	/* A square of cover at the left, cropped to fill it. */
+	const int thumb = h - 8;
+	th_cover(rom_list[curr].icon, rom_list[curr].w, rom_list[curr].h,
+		 x + 8, y + 4, thumb, thumb);
+
+	const int text_left = x + 8 + thumb + TH_PAD;
+	const int text_width = w - (text_left - x) - TH_PAD - 90;
+
+	th_text(text_left, y + (h / 2) - 2,
+		selected ? TH_TEXT : TH_TEXT_DIM, TH_FONT_M,
+		th_fit(rom_list[curr].char_name(), TH_FONT_M, text_width));
+	th_text(text_left, y + (h / 2) + TH_FONT_S + 2, TH_TEXT_FAINT, TH_FONT_S,
+		th_fit(rom_list[curr].char_path(), TH_FONT_S, text_width));
+
+	if (rom_list[curr].is_zip) {
+		th_text_right(x + w - TH_PAD, y + (h / 2) + 2, TH_ACCENT, TH_FONT_S,
+			".zip");
 	}
-
-	rom_list[curr].touch_area.left = LIST_LEFT;
-	rom_list[curr].touch_area.top = LIST_TOP(row);
-	rom_list[curr].touch_area.right = rom_list[curr].touch_area.left + LIST_WIDTH;
-	rom_list[curr].touch_area.bottom = rom_list[curr].touch_area.top + LIST_HEIGHT;
-
-	if (rom_list[curr].icon) {
-		float w = rom_list[curr].w;
-		float h = rom_list[curr].h;
-		float z0 = (float)LIST_HEIGHT / w;
-		float z1 = (float)LIST_HEIGHT / h;
-		float zoom = z0 < z1 ? z0 : z1;
-		vita2d_draw_texture_scale_rotate_hotspot(rom_list[curr].icon,
-			LIST_LEFT + (LIST_HEIGHT / 2),
-			LIST_TOP(row) + (LIST_HEIGHT / 2),
-			zoom, zoom,
-			0,
-			w / 2,
-			h / 2
-		);
-	}
-
-	int text_height = FONT_SIZE;// vita2d_font_text_height(font, FONT_SIZE, text);
-	int text_top_margin = (LIST_HEIGHT - text_height) / 2;
-
-	vita2d_font_draw_text(font,
-		LIST_TEXT_LEFT,// + text_left_margin,
-		LIST_TOP(row) + text_top_margin + text_height,
-		WHITE, FONT_SIZE, rom_list[curr].char_name());
-	vita2d_draw_rectangle(LIST_TEXT_LEFT + 410,
-		LIST_TOP(row),
-		LIST_WIDTH - (LIST_TEXT_LEFT + 410),
-		LIST_HEIGHT,
-		BLACK);
-	vita2d_font_draw_text(font,
-		LIST_TEXT_LEFT + 425,// + text_left_margin,
-		LIST_TOP(row) + text_top_margin + text_height,
-		WHITE, FONT_SIZE, rom_list[curr].char_path());
 }
 
 void draw_list(int curr) {
@@ -212,7 +196,7 @@ void draw_list(int curr) {
 	// |__|___________|
 	// ------helps-----
 	vita2d_draw_rectangle(ITEMS_PANEL_LEFT, ITEMS_PANEL_TOP,
-		ITEMS_PANEL_WIDTH, ITEMS_PANEL_HEIGHT, BLACK);
+		ITEMS_PANEL_WIDTH, ITEMS_PANEL_HEIGHT, TH_BG);
 
 	for (int i = 0; i + curr < rom_list.size() && i < LIST_ROW; i++) {
 		draw_list_row(i + curr, i);
@@ -220,80 +204,89 @@ void draw_list(int curr) {
 }
 
 void draw_title() {
-	
-	// |-----title----|
-	// ----------------
-	// ......
-	vita2d_draw_rectangle(0, 0,
-		ITEMS_PANEL_WIDTH, HEADER_HEIGHT, BLACK_1);
-	char *ver_str = new char[256];
-	/* The build's own version and commit lead, since that is the thing
-	 * anyone actually needs to read off the screen to know what they
-	 * installed; the engine versions follow. */
-	sprintf(ver_str, "ONS Easy Setup %s (%s) - Jh %s, %d.%02d", 
-		ONS_BUILD_VERSION, ONS_BUILD_COMMIT, ONS_JH_VERSION, 
-		NSC_VERSION / 100, NSC_VERSION % 100);
-	
+	vita2d_draw_rectangle(0, 0, SCREEN_WIDTH, HEADER_HEIGHT, TH_SURFACE);
+	/* One hairline under the header instead of a hard edge. */
+	vita2d_draw_rectangle(0, HEADER_HEIGHT - 1, SCREEN_WIDTH, 1, TH_LINE);
+
+	th_text(TH_PAD, 27, TH_TEXT, TH_FONT_M, "ONS Easy Setup");
+
+	/* The build identifies itself quietly, in the dim weight: it matters
+	 * when something is wrong and should not compete with the library the
+	 * rest of the time. */
+	char build[64];
+	snprintf(build, sizeof(build), "%s  %s", ONS_BUILD_VERSION, ONS_BUILD_COMMIT);
+	int name_w = vita2d_font_text_width(font, TH_FONT_M, "ONS Easy Setup");
+	th_text(TH_PAD + name_w + TH_GAP, 27, TH_TEXT_FAINT, TH_FONT_S, build);
+
 	char time_str[16];
 	SceDateTime time;
 	sceRtcGetCurrentClock(&time, 0);
-
 	getTimeString(time_str, 24, &time);
-	vita2d_font_draw_text(font, 5, FONT_SIZE - 1, WHITE, FONT_SIZE, ver_str);
-	vita2d_font_draw_text(font, ITEMS_PANEL_WIDTH - 80, FONT_SIZE - 1 , WHITE, FONT_SIZE, time_str);
-	free(ver_str);
+	th_text_right(SCREEN_WIDTH - TH_PAD, 27, TH_TEXT_DIM, TH_FONT_M, time_str);
 }
 
 void draw_help() {
-	// ......
-	// ________________
-	// |-----helps----|
-	vita2d_draw_rectangle(0, FOOTER_TOP, ITEMS_PANEL_WIDTH, FOOTER_HEIGHT, BLACK_1);
-	if(rom_list.size() == 0)
-	{
-		vita2d_font_draw_text(font, 5, FOOTER_TOP + FONT_SIZE - 1, WHITE, FONT_SIZE, 
-			"No game! put game into ux0:onsemu/, uma0:onsemu/ or ur0:onsemu/");
+	vita2d_draw_rectangle(0, FOOTER_TOP, SCREEN_WIDTH, FOOTER_HEIGHT, TH_SURFACE);
+	vita2d_draw_rectangle(0, FOOTER_TOP, SCREEN_WIDTH, 1, TH_LINE);
+
+	const int baseline = FOOTER_TOP + 21;
+
+	if (rom_list.size() == 0) {
+		th_text(TH_PAD, baseline, TH_TEXT_DIM, TH_FONT_S,
+			"No games yet -- put a folder or a .zip in ux0:onsemu/");
+		return;
 	}
-	else
-	{
-		static char helpbuf[256];
-		snprintf(helpbuf, sizeof(helpbuf), ui_text(UI_FOOTER_HINTS),
-			g_choose + 1, (int)rom_list.size());
-		vita2d_font_draw_text(font, 5, FOOTER_TOP + FONT_SIZE - 1, WHITE, FONT_SIZE , helpbuf);
+
+	static char helpbuf[256];
+	snprintf(helpbuf, sizeof(helpbuf), ui_text(UI_FOOTER_HINTS),
+		g_choose + 1, (int)rom_list.size());
+
+	/* The position indicator is the one thing here that changes as you
+	 * move, so it sits on the right on its own rather than at the end of a
+	 * sentence of hints. */
+	char *split = strstr(helpbuf, "|");
+	if (split) {
+		*split = '\0';
+		th_text_right(SCREEN_WIDTH - TH_PAD, baseline, TH_TEXT, TH_FONT_S,
+			split + 1);
 	}
-	vita2d_font_draw_text(font, ITEMS_PANEL_WIDTH - 120, FOOTER_TOP + FONT_SIZE - 1, WHITE, FONT_SIZE -2, ONS_BUILD_DATE);
+	th_text(TH_PAD, baseline, TH_TEXT_DIM, TH_FONT_S,
+		th_fit(helpbuf, TH_FONT_S, SCREEN_WIDTH - 200));
 }
 
-
+/* Flat, with the accent as the pressed state rather than an inverted box. */
 void draw_button(int left, int top, int width, int height, string text, int zoom, int pressed) {
-	// TODO render more looking button
-	int text_color;
-	if (pressed) {
-		vita2d_draw_rectangle(left, top, width, height, BLACK);
-		vita2d_draw_rectangle(left + 4, top + 4, width - 5, height - 5, LIGHT_GRAY);
-		text_color = WHITE;
-	}
-	else {
-		vita2d_draw_rectangle(left, top, width, height, BLACK);
-		vita2d_draw_rectangle(left + 1, top + 1, width - 5, height - 5, WHITE);
-		text_color = BLACK;
-	}
-	int text_width = vita2d_font_text_width(font, zoom, RomInfo::to_char(text));
-	int text_height = vita2d_font_text_height(font, zoom, RomInfo::to_char(text));
-	int text_left_margin = (width - text_width) / 2;
-	int text_top_margin = (height - text_height) / 2;
+	const char *label = RomInfo::to_char(text);
 
-	vita2d_font_draw_text(font,
-		left + text_left_margin,
-		top + text_top_margin + text_height-5,
-		text_color, zoom, RomInfo::to_char(text));
+	th_card(left, top, width, height,
+		pressed ? TH_ACCENT : TH_SURFACE_HI, TH_SURFACE);
+	if (!pressed) th_border(left, top, width, height, 1, TH_LINE);
+
+	int text_height = vita2d_font_text_height(font, zoom, label);
+	th_text_center(left, width, top + (height + text_height) / 2 - 2,
+		pressed ? TH_BG : TH_TEXT, zoom,
+		th_fit(label, zoom, width - TH_PAD * 2));
 }
-
 
 struct config_item {
 	const char *name;
 	const char *value;
 };
+
+/* Where the last dialog was drawn, so a tap can be tested against it.  The
+ * box is sized from its text every frame, so recording it keeps the touch
+ * area and the drawing from drifting apart. */
+static rectangle last_dialog_area = { 0, 0, 0, 0 };
+
+/* Where draw_config() last put its rows.  The panel is centred and sized
+ * from the number of rows, so the touch handling reads the geometry back
+ * rather than recomputing it and drifting. */
+static int config_rows_top = 0;
+static int config_row_height = 44;
+static int config_panel_left = 0;
+static int config_panel_width = SCREEN_WIDTH;
+static int config_panel_top = HEADER_HEIGHT;
+static int config_panel_height = ITEMS_PANEL_HEIGHT;
 
 void draw_config() {
 	struct config_item items[] = {
@@ -305,8 +298,6 @@ void draw_config() {
 		{ui_text(UI_CFG_TOUCH_MODE),
 			config.use_btouch == 0 ? ui_text(UI_TOUCH_OFF)
 				: (config.use_btouch == 1 ? ui_text(UI_TOUCH_FRONT) : ui_text(UI_TOUCH_BOTH))},
-		/* Listed last so the rows above keep the indices the input handling
-		 * and the greying-out logic already use. */
 		{ui_text(UI_CFG_LANGUAGE),
 			config.language == UI_LANG_ZH ? "\xE4\xB8\xAD\xE6\x96\x87" : "English"},
 		/* Not a setting but an action, and this is where a player looks for
@@ -315,102 +306,115 @@ void draw_config() {
 		{ui_text(UI_CFG_FETCH_COVERS), ui_text(UI_COVERS_START)}
 	};
 
-	// FIXME: ugly UI
-	vita2d_draw_rectangle(ITEMS_PANEL_LEFT, ITEMS_PANEL_TOP,ITEMS_PANEL_WIDTH, ITEMS_PANEL_HEIGHT, BLACK_HALF_ALPHA);
+	/* The settings sit on a card over a dimmed library rather than over a
+	 * black panel, so it is clear they are a layer on top of it. */
+	vita2d_draw_rectangle(0, HEADER_HEIGHT, SCREEN_WIDTH, ITEMS_PANEL_HEIGHT,
+		TH_SCRIM);
+
+	const int panel_w = 560;
+	const int row_h   = 44;
+	const int panel_h = CONFIG_NUM * row_h + TH_PAD * 2 + 34;
+	const int panel_x = (SCREEN_WIDTH - panel_w) / 2;
+	const int panel_y = HEADER_HEIGHT + (ITEMS_PANEL_HEIGHT - panel_h) / 2;
+
+	th_shadow(panel_x, panel_y, panel_w, panel_h);
+	th_card(panel_x, panel_y, panel_w, panel_h, TH_SURFACE, TH_BG);
+	th_border(panel_x, panel_y, panel_w, panel_h, 1, TH_LINE);
+
+	th_text(panel_x + TH_PAD, panel_y + TH_PAD + TH_FONT_M - 2, TH_TEXT,
+		TH_FONT_M, ui_text(UI_BTN_CONFIG));
+
+	const int first_row = panel_y + TH_PAD + 34;
 
 	for (int i = 0; i < CONFIG_NUM; i++) {
-		int color = i == select_config ? GREEN : WHITE;
-		if (!strcmp(config.list_mode, "list")) {
-			if (i == 1 || i == 2)
-				color = LIGHT_SLATE_GRAY;
+		const int y = first_row + i * row_h;
+
+		/* Rows that do not apply to the current list style are still shown,
+		 * so the settings do not change shape as you move, but they are
+		 * clearly not in play. */
+		bool disabled = false;
+		if (!strcmp(config.list_mode, "list")) disabled = (i == 1 || i == 2);
+		else                                   disabled = (i == 3);
+
+		if (i == select_config) {
+			th_card(panel_x + 6, y, panel_w - 12, row_h - 4, TH_SURFACE_HI,
+				TH_SURFACE);
+			vita2d_draw_rectangle(panel_x + 6, y, TH_RING, row_h - 4, TH_ACCENT);
 		}
-		else if (i == 3)
-			color = LIGHT_SLATE_GRAY;
-			
-		vita2d_font_draw_text(font, ITEMS_PANEL_LEFT + 10, ITEMS_PANEL_TOP + i * 30 + 30, color, FONT_SIZE, (char*)items[i].name);
-		vita2d_font_draw_text(font, ITEMS_PANEL_LEFT + 300, ITEMS_PANEL_TOP + i * 30 + 30, color, FONT_SIZE, (char*)items[i].value);
+
+		unsigned int label_color = disabled ? TH_TEXT_FAINT
+					 : (i == select_config ? TH_TEXT : TH_TEXT_DIM);
+		unsigned int value_color = disabled ? TH_TEXT_FAINT : TH_ACCENT;
+
+		th_text(panel_x + TH_PAD + 8, y + (row_h - 4) / 2 + 7, label_color,
+			TH_FONT_S, items[i].name);
+		th_text_right(panel_x + panel_w - TH_PAD - 8, y + (row_h - 4) / 2 + 7,
+			value_color, TH_FONT_S, items[i].value);
 	}
+
+	/* Where the rows are, for the touch handling. */
+	config_rows_top = first_row;
+	config_row_height = row_h;
+	config_panel_left = panel_x;
+	config_panel_width = panel_w;
+	config_panel_top = panel_y;
+	config_panel_height = panel_h;
 }
 
 void draw_appinfo_icon(int curr) {
-
-	float w = rom_list[curr].w;
-	float h = rom_list[curr].h;
-	float z0 = APPINFO_ICON_WIDTH / w;
-	float z1 = APPINFO_ICON_HEIGHT / h;
-	float zoom = z0 < z1 ? z0 : z1;
-
-	vita2d_draw_texture_scale_rotate_hotspot(rom_list[curr].icon,
-		APPINFO_ICON_LEFT + (APPINFO_ICON_WIDTH / 2),
-		APPINFO_ICON_TOP + (APPINFO_ICON_HEIGHT / 2),
-		zoom, zoom,
-		0,
-		w / 2,
-		h / 2
-	);
+	/* The cover, large and cropped to fill, is the subject of this panel. */
+	th_shadow(APPINFO_ICON_LEFT, APPINFO_ICON_TOP,
+		APPINFO_ICON_WIDTH, APPINFO_ICON_HEIGHT);
+	th_card(APPINFO_ICON_LEFT, APPINFO_ICON_TOP,
+		APPINFO_ICON_WIDTH, APPINFO_ICON_HEIGHT, TH_SURFACE_HI, TH_SURFACE);
+	th_cover(rom_list[curr].icon, rom_list[curr].w, rom_list[curr].h,
+		APPINFO_ICON_LEFT, APPINFO_ICON_TOP,
+		APPINFO_ICON_WIDTH, APPINFO_ICON_HEIGHT);
 }
 
 void draw_appinfo(ScreenState state, int choose) {
-	// __________tm_bat
-	// |name |_|__|__|
-	// |...  |_|__|__|
-	// |...  |_|__|__|
-	// |_____|_|__|__|
-	// ------helps-----
+	/* The panel sits over a dimmed library, like the settings do. */
+	vita2d_draw_rectangle(0, HEADER_HEIGHT, SCREEN_WIDTH, ITEMS_PANEL_HEIGHT,
+		TH_SCRIM);
 
-	// .--------------------------------------
-	// | icon  | backup   |
-	// |       | restore  |
-	// |       | format   |
-	// |       | ...      |
-	// |------------------|
-	// | title id         |
-	// | title            |
-	// | cart /dl         |
-	// | save position    |
-	// | ...              |
-	// '---------------------------------------
-	vita2d_draw_rectangle(APPINFO_PANEL_LEFT, APPINFO_PANEL_TOP,
-		APPINFO_PANEL_WIDTH, APPINFO_PANEL_HEIGHT, WHITE);
+	th_card(APPINFO_PANEL_LEFT, APPINFO_PANEL_TOP,
+		APPINFO_PANEL_WIDTH, APPINFO_PANEL_HEIGHT, TH_SURFACE, TH_BG);
+	th_border(APPINFO_PANEL_LEFT, APPINFO_PANEL_TOP,
+		APPINFO_PANEL_WIDTH, APPINFO_PANEL_HEIGHT, 1, TH_LINE);
 
 	draw_appinfo_icon(choose);
+
 	draw_button(APPINFO_BUTTON_LEFT, APPINFO_BUTTON_TOP(0),
 		APPINFO_BUTTON_WIDTH, APPINFO_BUTTON_HEIGHT,
-		RomInfo::to_char(ui_text(UI_BTN_START)), FONT_SIZE,
-		(state == START_MODE));
-
+		RomInfo::to_char(ui_text(UI_BTN_START)), TH_FONT_S,
+		(state == START_MODE) ||
+		(state == PRINT_APPINFO && select_appinfo_button == 0));
 	draw_button(APPINFO_BUTTON_LEFT, APPINFO_BUTTON_TOP(1),
 		APPINFO_BUTTON_WIDTH, APPINFO_BUTTON_HEIGHT,
-		RomInfo::to_char(ui_text(UI_BTN_CONFIG)), FONT_SIZE,
-		(state == SETTING_MODE));
+		RomInfo::to_char(ui_text(UI_BTN_CONFIG)), TH_FONT_S,
+		(state == SETTING_MODE) ||
+		(state == PRINT_APPINFO && select_appinfo_button == 1));
 	draw_button(APPINFO_BUTTON_LEFT, APPINFO_BUTTON_TOP(2),
 		APPINFO_BUTTON_WIDTH, APPINFO_BUTTON_HEIGHT,
-		RomInfo::to_char(ui_text(UI_BTN_INSTALL)), FONT_SIZE,
-		(state == SHORTCUT_MODE));
-
-	draw_button(APPINFO_BUTTON_LEFT, APPINFO_BUTTON_TOP(4),
-		APPINFO_BUTTON_WIDTH, APPINFO_BUTTON_HEIGHT,
-		RomInfo::to_char(ui_text(UI_BTN_COVER)), FONT_SIZE,
-		state == COVER_CONFIRM);
+		RomInfo::to_char(ui_text(UI_BTN_INSTALL)), TH_FONT_S,
+		(state == SHORTCUT_MODE) ||
+		(state == PRINT_APPINFO && select_appinfo_button == 2));
 	draw_button(APPINFO_BUTTON_LEFT, APPINFO_BUTTON_TOP(3),
 		APPINFO_BUTTON_WIDTH, APPINFO_BUTTON_HEIGHT,
-		RomInfo::to_char("comming soon"), FONT_SIZE,
-		(state == DELETE_MODE));
+		RomInfo::to_char(ui_text(UI_NOT_IMPLEMENTED)), TH_FONT_S,
+		(state == DELETE_MODE) ||
+		(state == PRINT_APPINFO && select_appinfo_button == 3));
+	draw_button(APPINFO_BUTTON_LEFT, APPINFO_BUTTON_TOP(4),
+		APPINFO_BUTTON_WIDTH, APPINFO_BUTTON_HEIGHT,
+		RomInfo::to_char(ui_text(UI_BTN_COVER)), TH_FONT_S,
+		(state == COVER_CONFIRM) ||
+		(state == PRINT_APPINFO && select_appinfo_button == 4));
 
-	if (state == PRINT_APPINFO) {
-		vita2d_draw_rectangle(APPINFO_BUTTON_LEFT,
-			APPINFO_BUTTON_TOP(select_appinfo_button),
-			APPINFO_BUTTON_WIDTH, APPINFO_BUTTON_HEIGHT,
-			LIGHT_GRAY);
-	}
-
-	vita2d_draw_rectangle(APPINFO_DESC_LEFT, APPINFO_DESC_TOP,
-		APPINFO_DESC_WIDTH, APPINFO_DESC_HEIGHT,
-		LIGHT_SLATE_GRAY);
-
-	static char tmp_str[512];
-	static int old_choose =  -1;
-
+	/* The name, then the facts about the folder in the quiet weight.  The
+	 * old panel put all of it in one sprintf with labels on every line;
+	 * what a player wants first is which game this is. */
+	static char detail_str[512];
+	static int old_choose = -1;
 	if (choose != old_choose) {
 		old_choose = choose;
 		uint64_t size = 0;
@@ -418,13 +422,19 @@ void draw_appinfo(ScreenState state, int choose) {
 		char size_str[16];
 		getPathInfo(rom_list[choose].char_path(), &size, &floder_num, &file_num);
 		getSizeString(size_str, size);
-		sprintf(tmp_str, "name: %s\npath: %s\nsize: %s\nwith: %d files, %d folders", rom_list[choose].char_name(), rom_list[choose].char_path(), size_str, file_num, floder_num);
+		snprintf(detail_str, sizeof(detail_str), "%s   %d files, %d folders",
+			size_str, file_num, floder_num);
 	}
 
-	vita2d_font_draw_text(font,
-		APPINFO_DESC_LEFT + APPINFO_DESC_PADDING,
-		APPINFO_DESC_TOP + APPINFO_DESC_PADDING + 30,
-		BLACK, FONT_SIZE, tmp_str);
+	const int text_left = APPINFO_DESC_LEFT;
+	const int text_width = APPINFO_DESC_WIDTH;
+
+	th_text(text_left, APPINFO_DESC_TOP + TH_FONT_L, TH_TEXT, TH_FONT_L,
+		th_fit(rom_list[choose].char_name(), TH_FONT_L, text_width));
+	th_text(text_left, APPINFO_DESC_TOP + TH_FONT_L + 26, TH_TEXT_DIM,
+		TH_FONT_S, th_fit(rom_list[choose].char_path(), TH_FONT_S, text_width));
+	th_text(text_left, APPINFO_DESC_TOP + TH_FONT_L + 50, TH_TEXT_FAINT,
+		TH_FONT_S, detail_str);
 }
 
 void draw_slots(int index_, int slot) {
@@ -447,13 +457,15 @@ void draw_slots(int index_, int slot) {
 	// | save position    |
 	// | ...              | slot9
 	// '---------------------------------------
-	vita2d_draw_rectangle(SLOT_PANEL_LEFT, SLOT_PANEL_TOP,
-		SLOT_PANEL_WIDTH, SLOT_PANEL_HEIGHT, WHITE);
+	th_card(SLOT_PANEL_LEFT, SLOT_PANEL_TOP,
+		SLOT_PANEL_WIDTH, SLOT_PANEL_HEIGHT, TH_SURFACE, TH_BG);
+	th_border(SLOT_PANEL_LEFT, SLOT_PANEL_TOP,
+		SLOT_PANEL_WIDTH, SLOT_PANEL_HEIGHT, 1, TH_LINE);
 
 	for (int i = 0; i < SLOT_BUTTON; i++) {
 		string tmp = sittings[i];
 		if (i < SITTINGS_NUM) {
-			while (tmp.length() < 30)
+			while (tmp.length() < 24)
 				tmp += " ";
 			tmp += "[";
 			if (i == SITTINGS_ENCODING) {
@@ -475,74 +487,56 @@ void draw_slots(int index_, int slot) {
 		}
 		draw_button(SLOT_BUTTON_LEFT, SLOT_BUTTON_TOP(i),
 			SLOT_BUTTON_WIDTH, SLOT_BUTTON_HEIGHT,
-			tmp, FONT_SIZE,
-			(slot == i));
-
-		if (slot < 0 && select_slot == i) {
-			vita2d_draw_rectangle(SLOT_BUTTON_LEFT, SLOT_BUTTON_TOP(i),
-				SLOT_BUTTON_WIDTH, SLOT_BUTTON_HEIGHT,
-				LIGHT_GRAY);
-		}
+			tmp, TH_FONT_S,
+			(slot == i) || (slot < 0 && select_slot == i));
 	}
 	/*if (sittings) {
 		free(sittings);
 	}*/
 }
 
-/* Where the last message or alert box was drawn, so a tap can be tested
- * against it.  The box is sized from its text every frame, so recording it
- * here keeps the touch areas and the drawing from drifting apart. */
-static rectangle last_dialog_area = { 0, 0, 0, 0 };
+/* Dialogs: a dark card over a dimmed screen, with the two answers written
+ * where the box splits for touch -- cancel on the left, confirm on the
+ * right, which is also the order the buttons are listed in. */
+static void dialog_box(const char *msg, const char *footer, int fontsize)
+{
+	int text_width  = vita2d_font_text_width(font, fontsize, (char *)msg);
+	int text_height = vita2d_font_text_height(font, fontsize, (char *)msg);
 
-void draw_message(char *msg, int choose,int fontsize) {
+	const int padding = 28;
+	int width  = text_width + padding * 2;
+	int height = text_height + padding * 2 + 34;
+	if (width  > SCREEN_WIDTH - 80)  width  = SCREEN_WIDTH - 80;
+	if (height > SCREEN_HEIGHT - 80) height = SCREEN_HEIGHT - 80;
 
+	const int left = (SCREEN_WIDTH - width) / 2;
+	const int top  = (SCREEN_HEIGHT - height) / 2;
 
-	int text_width = vita2d_font_text_width(font, fontsize, msg);
-	int text_height = vita2d_font_text_height(font, fontsize, msg);
+	vita2d_draw_rectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, TH_SCRIM);
+	th_shadow(left, top, width, height);
+	th_card(left, top, width, height, TH_SURFACE, TH_BG);
+	th_border(left, top, width, height, 1, TH_LINE);
 
-	int padding = 50;
-	int width = text_width + (padding * 2);
-	int height = text_height + (padding * 2);
-
-	int left = (SCREEN_WIDTH - width) / 2;
-	int top = (SCREEN_HEIGHT - height) / 2;
-
-	vita2d_draw_rectangle(left, top, width, height, LIGHT_GRAY);
 	last_dialog_area.left = left;
 	last_dialog_area.top = top;
 	last_dialog_area.right = left + width;
 	last_dialog_area.bottom = top + height;
 
-	vita2d_font_draw_text(font, left + padding, top + padding, BLACK, fontsize, msg);
-	vita2d_font_draw_text(font,
-		left + ((width - confirm_msg_width) / 2),
-		top + height - 25, BLACK, fontsize, confirm_msg);
-	
+	vita2d_font_draw_text(font, left + padding, top + padding + fontsize,
+		TH_TEXT, fontsize, (char *)msg);
+
+	vita2d_draw_rectangle(left + padding, top + height - 44,
+		width - padding * 2, 1, TH_LINE);
+	th_text_center(left, width, top + height - padding + 6, TH_TEXT_DIM,
+		TH_FONT_S, footer);
+}
+
+void draw_message(char *msg, int choose, int fontsize) {
+	dialog_box(msg, confirm_msg, fontsize);
 }
 
 void draw_alert(char *msg, int fontsize) {
-
-
-	int text_width = vita2d_font_text_width(font, fontsize, msg);
-	int text_height = vita2d_font_text_height(font, fontsize, msg);
-	int padding = 50;
-	int width = text_width + (padding * 2);
-	int height = text_height + (padding * 2);
-
-	int left = (SCREEN_WIDTH - width) / 2;
-	int top = (SCREEN_HEIGHT - height) / 2;
-
-	vita2d_draw_rectangle(left, top, width, height, LIGHT_GRAY);
-	last_dialog_area.left = left;
-	last_dialog_area.top = top;
-	last_dialog_area.right = left + width;
-	last_dialog_area.bottom = top + height;
-
-	vita2d_font_draw_text(font, left + padding, top + padding, BLACK, fontsize, msg);
-	vita2d_font_draw_text(font,
-		left + ((width - close_msg_width) / 2),
-		top + height - 25, BLACK, fontsize, close_msg);
-
+	dialog_box(msg, close_msg, fontsize);
 }
 
 /*
@@ -567,9 +561,12 @@ void draw_install_progress(const ZipInstallProgress &progress) {
 	const int top    = (SCREEN_HEIGHT - height) / 2;
 	const int padding = 25;
 
-	vita2d_draw_rectangle(left, top, width, height, LIGHT_GRAY);
-	vita2d_font_draw_text(font, left + padding, top + padding + FONT_SIZE,
-		BLACK, FONT_SIZE, (char *)ui_text(UI_INSTALLING));
+	vita2d_draw_rectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, TH_SCRIM);
+	th_shadow(left, top, width, height);
+	th_card(left, top, width, height, TH_SURFACE, TH_BG);
+	th_border(left, top, width, height, 1, TH_LINE);
+	th_text(left + padding, top + padding + TH_FONT_M, TH_TEXT, TH_FONT_M,
+		ui_text(UI_INSTALLING));
 
 	/* The file currently being written, trimmed to fit the box. */
 	char line[96];
@@ -578,25 +575,25 @@ void draw_install_progress(const ZipInstallProgress &progress) {
 		memmove(line, line + strlen(line) - 60, 61);
 		line[0] = line[1] = line[2] = '.';
 	}
-	vita2d_font_draw_text(font, left + padding, top + padding + FONT_SIZE * 3,
-		BLACK, FONT_SIZE - 4, line);
+	th_text(left + padding, top + padding + TH_FONT_M * 2 + 8, TH_TEXT_DIM,
+		TH_FONT_S, line);
 
 	/* Progress bar. */
 	const int bar_left   = left + padding;
 	const int bar_top    = top + height - padding - 60;
 	const int bar_width  = width - (padding * 2);
 	const int bar_height = 24;
-	vita2d_draw_rectangle(bar_left, bar_top, bar_width, bar_height, BLACK);
+	th_card(bar_left, bar_top, bar_width, bar_height, TH_SURFACE_HI, TH_SURFACE);
 	vita2d_draw_rectangle(bar_left + 2, bar_top + 2,
-		((bar_width - 4) * progress.percent) / 100, bar_height - 4, GREEN);
+		((bar_width - 4) * progress.percent) / 100, bar_height - 4, TH_ACCENT);
 
 	char done_size[16], total_size[16];
 	getSizeString(done_size, progress.bytes_done);
 	getSizeString(total_size, progress.bytes_total);
 	snprintf(line, sizeof(line), "%d%%  (%s / %s)   %s cancel",
 		progress.percent, done_size, total_size, ICON_CANCEL);
-	vita2d_font_draw_text(font, bar_left, bar_top + bar_height + FONT_SIZE + 4,
-		BLACK, FONT_SIZE, line);
+	th_text(bar_left, bar_top + bar_height + TH_FONT_S + 6, TH_TEXT_DIM,
+		TH_FONT_S, line);
 }
 
 /* True to keep going, false to cancel.  Repaints and polls CIRCLE. */
@@ -947,16 +944,15 @@ static ScreenState activate_config_row(int row) {
 	return UNKNOWN;
 }
 
-/* Which row a tap landed on, or -1.  The rows are drawn at
- * ITEMS_PANEL_TOP + i * 30 + 30 with the text baseline there, so the band
- * that belongs to a row runs from 10 above that baseline to 20 below. */
+/* Which row a tap landed on, or -1, using the geometry draw_config() just
+ * used. */
 static int config_row_at(const point &p) {
-	if (p.x < ITEMS_PANEL_LEFT || p.x > ITEMS_PANEL_LEFT + ITEMS_PANEL_WIDTH)
+	if (p.x < config_panel_left || p.x > config_panel_left + config_panel_width)
 		return -1;
 
 	for (int i = 0; i < CONFIG_NUM; i++) {
-		int baseline = ITEMS_PANEL_TOP + i * 30 + 30;
-		if (p.y >= baseline - 22 && p.y <= baseline + 8)
+		int top = config_rows_top + i * config_row_height;
+		if (p.y >= top && p.y < top + config_row_height)
 			return i;
 	}
 	return -1;
@@ -1113,8 +1109,10 @@ ScreenState on_config_event() {
 	{
 		point p;
 		if (read_touchscreen(&p)) {
-			if (p.x < ITEMS_PANEL_LEFT || p.x > ITEMS_PANEL_LEFT + ITEMS_PANEL_WIDTH ||
-			    p.y < ITEMS_PANEL_TOP  || p.y > ITEMS_PANEL_TOP + ITEMS_PANEL_HEIGHT){
+			if (p.x < config_panel_left ||
+			    p.x > config_panel_left + config_panel_width ||
+			    p.y < config_panel_top ||
+			    p.y > config_panel_top + config_panel_height){
 				/* Outside the panel is the way back, as cancel is. */
 				if (need_save) save_config();
 				if (need_refresh){
@@ -1417,13 +1415,15 @@ void draw_cover_progress(const CoverBatch &batch) {
 	const int top    = (SCREEN_HEIGHT - height) / 2;
 	const int padding = 25;
 
-	vita2d_draw_rectangle(left, top, width, height, LIGHT_GRAY);
+	vita2d_draw_rectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, TH_SCRIM);
+	th_shadow(left, top, width, height);
+	th_card(left, top, width, height, TH_SURFACE, TH_BG);
+	th_border(left, top, width, height, 1, TH_LINE);
 
 	char line[128];
 	snprintf(line, sizeof(line), "%s  (%d/%d)", ui_text(UI_COVERS_ALL_RUN),
 		 batch.done, batch.total);
-	vita2d_font_draw_text(font, left + padding, top + padding + FONT_SIZE,
-		BLACK, FONT_SIZE, line);
+	th_text(left + padding, top + padding + TH_FONT_M, TH_TEXT, TH_FONT_M, line);
 
 	/* The game being looked up, trimmed to fit. */
 	snprintf(line, sizeof(line), "%s", batch.current.c_str());
@@ -1431,21 +1431,21 @@ void draw_cover_progress(const CoverBatch &batch) {
 		memmove(line, line + strlen(line) - 60, 61);
 		line[0] = line[1] = line[2] = '.';
 	}
-	vita2d_font_draw_text(font, left + padding, top + padding + FONT_SIZE * 3,
-		BLACK, FONT_SIZE - 4, line);
+	th_text(left + padding, top + padding + TH_FONT_M * 2 + 8, TH_TEXT_DIM,
+		TH_FONT_S, line);
 
 	const int bar_left   = left + padding;
 	const int bar_top    = top + height - padding - 60;
 	const int bar_width  = width - (padding * 2);
 	const int bar_height = 24;
 	int percent = batch.total > 0 ? (batch.done * 100) / batch.total : 0;
-	vita2d_draw_rectangle(bar_left, bar_top, bar_width, bar_height, BLACK);
+	th_card(bar_left, bar_top, bar_width, bar_height, TH_SURFACE_HI, TH_SURFACE);
 	vita2d_draw_rectangle(bar_left + 2, bar_top + 2,
-		((bar_width - 4) * percent) / 100, bar_height - 4, GREEN);
+		((bar_width - 4) * percent) / 100, bar_height - 4, TH_ACCENT);
 
-	snprintf(line, sizeof(line), "%d%%", percent);
-	vita2d_font_draw_text(font, bar_left, bar_top + bar_height + FONT_SIZE + 4,
-		BLACK, FONT_SIZE, line);
+	snprintf(line, sizeof(line), "%d%%   %s cancel", percent, ICON_CANCEL);
+	th_text(bar_left, bar_top + bar_height + TH_FONT_S + 6, TH_TEXT_DIM,
+		TH_FONT_S, line);
 }
 
 /* Does this game already have a cover?  A game that has one is not asked
@@ -1791,7 +1791,7 @@ int main()
 
 	sceIoMkdir("ux0:data/onsemu", 0777);
 	vita2d_init();
-	vita2d_set_clear_color(BLACK);
+	vita2d_set_clear_color(TH_BG);
 	
 	//draw LOGO began
 	/*vita2d_texture *image = vita2d_load_PNG_buffer(&_binary_res_logo_png_start);

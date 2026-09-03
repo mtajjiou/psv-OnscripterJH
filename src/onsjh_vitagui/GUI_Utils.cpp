@@ -17,6 +17,7 @@
 #include "GUI_Text.h"
 #include "GUI_common.h"
 #include "ZipHandler.h"
+#include "zipreader.h"   /* zip_is_script_name: one definition of "this is a game" */
 
 int SCE_CTRL_ENTER;
 int SCE_CTRL_CANCEL;
@@ -293,6 +294,69 @@ static bool matches_search(const RomInfo &rom) {
 	return false;
 }
 
+/* Does this folder hold a game, rather than hold a folder that does?
+ *
+ * The test is the same one the archive side uses -- zip_is_script_name --
+ * so a layout that installs from a .zip is recognised identically when it
+ * was copied across by hand instead.  A folder carrying only the archives
+ * counts too: some releases keep the script inside arc.sar.
+ */
+static bool folder_has_script(const string &dir) {
+	SceUID dfd = sceIoDopen(dir.c_str());
+	if (dfd < 0) return false;
+
+	bool found = false;
+	int res = 0;
+	do {
+		SceIoDirent entry;
+		memset(&entry, 0, sizeof(SceIoDirent));
+		res = sceIoDread(dfd, &entry);
+		if (res <= 0 || SCE_S_ISDIR(entry.d_stat.st_mode)) continue;
+
+		if (zip_is_script_name(entry.d_name) ||
+		    strcasecmp(entry.d_name, "arc.nsa") == 0 ||
+		    strcasecmp(entry.d_name, "arc.sar") == 0) {
+			found = true;
+			break;
+		}
+	} while (res > 0);
+
+	sceIoDclose(dfd);
+	return found;
+}
+
+/* Where the game really is.  A folder copied across by hand often wraps the
+ * game one or two levels deep -- onsemu/MyGame/MyGame/nscript.dat, or the
+ * folder the archive was unpacked into inside the folder that was made for
+ * it -- and until now none of those were found at all.
+ *
+ * Returns the folder holding the script, or an empty string if there is
+ * none within reach.  Two levels: deeper than that and it is not a wrapped
+ * game, it is a folder of games. */
+static string resolve_game_root(const string &dir, int depth) {
+	if (folder_has_script(dir)) return dir;
+	if (depth <= 0) return string();
+
+	SceUID dfd = sceIoDopen(dir.c_str());
+	if (dfd < 0) return string();
+
+	string found;
+	int res = 0;
+	do {
+		SceIoDirent entry;
+		memset(&entry, 0, sizeof(SceIoDirent));
+		res = sceIoDread(dfd, &entry);
+		if (res <= 0 || !SCE_S_ISDIR(entry.d_stat.st_mode)) continue;
+		if (entry.d_name[0] == '.') continue;
+
+		found = resolve_game_root(dir + "/" + entry.d_name, depth - 1);
+		if (!found.empty()) break;
+	} while (res > 0);
+
+	sceIoDclose(dfd);
+	return found;
+}
+
 void measure_sizes() {
 	/* One directory walk per game, done when sorting by size is first
 	 * asked for rather than at every startup: on a card full of games it
@@ -364,7 +428,23 @@ int load_rom_list() {
 						file_name[0] == '.' ||
 						file_name.compare(0, 9, "__MACOSX") == 0;
 					if (SCE_S_ISDIR(dir.d_stat.st_mode) && !junk) {
-						rom_list_all.push_back(RomInfo(temp));
+						/* The game may be wrapped in a folder or two.
+						 * A folder with no script anywhere below is
+						 * still listed, as it always was: it may be a
+						 * layout none of this knows about, and hiding
+						 * it would be worse than showing it. */
+						string root = resolve_game_root(temp, 2);
+						if (root.empty()) root = temp;
+
+						RomInfo rom(root);
+						/* Named for the folder the player made, not the
+						 * one inside it -- unless the game named itself
+						 * with a caption. */
+						if (root != temp &&
+						    !checkFileExist((root + "/caption.txt").c_str()))
+							rom.name = file_name;
+
+						rom_list_all.push_back(rom);
 					}
 				}
 			} while (res > 0);

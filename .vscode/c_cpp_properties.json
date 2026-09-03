@@ -1,0 +1,36 @@
+{
+    "env" : {
+        "vitasdk": "d:/Software/env//sdk/psvsdk"
+    },
+    "configurations": [
+        {
+            "name": "vita",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "${workspaceFolder}/src/**",
+                "${workspaceFolder}/src/common/**",
+                "${workspaceFolder}/src/onsjh/simd/**",
+                "${workspaceFolder}/src/onsjh/aviwrapper/**",
+                "${vitasdk}/include",
+                "${vitasdk}/arm-vita-eabi/include/SDL2/**",
+                "${vitasdk}/arm-vita-eabi/include/**",
+                "${vitasdk}/share/gcc-arm-vita-eabi/samples/common/**"
+            ],
+            "defines": [
+                "PSV",
+                "PSV_MODULE",
+                "USE_PARALLEL",
+                "USE_SIMD",
+                "USE_SIMD_ARM_NEON",
+                "USE_LUA",
+                "USE_STB"
+            ],
+            "compilerPath": "${vitasdk}/bin/arm-vita-eabi-gcc",
+            "compilerArgs": [],
+            "cStandard": "c99",
+            "cppStandard": "c++11",
+            "intelliSenseMode": "linux-gcc-arm"
+        }
+    ],
+    "version": 4
+}

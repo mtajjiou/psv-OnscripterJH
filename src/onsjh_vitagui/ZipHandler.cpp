@@ -180,25 +180,13 @@ std::vector<ZipEntryInfo> ZipHandler::scanZipFolder() {
 }
 
 std::string ZipHandler::destinationName(const std::string &zip_path) {
-    std::string name;
-    int err = 0;
-
-    zip_reader *z = zip_open(zip_path.c_str(), &err);
-    if (z) {
-        char root[ZIP_MAX_NAME];
-        /* A game folder inside the archive names the game better than the
-         * archive file does; fall back to the file name when it is at the
-         * archive root. */
-        if (zip_find_game_root(z, root, sizeof(root)) && root[0] != '\0')
-            name = baseName(root);
-        zip_close(z);
-    }
-
-    if (name.empty()) {
-        name = baseName(zip_path);
-        if (name.size() > 4 && hasZipSuffix(name.c_str()))
-            name.erase(name.size() - 4);
-    }
+    /* The archive's file name is what the user typed and what they see in the
+     * list, so it names the installed folder.  A folder inside the archive is
+     * often a generic "Game" or "data", which would leave every install
+     * looking alike. */
+    std::string name = baseName(zip_path);
+    if (name.size() > 4 && hasZipSuffix(name.c_str()))
+        name.erase(name.size() - 4);
     return makeSafeFolderName(name);
 }
 

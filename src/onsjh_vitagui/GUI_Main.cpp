@@ -89,7 +89,7 @@ static void init_sittings_text()
 	sittings[2] = ui_text(UI_SET_TEXTSHADOW);
 	sittings[3] = ui_text(UI_SET_TEXTBOX);
 	sittings[4] = ui_text(UI_SET_ENCODING);
-	sittings[5] = "";
+	sittings[SITTINGS_TOUCH] = ui_text(UI_SET_TOUCH);
 	sittings[6] = "";
 	sittings[7] = "";
 	sittings[SITTINGS_DEFAULT] = ui_text(UI_SET_RESET);
@@ -98,12 +98,15 @@ static void init_sittings_text()
 
 DrawListMode mainscreen_list_mode;
 
-/* Advances one setting to its next value.  Everything is a plain on/off
- * toggle except the encoding, which cycles auto -> sjis -> gbk. */
+/* Advances one setting to its next value.  Most are plain on/off toggles;
+ * the encoding cycles auto -> sjis -> gbk, and the touch panels cycle
+ * default -> front -> both -> back -> off. */
 static void cycle_sitting(int slot)
 {
 	if (slot == SITTINGS_ENCODING)
 		cmd[slot] = (cmd[slot] + 1) % 3;
+	else if (slot == SITTINGS_TOUCH)
+		cmd[slot] = (cmd[slot] + 1) % 5;
 	else
 		cmd[slot] = !cmd[slot];
 }
@@ -420,7 +423,9 @@ void draw_config() {
 		{ui_text(UI_CFG_LIST_ROW),   RomInfo::to_char(config.list_row)},
 		{ui_text(UI_CFG_TOUCH_MODE),
 			config.use_btouch == 0 ? ui_text(UI_TOUCH_OFF)
-				: (config.use_btouch == 1 ? ui_text(UI_TOUCH_FRONT) : ui_text(UI_TOUCH_BOTH))},
+				: (config.use_btouch == 1 ? ui_text(UI_TOUCH_FRONT)
+					: (config.use_btouch == 2 ? ui_text(UI_TOUCH_BOTH)
+						: ui_text(UI_TOUCH_BACK)))},
 		{ui_text(UI_CFG_SORT),
 			config.sort_mode == SORT_RECENT ? ui_text(UI_SORT_RECENT)
 				: (config.sort_mode == SORT_SIZE ? ui_text(UI_SORT_SIZE)
@@ -635,7 +640,19 @@ void draw_slots(int index_, int slot) {
 			while (tmp.length() < 24)
 				tmp += " ";
 			tmp += "[";
-			if (i == SITTINGS_ENCODING) {
+			if (i == SITTINGS_TOUCH) {
+				/* Five states, and the first of them defers to
+				 * the launcher's own setting rather than being
+				 * a value of its own. */
+				static const UIStringId touch_word[] = {
+					UI_TOUCH_DEFAULT, UI_TOUCH_FRONT,
+					UI_TOUCH_BOTH, UI_TOUCH_BACK,
+					UI_TOUCH_OFF
+				};
+				tmp += ui_text(touch_word[cmd[i] % 5]);
+				tmp += "]";
+			}
+			else if (i == SITTINGS_ENCODING) {
 				/* Three states, not on/off: the engine guesses by
 				 * default, and the other two force a code page for
 				 * the rare script it cannot tell apart. */
@@ -1455,7 +1472,7 @@ static ScreenState activate_config_row(int row) {
 		break;
 	case 4:
 		config.use_btouch++;
-		if (config.use_btouch > 2)
+		if (config.use_btouch > 3)
 			config.use_btouch = 0;
 		break;
 	case 5:
@@ -2647,10 +2664,23 @@ int main()
 		}
 		cmd_str[cmd_num++] = (char*)"--root";
 		cmd_str[cmd_num++] = RomInfo::to_char(rom_path);
+		/* The game's own choice if it has made one, else the
+		 * launcher's.  Both end up as the one argument the engine
+		 * reads, so the two settings cannot contradict each other on
+		 * the way in. */
+		static const char *touch_arg[] = {
+			"", "use_front_only_touch", "use_front_back_touch",
+			"use_back_only_touch", "use_not_touch"
+		};
+		int touch_choice = cmd[SITTINGS_TOUCH];
+		if (touch_choice <= 0 || touch_choice > 4) {
+			static const int from_config[] = { 4, 1, 2, 3 };
+			int c = config.use_btouch;
+			if (c < 0 || c > 3) c = 1;
+			touch_choice = from_config[c];
+		}
 		cmd_str[cmd_num++] = (char*)"--touch-mode";
-		cmd_str[cmd_num++] = (char*)(config.use_btouch == 0 ? 
-			"use_not_touch" : (config.use_btouch == 1 
-				? "use_front_only_touch" : "use_front_back_touch"));
+		cmd_str[cmd_num++] = (char*)touch_arg[touch_choice];
 		/* What the launcher worked out, then what the game asked for --
 		 * in that order, so a hand-written ons_args overrides a guess. */
 		cmd_num = appendAutoArgs(rom_path, cmd_str, cmd_num, CMD_MAX);

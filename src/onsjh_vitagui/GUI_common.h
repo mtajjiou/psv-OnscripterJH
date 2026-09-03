@@ -141,9 +141,14 @@
 #define PACKAGE_TEMP "ux0:onsemu/temp/"
 
 #define SITTINGS_FILE "sittings.txt"
-#define SITTINGS_NUM 5
-/* The one setting that is a three-way choice rather than a toggle. */
+#define SITTINGS_NUM 6
+/* The settings that are a choice rather than a toggle. */
 #define SITTINGS_ENCODING 4
+/* Touch, per game: 0 follows the launcher's setting, then front, both,
+ * back, off.  Per game because the right answer depends on how a game is
+ * played -- a game with a lot of tapping wants the front panel, one played
+ * with the console propped up wants the back panel left alone. */
+#define SITTINGS_TOUCH 5
 
 #define SITTINGS_DEFAULT 8
 #define SITTINGS_RETURN 9

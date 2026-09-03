@@ -212,8 +212,8 @@ harmless.
 
 ### Touch & Input Optimization
 - [ ] **Auto-Detect Touch Needs** — Analyzes scripts for touch-dependent commands
-- [ ] **Touch Mode Presets** — `front_only`, `front_rear`, `rear_only`, `disabled`
-- [ ] **Per-Game Touch Settings** — Remembers last chosen mode
+- [x] **Touch Mode Presets** — `front_only`, `front_rear`, `rear_only`, `disabled`
+- [x] **Per-Game Touch Settings** — Remembers last chosen mode
 - [ ] **Vibration Control** — Enable/disable per game
 - [ ] **Button Mapping UI** — Visual controller layout reference
 

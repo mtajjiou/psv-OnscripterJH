@@ -1265,6 +1265,27 @@ static inline bool touchIsBackPanel(const SDL_TouchFingerEvent &finger)
 {
     return finger.touchId != 0;
 }
+
+/* Whether a touch on this panel counts, under the mode the launcher passed.
+ *
+ * Four modes, because the two panels are wanted in different pairs by
+ * different people: the back panel is a rest for the fingers holding the
+ * console, so it fires by accident and some players want it off; others
+ * play with the console propped up and want only the back, so the picture
+ * is never under a hand.  "off" used to be passed and never read, which
+ * meant the one setting people chose to stop stray taps did nothing.
+ */
+static inline bool touchModeAccepts(const char *mode,
+                                    const SDL_TouchFingerEvent &finger)
+{
+    if (mode == NULL) return true;
+    if (strcmp(mode, "use_not_touch") == 0) return false;
+    if (strcmp(mode, "use_front_only_touch") == 0)
+        return !touchIsBackPanel(finger);
+    if (strcmp(mode, "use_back_only_touch") == 0)
+        return touchIsBackPanel(finger);
+    return true;   /* use_front_back_touch, and anything unrecognised */
+}
 #endif
 
 void ONScripter::runEventLoop()
@@ -1292,10 +1313,7 @@ void ONScripter::runEventLoop()
         case SDL_FINGERMOTION:
         {
 #if defined(PSV)
-            if(strcmp(touchMode, "use_front_only_touch")==0)
-            {
-                if (touchIsBackPanel(event.tfinger)) break;
-            }
+            if (!touchModeAccepts(touchMode, event.tfinger)) break;
 #endif
             if (!btndown_flag && convTouchKey(event.tfinger)) return;
             touchToScreen(event.tfinger, tmp_event.motion.x, tmp_event.motion.y);
@@ -1317,10 +1335,7 @@ void ONScripter::runEventLoop()
         case SDL_FINGERDOWN:
         {
 #if defined(PSV)
-            if(strcmp(touchMode, "use_front_only_touch")==0)
-            {
-                if (touchIsBackPanel(event.tfinger)) break;
-            }
+            if (!touchModeAccepts(touchMode, event.tfinger)) break;
 #endif
             convTouchKey(event.tfinger);
             touchToScreen(event.tfinger, tmp_event.motion.x, tmp_event.motion.y);
@@ -1346,10 +1361,7 @@ void ONScripter::runEventLoop()
         case SDL_FINGERUP:
         {
 #if defined(PSV)
-            if(strcmp(touchMode, "use_front_only_touch")==0)
-            {
-                if (touchIsBackPanel(event.tfinger)) break;
-            }
+            if (!touchModeAccepts(touchMode, event.tfinger)) break;
 #endif
             if (num_fingers == 0) break;
             {

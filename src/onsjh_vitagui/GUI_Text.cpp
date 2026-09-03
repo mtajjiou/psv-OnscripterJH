@@ -25,6 +25,7 @@ const char *g_strings[UI_STRING_COUNT][UI_LANG_COUNT] = {
     /* UI_SET_TEXTSHADOW     */ { "Text shadow",            "文字阴影" },
     /* UI_SET_TEXTBOX        */ { "Show text box",          "显示文字框" },
     /* UI_SET_ENCODING       */ { "Script encoding",        "文字编码" },
+    /* UI_SET_TOUCH          */ { "Touch panels",           "触摸操作" },
     /* UI_SET_RESET          */ { "Reset to defaults",      "恢复默认设置" },
     /* UI_SET_RETURN         */ { "Back",                   "返回" },
 
@@ -44,6 +45,8 @@ const char *g_strings[UI_STRING_COUNT][UI_LANG_COUNT] = {
     /* UI_TOUCH_OFF          */ { "off",                    "关闭" },
     /* UI_TOUCH_FRONT        */ { "front only",             "仅前触屏" },
     /* UI_TOUCH_BOTH         */ { "front and back",         "前后触屏" },
+    /* UI_TOUCH_BACK         */ { "back only",              "仅后触板" },
+    /* UI_TOUCH_DEFAULT      */ { "default",                "默认" },
     /* UI_CFG_LANGUAGE       */ { "Language",               "界面语言" },
 
     /* UI_CFG_FETCH_COVERS   */ { "Fetch missing covers",   "\xE8\x8E\xB7\xE5\x8F\x96\xE7\xBC\xBA\xE5\xB0\x91\xE7\x9A\x84\xE5\xB0\x81\xE9\x9D\xA2" },

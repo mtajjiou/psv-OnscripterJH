@@ -23,6 +23,8 @@ vita2d_texture *th_glyph_l        = NULL;
 vita2d_texture *th_glyph_r        = NULL;
 vita2d_texture *th_glyph_start    = NULL;
 vita2d_texture *th_glyph_select   = NULL;
+vita2d_texture *th_glyph_dpad     = NULL;
+vita2d_texture *th_glyph_lstick   = NULL;
 
 void th_load_glyphs()
 {
@@ -38,6 +40,8 @@ void th_load_glyphs()
     th_glyph_r      = vita2d_load_PNG_file("app0:btn_r.png");
     th_glyph_start  = vita2d_load_PNG_file("app0:btn_start.png");
     th_glyph_select = vita2d_load_PNG_file("app0:btn_select.png");
+    th_glyph_dpad   = vita2d_load_PNG_file("app0:btn_dpad.png");
+    th_glyph_lstick = vita2d_load_PNG_file("app0:btn_lstick.png");
 
     /* Which button confirms is a system setting, and the launcher already
      * follows it for the input.  The glyphs follow the same answer, so the
@@ -52,26 +56,47 @@ void th_load_glyphs()
     }
 }
 
+/* How wide a glyph draws at a given text size.
+ *
+ * Keyed to height, not width: the shoulder and start/select icons are wide
+ * shapes with a word inside them, and forcing those into a square would
+ * shrink the word out of legibility.  So every glyph is drawn as tall as the
+ * text beside it and as wide as it needs to be. */
+int th_glyph_width(vita2d_texture *glyph, int size)
+{
+    if (glyph == NULL) return 0;
+    unsigned int h = vita2d_texture_get_height(glyph);
+    unsigned int w = vita2d_texture_get_width(glyph);
+    if (h == 0) return 0;
+    return (int)((float)w * (float)size / (float)h);
+}
+
 void th_glyph(vita2d_texture *glyph, int x, int baseline, int size,
               unsigned int color)
 {
     if (glyph == NULL) return;
 
-    /* Scaled from the image's own size, so a set of 64px or 128px icons
-     * dropped into asset/ draws at the same size as these do. */
-    unsigned int source = vita2d_texture_get_width(glyph);
-    if (source == 0) return;
-    float scale = (float)size / (float)source;
+    unsigned int source_h = vita2d_texture_get_height(glyph);
+    if (source_h == 0) return;
+    float scale = (float)size / (float)source_h;
+
+    /* Drawn as it is, not tinted: these are two-tone pictures -- a light
+     * body with the symbol dark inside it -- rather than shapes in an alpha
+     * channel, and multiplying them by the text colour would only muddy
+     * them.  The colour argument is kept because the caller passes one for
+     * the label beside it. */
+    (void)color;
+
     /* Sat on the text's baseline rather than on the line box, so a glyph
      * and the word beside it look like one thing. */
-    vita2d_draw_texture_tint_scale(glyph, (float)x,
-                                   (float)(baseline - size + size / 6),
-                                   scale, scale, color);
+    vita2d_draw_texture_scale(glyph, (float)x,
+                              (float)(baseline - size + size / 6),
+                              scale, scale);
 }
 
 int th_hint_width(vita2d_texture *glyph, const char *label, int size)
 {
-    int w = (glyph ? size + 5 : 0);
+    int w = (glyph ? th_glyph_width(glyph, size) + 5 : 0);
     if (label && label[0]) w += vita2d_font_text_width(font, size, label);
     return w;
 }
@@ -83,7 +108,7 @@ int th_hint(int x, int baseline, vita2d_texture *glyph, const char *label,
 
     if (glyph){
         th_glyph(glyph, x, baseline, size, color);
-        x += size + 5;
+        x += th_glyph_width(glyph, size) + 5;
     }
     if (label && label[0]){
         vita2d_font_draw_text(font, x, baseline, color, size, label);

@@ -640,9 +640,9 @@ void draw_help_screen() {
 		{ &th_glyph_triangle, NULL,          UI_HELP_MENU },
 		{ &th_glyph_l,        "L",           UI_HELP_SKIP_PAGE },
 		{ &th_glyph_r,        "R",           UI_HELP_TOGGLE_SKIP },
-		{ NULL,               "left right",  UI_HELP_BACKLOG },
-		{ NULL,               "up down",     UI_HELP_CURSOR },
-		{ NULL,               "left stick",  UI_HELP_STICK },
+		{ &th_glyph_dpad,     "left right",  UI_HELP_BACKLOG },
+		{ &th_glyph_dpad,     "up down",     UI_HELP_CURSOR },
+		{ &th_glyph_lstick,   "left stick",  UI_HELP_STICK },
 		{ &th_glyph_select,   "hold Select", UI_HELP_OVERLAY },
 	};
 	const int count = (int)(sizeof(rows) / sizeof(rows[0]));
@@ -684,7 +684,7 @@ void draw_help_screen() {
 		 * face buttons ship with the launcher, the rest only if someone
 		 * puts them in asset/. */
 		if (rows[i].glyph && *rows[i].glyph)
-			th_glyph(*rows[i].glyph, left + padding, baseline, TH_FONT_S,
+			th_glyph(*rows[i].glyph, left + padding, baseline, TH_FONT_M,
 				 TH_TEXT);
 		else if (rows[i].text)
 			th_text(left + padding, baseline, TH_TEXT, TH_FONT_S,

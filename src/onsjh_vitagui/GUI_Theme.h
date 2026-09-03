@@ -78,6 +78,8 @@ extern vita2d_texture *th_glyph_l;
 extern vita2d_texture *th_glyph_r;
 extern vita2d_texture *th_glyph_start;
 extern vita2d_texture *th_glyph_select;
+extern vita2d_texture *th_glyph_dpad;
+extern vita2d_texture *th_glyph_lstick;
 /* Which of the two confirms is a system setting; these follow it. */
 extern vita2d_texture *th_glyph_enter;
 extern vita2d_texture *th_glyph_cancel;
@@ -85,6 +87,9 @@ extern vita2d_texture *th_glyph_cancel;
 void th_load_glyphs();
 void th_glyph(vita2d_texture *glyph, int x, int baseline, int size,
               unsigned int color);
+/* How wide that glyph will be: they are sized by height and keep their own
+ * proportions, so a wide one is wider than it is tall. */
+int  th_glyph_width(vita2d_texture *glyph, int size);
 /* A glyph and its label, drawn together.  Returns how wide it was. */
 int  th_hint(int x, int baseline, vita2d_texture *glyph, const char *label,
              unsigned int color, int size);

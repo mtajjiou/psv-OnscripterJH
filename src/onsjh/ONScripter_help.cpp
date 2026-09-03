@@ -45,9 +45,9 @@ const ControlRow kRows[] = {
     { "app0:btn_r.png",        "R",           "start or stop skipping" },
     { "app0:btn_start.png",    "Start",       "click through a wait" },
     { "app0:btn_select.png",   "Select",      "tap: text speed, hold: this" },
-    { NULL,                    "left right",  "backlog" },
-    { NULL,                    "up down",     "move between choices" },
-    { NULL,                    "left stick",  "same as the d-pad" },
+    { "app0:btn_dpad.png",     "left right",  "backlog" },
+    { "app0:btn_dpad.png",     "up down",     "move between choices" },
+    { "app0:btn_lstick.png",   "left stick",  "same as the d-pad" },
 };
 const int kNumRows = (int)(sizeof(kRows) / sizeof(kRows[0]));
 
@@ -115,7 +115,10 @@ void ONScripter::showControlsOverlay()
          * and the button's name is drawn instead. */
         SDL_Surface *g = kRows[i].glyph ? IMG_Load(kRows[i].glyph) : NULL;
         if (g){
-            SDL_Rect dst = { kPadding, y, kGlyph, kGlyph };
+            /* As tall as the text, as wide as the icon is: the shoulder and
+             * start/select icons are wide shapes with a word in them. */
+            int gw = g->h > 0 ? g->w * kGlyph / g->h : kGlyph;
+            SDL_Rect dst = { kPadding, y, gw, kGlyph };
             SDL_SetSurfaceBlendMode(g, SDL_BLENDMODE_BLEND);
             SDL_BlitScaled(g, NULL, panel, &dst);
             SDL_FreeSurface(g);

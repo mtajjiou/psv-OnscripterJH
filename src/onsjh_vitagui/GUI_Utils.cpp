@@ -239,6 +239,12 @@ int load_rom_list() {
 	string file_name;
 	string temp;
 	SceUID dfd;
+
+	/* Rebuilding means every row loads its image again, so let go of the
+	 * ones already held -- the list is rebuilt after every install and every
+	 * cover fetch, and a texture per row per reload adds up. */
+	for (size_t i = 0; i < rom_list.size(); i++)
+		if (rom_list[i].icon) vita2d_free_texture(rom_list[i].icon);
 	rom_list.clear();
 	for (int i = 0; i < 3; i++) {
 		dfd = sceIoDopen(drives[i].c_str());

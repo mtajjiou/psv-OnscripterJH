@@ -46,6 +46,8 @@ const char *g_strings[UI_STRING_COUNT][UI_LANG_COUNT] = {
     /* UI_TOUCH_BOTH         */ { "front and back",         "前后触屏" },
     /* UI_CFG_LANGUAGE       */ { "Language",               "界面语言" },
 
+    /* UI_CFG_FETCH_COVERS   */ { "Fetch missing covers",   "\xE8\x8E\xB7\xE5\x8F\x96\xE7\xBC\xBA\xE5\xB0\x91\xE7\x9A\x84\xE5\xB0\x81\xE9\x9D\xA2" },
+
     /* UI_BTN_START          */ { "start",                  "启动" },
     /* UI_BTN_CONFIG         */ { "config",                 "设置" },
     /* UI_BTN_INSTALL        */ { "install",                "安装" },
@@ -78,6 +80,13 @@ const char *g_strings[UI_STRING_COUNT][UI_LANG_COUNT] = {
                                   "\xE6\x97\xA0\xE6\xB3\x95\xE8\xBF\x9E\xE6\x8E\xA5 vndb.org" },
     /* UI_COVER_WRITE_FAIL   */ { "The cover could not be saved.",
                                   "\xE5\xB0\x81\xE9\x9D\xA2\xE4\xBF\x9D\xE5\xAD\x98\xE5\xA4\xB1\xE8\xB4\xA5" },
+
+    /* UI_COVERS_ALL_ASK     */ { "Look up every game without a cover on vndb.org?",
+                                  "\xE4\xB8\xBA\xE6\x89\x80\xE6\x9C\x89\xE7\xBC\xBA\xE5\xB0\x91\xE5\xB0\x81\xE9\x9D\xA2\xE7\x9A\x84\xE6\xB8\xB8\xE6\x88\x8F\xE8\x8E\xB7\xE5\x8F\x96\xEF\xBC\x9F" },
+    /* UI_COVERS_ALL_RUN     */ { "Fetching covers",        "\xE6\xAD\xA3\xE5\x9C\xA8\xE8\x8E\xB7\xE5\x8F\x96\xE5\xB0\x81\xE9\x9D\xA2" },
+    /* UI_COVERS_ALL_DONE    */ { "%d fetched, %d not found, %d already had one",
+                                  "\xE6\x88\x90\xE5\x8A\x9F %d\xEF\xBC\x8C\xE6\x9C\xAA\xE6\x89\xBE\xE5\x88\xB0 %d\xEF\xBC\x8C\xE5\xB7\xB2\xE6\x9C\x89 %d" },
+    /* UI_COVERS_START       */ { "start",                  "\xE5\xBC\x80\xE5\xA7\x8B" },
 
     /* UI_HELP */
     { "In-game controls\n\n"

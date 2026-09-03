@@ -54,6 +54,7 @@ enum UIStringId {
     UI_TOUCH_FRONT,
     UI_TOUCH_BOTH,
     UI_CFG_LANGUAGE,
+    UI_CFG_FETCH_COVERS,
 
     /* Buttons and prompts */
     UI_BTN_START,
@@ -81,6 +82,10 @@ enum UIStringId {
     UI_COVER_NO_NET,
     UI_COVER_FAIL,
     UI_COVER_WRITE_FAIL,
+    UI_COVERS_ALL_ASK,
+    UI_COVERS_ALL_RUN,
+    UI_COVERS_ALL_DONE,
+    UI_COVERS_START,
 
     /* Long text */
     UI_HELP,

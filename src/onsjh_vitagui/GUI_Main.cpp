@@ -308,7 +308,11 @@ void draw_config() {
 		/* Listed last so the rows above keep the indices the input handling
 		 * and the greying-out logic already use. */
 		{ui_text(UI_CFG_LANGUAGE),
-			config.language == UI_LANG_ZH ? "\xE4\xB8\xAD\xE6\x96\x87" : "English"}
+			config.language == UI_LANG_ZH ? "\xE4\xB8\xAD\xE6\x96\x87" : "English"},
+		/* Not a setting but an action, and this is where a player looks for
+		 * something that applies to the whole library rather than to the
+		 * game under the cursor. */
+		{ui_text(UI_CFG_FETCH_COVERS), ui_text(UI_COVERS_START)}
 	};
 
 	// FIXME: ugly UI
@@ -695,7 +699,16 @@ void draw_screen(ScreenState state, int curr, int choose, int slot) {
 	if (state == ABOUT_MSG) {
 		draw_alert((char*)about_msg, FONT_SIZE);
 	}
-	if (state >= PRINT_APPINFO) {
+	/* The batch fetch is started from the settings screen, so that is what
+	 * belongs behind it -- the per-game panel has nothing to do with it,
+	 * and these states sit past PRINT_APPINFO in the enum only because they
+	 * were added last. */
+	bool covers_all = (state == COVERS_ALL_CONFIRM || state == COVERS_ALL_RUN ||
+			   state == COVERS_ALL_DONE);
+	if (covers_all) {
+		draw_config();
+	}
+	else if (state >= PRINT_APPINFO) {
 		draw_appinfo(state, choose);
 	}
 
@@ -731,7 +744,11 @@ void draw_screen(ScreenState state, int curr, int choose, int slot) {
 		draw_alert((char*)ui_text(UI_COVER_RUN), FONT_SIZE);
 		break;
 	case COVER_DONE:
+	case COVERS_ALL_DONE:
 		draw_alert(cover_result_message, FONT_SIZE);
+		break;
+	case COVERS_ALL_CONFIRM:
+		draw_message((char*)ui_text(UI_COVERS_ALL_ASK), choose, FONT_SIZE);
 		break;
 	case SHORTCUT_DONE_MODE:
 		draw_alert((char*)ui_text(UI_MAKE_PACKAGE_OK), FONT_SIZE);
@@ -894,8 +911,10 @@ ScreenState on_mainscreen_event(int steps, int &step, int &curr, int &touched) {
 	return mainscreen_touch(curr, touched);
 }
 
-/* What a row does when it is chosen, by button or by tap. */
-static void activate_config_row(int row) {
+/* What a row does when it is chosen, by button or by tap.  Most rows change
+ * a setting and stay put; the covers row asks to leave for another screen,
+ * which is what the return value is for. */
+static ScreenState activate_config_row(int row) {
 	switch (row) {
 	case 0:
 		if (strncmp(config.list_mode, "icon", 4) == 0) {
@@ -919,9 +938,13 @@ static void activate_config_row(int row) {
 		ui_set_language((UILanguage)config.language);
 		init_sittings_text();
 		break;
+	case 6:
+		return COVERS_ALL_CONFIRM;
 	default:
 		break;
 	}
+
+	return UNKNOWN;
 }
 
 /* Which row a tap landed on, or -1.  The rows are drawn at
@@ -988,10 +1011,13 @@ ScreenState on_config_event() {
 	}
 
 	if (btn & SCE_CTRL_ENTER) {
-		activate_config_row(select_config);
+		ScreenState action = activate_config_row(select_config);
 		need_refresh = 1;
 		need_save = 1;
-
+		if (action != UNKNOWN) {
+			if (need_save) save_config();
+			return action;
+		}
 	}
 	if (btn & SCE_CTRL_LEFT) {
 		switch (select_config) {
@@ -1101,9 +1127,13 @@ ScreenState on_config_event() {
 			int row = config_row_at(p);
 			if (row >= 0) {
 				select_config = row;
-				activate_config_row(row);
+				ScreenState action = activate_config_row(row);
 				need_refresh = 1;
 				need_save = 1;
+				if (action != UNKNOWN) {
+					save_config();
+					return action;
+				}
 			}
 		}
 	}
@@ -1369,6 +1399,116 @@ int  game_delete(int choose) {
  * before this is called, so the screen says what is happening.  The list is
  * not rebuilt here -- the caller reloads it, which is what picks up the new
  * image. */
+/* How the batch is going, for the progress screen. */
+struct CoverBatch {
+	int total;      /* games that need a cover */
+	int done;       /* attempted so far */
+	int fetched;
+	int missing;    /* vndb had nothing under that name */
+	int skipped;    /* already had a cover */
+	string current;
+};
+static CoverBatch cover_batch;
+
+void draw_cover_progress(const CoverBatch &batch) {
+	const int width  = 700;
+	const int height = 200;
+	const int left   = (SCREEN_WIDTH - width) / 2;
+	const int top    = (SCREEN_HEIGHT - height) / 2;
+	const int padding = 25;
+
+	vita2d_draw_rectangle(left, top, width, height, LIGHT_GRAY);
+
+	char line[128];
+	snprintf(line, sizeof(line), "%s  (%d/%d)", ui_text(UI_COVERS_ALL_RUN),
+		 batch.done, batch.total);
+	vita2d_font_draw_text(font, left + padding, top + padding + FONT_SIZE,
+		BLACK, FONT_SIZE, line);
+
+	/* The game being looked up, trimmed to fit. */
+	snprintf(line, sizeof(line), "%s", batch.current.c_str());
+	if (strlen(line) > 60) {
+		memmove(line, line + strlen(line) - 60, 61);
+		line[0] = line[1] = line[2] = '.';
+	}
+	vita2d_font_draw_text(font, left + padding, top + padding + FONT_SIZE * 3,
+		BLACK, FONT_SIZE - 4, line);
+
+	const int bar_left   = left + padding;
+	const int bar_top    = top + height - padding - 60;
+	const int bar_width  = width - (padding * 2);
+	const int bar_height = 24;
+	int percent = batch.total > 0 ? (batch.done * 100) / batch.total : 0;
+	vita2d_draw_rectangle(bar_left, bar_top, bar_width, bar_height, BLACK);
+	vita2d_draw_rectangle(bar_left + 2, bar_top + 2,
+		((bar_width - 4) * percent) / 100, bar_height - 4, GREEN);
+
+	snprintf(line, sizeof(line), "%d%%", percent);
+	vita2d_font_draw_text(font, bar_left, bar_top + bar_height + FONT_SIZE + 4,
+		BLACK, FONT_SIZE, line);
+}
+
+/* Does this game already have a cover?  A game that has one is not asked
+ * about again, so running this a second time only costs requests for the
+ * ones still missing. */
+static bool has_cover(const string &path) {
+	const char *names[3] = { "/cover.png", "/cover.jpg", "/icon.png" };
+	for (int i = 0; i < 3; i++) {
+		SceUID fd = sceIoOpen((path + names[i]).c_str(), SCE_O_RDONLY, 0777);
+		if (fd >= 0) {
+			sceIoClose(fd);
+			return true;
+		}
+	}
+	return false;
+}
+
+/* Every game that has no cover, one after another.  Each request blocks, so
+ * the bar is repainted before each one rather than from a callback. */
+void fetch_all_covers() {
+	cover_batch.total = cover_batch.done = 0;
+	cover_batch.fetched = cover_batch.missing = cover_batch.skipped = 0;
+	cover_batch.current.clear();
+
+	for (size_t i = 0; i < rom_list.size(); i++) {
+		if (rom_list[i].is_zip) continue;
+		if (has_cover(rom_list[i].path)) { cover_batch.skipped++; continue; }
+		cover_batch.total++;
+	}
+
+	for (size_t i = 0; i < rom_list.size(); i++) {
+		if (rom_list[i].is_zip) continue;
+		if (has_cover(rom_list[i].path)) continue;
+
+		cover_batch.current = rom_list[i].name.empty() ? rom_list[i].path
+							      : rom_list[i].name;
+
+		vita2d_start_drawing();
+		vita2d_clear_screen();
+		draw_title();
+		draw_help();
+		draw_cover_progress(cover_batch);
+		vita2d_end_drawing();
+		vita2d_swap_buffers();
+
+		char saved[512];
+		VndbResult result = vndb_fetch_cover(rom_list[i].char_name(),
+						     rom_list[i].char_path(),
+						     saved, sizeof(saved));
+		if (result == VNDB_OK) cover_batch.fetched++;
+		else                   cover_batch.missing++;
+
+		cover_batch.done++;
+
+		/* Cancelling leaves what has been fetched so far in place. */
+		if (read_buttons() & SCE_CTRL_CANCEL) break;
+	}
+
+	snprintf(cover_result_message, sizeof(cover_result_message),
+		 ui_text(UI_COVERS_ALL_DONE),
+		 cover_batch.fetched, cover_batch.missing, cover_batch.skipped);
+}
+
 int game_cover(int choose) {
 	if (choose < 0 || choose >= (int)rom_list.size()) return 0;
 	if (rom_list[choose].is_zip) return 0;
@@ -1570,6 +1710,19 @@ int mainloop() {
 				else
 					new_state = SHORTCUT_FAIL_MODE;
 				break;
+			case COVERS_ALL_CONFIRM:
+				new_state = on_message_event(choose, NULL, COVERS_ALL_RUN,
+							    CONFIG_SCREEN, CONFIG_SCREEN, 1);
+				break;
+			case COVERS_ALL_RUN:
+				fetch_all_covers();
+				new_state = COVERS_ALL_DONE;
+				break;
+			case COVERS_ALL_DONE:
+				on_alert_event(MAIN_SCREEN);
+				/* Reload, so the covers just written are the icons the
+				 * list draws. */
+				return 1;
 			case COVER_CONFIRM:
 				new_state = on_message_event(choose, game_cover, COVER_RUN,
 							    PRINT_APPINFO, PRINT_APPINFO, 1);
@@ -1679,7 +1832,16 @@ int main()
 
 		//load_config();
 		load_rom_list();//\BC\D3\D4\D8ͼ\B1\EA
-		while (mainloop() >= 0);
+		/* mainloop() returns 1 when it did something the list should show --
+		 * a game installed, a cover fetched -- and the list has to be built
+		 * again for that to be true.  It used to just re-enter the loop with
+		 * the same rows and the same icons, so a fresh install or a new
+		 * cover only appeared after quitting the launcher. */
+		while (1) {
+			int again = mainloop();
+			if (again < 0) break;
+			load_rom_list();
+		}
 
 		vita2d_start_drawing();
 		vita2d_clear_screen();

@@ -125,7 +125,7 @@
 #define GREEN               RGBA8(0x00, 0x80, 0x00, 0xFF)
 
 #define CONFIG_FILE "ux0:data/onsemu/ONSConfig.ini"
-#define CONFIG_NUM 6   /* the last row is the interface language */
+#define CONFIG_NUM 7   /* language, then the covers row */
 
 #define PACKAGE_TEMP "ux0:onsemu/temp/"
 
@@ -184,6 +184,10 @@ typedef enum {
 	COVER_CONFIRM,
 	COVER_RUN,
 	COVER_DONE,
+	/* The same thing for the whole library, from the settings screen. */
+	COVERS_ALL_CONFIRM,
+	COVERS_ALL_RUN,
+	COVERS_ALL_DONE,
 } ScreenState;
 typedef enum {
 	USE_ICON = 1,

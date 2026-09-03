@@ -32,6 +32,7 @@ typedef struct configure {
 	int icon_row;
 	int icon_col;
 	int list_row;
+	int language;      /* UILanguage; the launcher's interface language */
 } configure;
 
 

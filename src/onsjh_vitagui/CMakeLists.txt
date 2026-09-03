@@ -33,6 +33,7 @@ link_directories(
 
 add_executable(${PROJECT_NAME}
   GUI_Main.cpp
+  GUI_Text.cpp
   GUI_Utils.cpp
   ZipHandler.cpp
   vitaPackage.cpp

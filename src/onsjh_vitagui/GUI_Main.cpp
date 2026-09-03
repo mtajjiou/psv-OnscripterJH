@@ -39,6 +39,7 @@
 
 #include "GUI_common.h"
 #include "build_version.h"
+#include "GUI_Text.h"
 #include "GUI_Utils.h"
 #include "version.h"
 #include "iniparser.h"
@@ -61,27 +62,10 @@ int select_slot = 0;
 int select_config = 0;
 int g_choose = -1;
 vita2d_font* font;
-const char* help_msg= "\
-使用帮助(游戏内) (help)\n\n\
-○　　　　确认/继续 (confirm)\n\
-╳　　　　按住快进 (skip)\n\
-□　　　　自动模式 (auto)\n\
-△　　　　菜单/关闭回想模式 (menu)\n\
-Ｌ　　　　快进当前页 (skip)\n\
-Ｒ　　　　开启/停止快进 (skip on)\n\
-←→　　　回想模式选择 (backlog)\n\
-↑↓　　　选项/按钮选择 (move cursor)\n\
-左摇杆　　等同方向键 (dpad)\n";
-
-const char* about_msg ="\
-　　　关于ONS for PSV\n\n\
-ONScripter 　　　<Ogapee>\n\
-ONScripter-jh　　<jh10001>\n\
-vita-savemgr 　　<d3m3vilurr>\n\
-ONS-jh-PSV 　　 <wetor>\n\n\
-　　　wetor(@依旧W如此)\n\
-maintained and new features by Yurisiziku, \n\
-https://github.com/YuriSizuku/psv-Onscripter\n";
+/* The interface text lives in GUI_Text.cpp, in every language the launcher
+ * speaks; these keep the old names so the drawing code reads the same. */
+#define help_msg  ui_text(UI_HELP)
+#define about_msg ui_text(UI_ABOUT)
 
 int game_start_select = -1;
 string startup_cmd;
@@ -89,18 +73,23 @@ int cmd_default[] = { 0,1,0,1,0,0,0,0,0,0 };
 int cmd[10] = {0};
 int cmd_num = 0;
 char *cmd_str[10];
-string sittings[] = {
-		"强制全屏幕 (full screen)",
-		"缓存字体 (cache font)",
-		"文字阴影 (text shadow)",
-		"显示文字框 (text box)",
-		"文字编码 (encoding)",
-		"",
-		"",
-		"",
-		"恢复默认设置 (reset)",
-		"返回 (return)"
-};
+string sittings[SLOT_BUTTON];
+
+/* Filled at startup, once the language is known. */
+static void init_sittings_text()
+{
+	sittings[0] = ui_text(UI_SET_FULLSCREEN);
+	sittings[1] = ui_text(UI_SET_FONTCACHE);
+	sittings[2] = ui_text(UI_SET_TEXTSHADOW);
+	sittings[3] = ui_text(UI_SET_TEXTBOX);
+	sittings[4] = ui_text(UI_SET_ENCODING);
+	sittings[5] = "";
+	sittings[6] = "";
+	sittings[7] = "";
+	sittings[SITTINGS_DEFAULT] = ui_text(UI_SET_RESET);
+	sittings[SITTINGS_RETURN]  = ui_text(UI_SET_RETURN);
+}
+
 DrawListMode mainscreen_list_mode;
 
 /* Advances one setting to its next value.  Everything is a plain on/off
@@ -267,9 +256,8 @@ void draw_help() {
 	else
 	{
 		static char helpbuf[256];
-		snprintf(helpbuf, sizeof(helpbuf), 
-			"L 设置菜单 (menu)   R 查看帮助 (help)   Select 关于 (about)   |  %d/%d", 
-			g_choose + 1, rom_list.size());
+		snprintf(helpbuf, sizeof(helpbuf), ui_text(UI_FOOTER_HINTS),
+			g_choose + 1, (int)rom_list.size());
 		vita2d_font_draw_text(font, 5, FOOTER_TOP + FONT_SIZE - 1, WHITE, FONT_SIZE , helpbuf);
 	}
 	vita2d_font_draw_text(font, ITEMS_PANEL_WIDTH - 120, FOOTER_TOP + FONT_SIZE - 1, WHITE, FONT_SIZE -2, ONS_BUILD_DATE);
@@ -308,13 +296,19 @@ struct config_item {
 
 void draw_config() {
 	struct config_item items[] = {
-		{"显示(graphic mode)",		 strcmp(config.list_mode,"icon") ? "列表(list)" : "图标(icon)"},
-		{"仅按键(use dpad)",		 config.use_dpad ? "启用(on)" : "关闭(off)"},
-		{"图标行数(icon row)",     RomInfo::to_char(config.icon_row)},
-		{"图标列数(icon column)",     RomInfo::to_char(config.icon_col)},
-		{"列表行数(list row)",     RomInfo::to_char(config.list_row)},
-		{"触摸控制(touch mode)", 
-			config.use_btouch == 0 ? "关闭(close)" :(config.use_btouch == 1 ? "仅前触屏(only front touch)" : "前后触屏(both touch)") }
+		{ui_text(UI_CFG_GRAPHIC_MODE),
+			strcmp(config.list_mode, "icon") ? ui_text(UI_CFG_LIST) : ui_text(UI_CFG_ICON)},
+		{ui_text(UI_CFG_USE_DPAD),   config.use_dpad ? ui_text(UI_ON) : ui_text(UI_OFF)},
+		{ui_text(UI_CFG_ICON_ROW),   RomInfo::to_char(config.icon_row)},
+		{ui_text(UI_CFG_ICON_COL),   RomInfo::to_char(config.icon_col)},
+		{ui_text(UI_CFG_LIST_ROW),   RomInfo::to_char(config.list_row)},
+		{ui_text(UI_CFG_TOUCH_MODE),
+			config.use_btouch == 0 ? ui_text(UI_TOUCH_OFF)
+				: (config.use_btouch == 1 ? ui_text(UI_TOUCH_FRONT) : ui_text(UI_TOUCH_BOTH))},
+		/* Listed last so the rows above keep the indices the input handling
+		 * and the greying-out logic already use. */
+		{ui_text(UI_CFG_LANGUAGE),
+			config.language == UI_LANG_ZH ? "\xE4\xB8\xAD\xE6\x96\x87" : "English"}
 	};
 
 	// FIXME: ugly UI
@@ -378,16 +372,16 @@ void draw_appinfo(ScreenState state, int choose) {
 	draw_appinfo_icon(choose);
 	draw_button(APPINFO_BUTTON_LEFT, APPINFO_BUTTON_TOP(0),
 		APPINFO_BUTTON_WIDTH, APPINFO_BUTTON_HEIGHT,
-		RomInfo::to_char("启动(start)"), FONT_SIZE,
+		RomInfo::to_char(ui_text(UI_BTN_START)), FONT_SIZE,
 		(state == START_MODE));
 
 	draw_button(APPINFO_BUTTON_LEFT, APPINFO_BUTTON_TOP(1),
 		APPINFO_BUTTON_WIDTH, APPINFO_BUTTON_HEIGHT,
-		RomInfo::to_char("设置(config)"), FONT_SIZE,
+		RomInfo::to_char(ui_text(UI_BTN_CONFIG)), FONT_SIZE,
 		(state == SETTING_MODE));
 	draw_button(APPINFO_BUTTON_LEFT, APPINFO_BUTTON_TOP(2),
 		APPINFO_BUTTON_WIDTH, APPINFO_BUTTON_HEIGHT,
-		RomInfo::to_char("安装(install)"), FONT_SIZE,
+		RomInfo::to_char(ui_text(UI_BTN_INSTALL)), FONT_SIZE,
 		(state == SHORTCUT_MODE));
 
 	draw_button(APPINFO_BUTTON_LEFT, APPINFO_BUTTON_TOP(3),
@@ -416,7 +410,7 @@ void draw_appinfo(ScreenState state, int choose) {
 		char size_str[16];
 		getPathInfo(rom_list[choose].char_path(), &size, &floder_num, &file_num);
 		getSizeString(size_str, size);
-		sprintf(tmp_str, "name：%s\npath：%s\nsize：%s\nwith：%d files，%d folders", rom_list[choose].char_name(), rom_list[choose].char_path(), size_str, file_num, floder_num);
+		sprintf(tmp_str, "name: %s\npath: %s\nsize: %s\nwith: %d files, %d folders", rom_list[choose].char_name(), rom_list[choose].char_path(), size_str, file_num, floder_num);
 	}
 
 	vita2d_font_draw_text(font,
@@ -458,12 +452,12 @@ void draw_slots(int index_, int slot) {
 				/* Three states, not on/off: the engine guesses by
 				 * default, and the other two force a code page for
 				 * the rare script it cannot tell apart. */
-				tmp += cmd[i] == 1 ? "日文(sjis)"
-					: (cmd[i] == 2 ? "中文(gbk)" : "自动(auto)");
+				tmp += cmd[i] == 1 ? ui_text(UI_ENC_SJIS)
+					: (cmd[i] == 2 ? ui_text(UI_ENC_GBK) : ui_text(UI_AUTO));
 				tmp += "]";
 			}
 			else {
-				tmp += cmd[i] ? "开启(on)" : "关闭(off)";
+				tmp += cmd[i] ? ui_text(UI_ON) : ui_text(UI_OFF);
 				tmp += "]";
 				if (cmd[i])
 					tmp += "●";
@@ -551,7 +545,7 @@ void draw_install_progress(const ZipInstallProgress &progress) {
 
 	vita2d_draw_rectangle(left, top, width, height, LIGHT_GRAY);
 	vita2d_font_draw_text(font, left + padding, top + padding + FONT_SIZE,
-		BLACK, FONT_SIZE, (char *)"安装中... (installing)");
+		BLACK, FONT_SIZE, (char *)ui_text(UI_INSTALLING));
 
 	/* The file currently being written, trimmed to fit the box. */
 	char line[96];
@@ -702,19 +696,19 @@ void draw_screen(ScreenState state, int curr, int choose, int slot) {
 		draw_slots(choose, -1);
 		break;
 	case DELETE_MODE:
-		draw_message((char*)"[暂未开放的功能]", choose, FONT_SIZE);
+		draw_message((char*)ui_text(UI_NOT_IMPLEMENTED), choose, FONT_SIZE);
 		break;
 	case SHORTCUT_MODE:
-		draw_message((char*)"是否要生成快捷启动气泡？(Do you want to make package?)", choose, FONT_SIZE);
+		draw_message((char*)ui_text(UI_MAKE_PACKAGE_ASK), choose, FONT_SIZE);
 		break;
 	case SHORTCUT_WAIT:
-		draw_alert((char*)"正在生成气泡中...请勿操作...(installing)", FONT_SIZE);
+		draw_alert((char*)ui_text(UI_MAKE_PACKAGE_RUN), FONT_SIZE);
 		break;
 	case SHORTCUT_DONE_MODE:
-		draw_alert((char*)"快捷启动气泡生成完毕！(install finish)", FONT_SIZE);
+		draw_alert((char*)ui_text(UI_MAKE_PACKAGE_OK), FONT_SIZE);
 		break;
 	case SHORTCUT_FAIL_MODE:
-		draw_alert((char*)"快捷启动气泡生成失败...(install failed)", FONT_SIZE);
+		draw_alert((char*)ui_text(UI_MAKE_PACKAGE_FAIL), FONT_SIZE);
 		break;
 	default:
 		break;
@@ -968,6 +962,14 @@ ScreenState on_config_event() {
 			if (config.use_btouch > 2)
 				config.use_btouch = 0;
 			break;
+		case 6:
+			/* Cycling the language rewrites every label, so the settings
+			 * menu strings are rebuilt here too rather than only at
+			 * startup. */
+			config.language = (config.language + 1) % UI_LANG_COUNT;
+			ui_set_language((UILanguage)config.language);
+			init_sittings_text();
+			break;
 		default:
 			break;
 		}
@@ -1008,6 +1010,14 @@ ScreenState on_config_event() {
 				config.list_row = LIST_ROW_MIN;
 			LIST_ROW = config.list_row;
 			break;
+		case 6:
+			/* Cycling the language rewrites every label, so the settings
+			 * menu strings are rebuilt here too rather than only at
+			 * startup. */
+			config.language = (config.language + 1) % UI_LANG_COUNT;
+			ui_set_language((UILanguage)config.language);
+			init_sittings_text();
+			break;
 		default:
 			break;
 		}
@@ -1046,6 +1056,14 @@ ScreenState on_config_event() {
 			if (config.list_row > LIST_ROW_MAX)
 				config.list_row = LIST_ROW_MAX;
 			LIST_ROW = config.list_row;
+			break;
+		case 6:
+			/* Cycling the language rewrites every label, so the settings
+			 * menu strings are rebuilt here too rather than only at
+			 * startup. */
+			config.language = (config.language + 1) % UI_LANG_COUNT;
+			ui_set_language((UILanguage)config.language);
+			init_sittings_text();
 			break;
 		default:
 			break;
@@ -1551,6 +1569,8 @@ int main()
 	{
 		font = vita2d_load_font_file("app0:default.ttf");
 		load_config();
+		/* load_config() chose the language; the labels are built from it. */
+		init_sittings_text();
 
 		if (strcmp(config.list_mode, "icon") == 0) {
 			mainscreen_list_mode = USE_ICON;
@@ -1561,10 +1581,11 @@ int main()
 		init_input();
 
 		confirm_msg = new char[256];
-		sprintf(confirm_msg, "%s 取消(no)    %s 确定(yes)", ICON_CANCEL, ICON_ENTER);
+		sprintf(confirm_msg, "%s %s    %s %s", ICON_CANCEL, ui_text(UI_PROMPT_NO),
+			ICON_ENTER, ui_text(UI_PROMPT_YES));
 		confirm_msg_width = vita2d_font_text_width(font, FONT_SIZE, confirm_msg);
 		close_msg = new char[256];
-		sprintf(close_msg, "%s 关闭(close)", ICON_ENTER);
+		sprintf(close_msg, "%s %s", ICON_ENTER, ui_text(UI_PROMPT_CLOSE));
 		close_msg_width = vita2d_font_text_width(font, FONT_SIZE, close_msg);
 
 		//load_config();

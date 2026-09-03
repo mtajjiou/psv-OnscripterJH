@@ -12,6 +12,7 @@
 
 #include "iniparser.h"
 #include "GUI_Utils.h"
+#include "GUI_Text.h"
 #include "GUI_common.h"
 #include "ZipHandler.h"
 
@@ -152,6 +153,7 @@ DEFAULT:
 			"version = %d\n"
 			"list_mode = list\n"
 			"use_dpad = true\n"
+			"language = en\n"
 			"[GUI_icon]\n"
 			"row = 4\n"
 			"column = 7\n"
@@ -179,6 +181,12 @@ DEFAULT:
 	}
 	config.list_mode = strdup(iniparser_getstring(ini, "GUI:list_mode", "icon"));
 	config.use_dpad = iniparser_getboolean(ini, "GUI:use_dpad", 0);
+	/* English by default: this fork exists to make the setup understandable
+	 * to someone who does not already know the tool. "zh" restores
+	 * upstream's Chinese labels. */
+	config.language = ui_language_from_name(
+		iniparser_getstring(ini, "GUI:language", "en"));
+	ui_set_language((UILanguage)config.language);
 
 	ICONS_ROW = iniparser_getint(ini, "GUI_icon:row", ICONS_ROW);
 	config.icon_row = ICONS_ROW;
@@ -200,6 +208,7 @@ void save_config() {
 	
 	iniparser_set(ini, "GUI:list_mode", config.list_mode);
 	iniparser_set(ini, "GUI:use_dpad", config.use_dpad ? "true" : "false");
+	iniparser_set(ini, "GUI:language", ui_language_name((UILanguage)config.language));
 	char itc[10];
 	sprintf(itc, "%d", GUI_VERSION);
 	iniparser_set(ini, "GUI:version", itc);

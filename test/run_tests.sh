@@ -38,6 +38,14 @@ ${CC:-cc} -std=c99 -Wall -Wextra -g \
 
 "$work/test_videofmt"
 
+# --- launcher interface text ---------------------------------------------
+${CXX:-c++} -std=c++11 -Wall -Wextra -g \
+  -I"$root/src/onsjh_vitagui" \
+  "$root/test/test_gui_text.cpp" "$root/src/onsjh_vitagui/GUI_Text.cpp" \
+  -o "$work/test_gui_text"
+
+"$work/test_gui_text"
+
 # --- software video decoding ----------------------------------------------
 # Skipped rather than failed on a machine without ffmpeg, but said out loud:
 # a silent skip is how untested code ships.

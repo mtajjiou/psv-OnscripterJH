@@ -78,15 +78,26 @@ public:
 		is_zip = 0;
 		size = 0;
 		path = path_;
-		icon_path = path_ + "/icon.png";
-		SceUID fd = sceIoOpen(char_icon_path(), SCE_O_RDONLY, 0777);
-		if (fd > 0) 
-		{
-			icon = vita2d_load_PNG_file(char_icon_path());
+		/* A cover fetched from vndb comes first, then a hand-placed
+		 * icon.png, then the launcher's own icon.  vndb serves jpeg for
+		 * most covers and png for a few, so both are tried. */
+		icon = NULL;
+		const char *candidates[3] = { "/cover.png", "/cover.jpg", "/icon.png" };
+		for (int c = 0; c < 3 && !icon; c++){
+			string candidate = path_ + candidates[c];
+			SceUID fd = sceIoOpen(candidate.c_str(), SCE_O_RDONLY, 0777);
+			if (fd < 0) continue;
 			sceIoClose(fd);
+
+			icon_path = candidate;
+			if (candidate.length() > 4 &&
+			    candidate.compare(candidate.length() - 4, 4, ".jpg") == 0)
+				icon = vita2d_load_JPEG_file(candidate.c_str());
+			else
+				icon = vita2d_load_PNG_file(candidate.c_str());
 		}
-		else
-		{
+		if (!icon){
+			icon_path = path_ + "/icon.png";
 			icon = vita2d_load_PNG_file("app0:/sce_sys/icon1.png");
 		}
 			

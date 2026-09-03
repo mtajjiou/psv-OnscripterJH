@@ -9,6 +9,8 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <strings.h>   /* strcasecmp, for sorting the list */
+#include <algorithm>    /* std::sort */
 
 #include "iniparser.h"
 #include "GUI_Utils.h"
@@ -224,6 +226,13 @@ void save_config() {
 	fclose(fp);
 }
 
+/* Case-insensitive by the name the player sees. */
+static bool by_display_name(const RomInfo &a, const RomInfo &b) {
+	const string &x = a.name.empty() ? a.path : a.name;
+	const string &y = b.name.empty() ? b.path : b.name;
+	return strcasecmp(x.c_str(), y.c_str()) < 0;
+}
+
 int load_rom_list() {
 
 	string drives[3] = { "ux0:/onsemu" ,"ur0:/onsemu" ,"uma0:/onsemu" };
@@ -242,8 +251,14 @@ int load_rom_list() {
 				file_name = dir.d_name;
 				if (res > 0) {
 					temp = drives[i] + "/" + file_name;
-					if (SCE_S_ISDIR(dir.d_stat.st_mode)) {
-						//printf("%s\n", temp.c_str());
+					/* A card written on a mac or unpacked by a desktop
+					 * tool carries bookkeeping folders -- .Trashes,
+					 * __MACOSX, .Spotlight-V100 -- which are not games
+					 * and should not take up a row. */
+					bool junk = file_name.empty() ||
+						file_name[0] == '.' ||
+						file_name.compare(0, 9, "__MACOSX") == 0;
+					if (SCE_S_ISDIR(dir.d_stat.st_mode) && !junk) {
 						rom_list.push_back(RomInfo(temp));
 					}
 				}
@@ -251,6 +266,11 @@ int load_rom_list() {
 			sceIoDclose(dfd);
 		}
 	}
+
+	/* Alphabetical, so a game keeps its place in the list between runs.
+	 * Directory order is whatever the filesystem happens to return, which
+	 * moves as games are added and removed. */
+	std::sort(rom_list.begin(), rom_list.end(), by_display_name);
 
 	/* Archives waiting in ux0:data/game_zips are listed after the installed
 	 * games, so dropping a .zip on the card is enough to see it here. */

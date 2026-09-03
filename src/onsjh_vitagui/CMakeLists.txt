@@ -41,6 +41,7 @@ add_executable(${PROJECT_NAME}
   GUI_Text.cpp
   GUI_Utils.cpp
   ZipHandler.cpp
+  VndbCovers.cpp
   vitaPackage.cpp
   ./../common/filesystem.cpp
   ./../common/zipreader.c
@@ -53,6 +54,12 @@ target_link_libraries(${PROJECT_NAME}
   # ${CMAKE_CURRENT_BINARY_DIR}/../onsjh/libonsjh_stub.a
   SceLibKernel_stub 
   SceKernelModulemgr_stub
+  # Cover art from vndb.org: https over the console's own net stack.
+  SceHttp_stub
+  SceSsl_stub
+  SceNet_stub
+  SceNetCtl_stub
+  SceSysmodule_stub
   ScePromoterUtil_stub 
   
   vita2d 
@@ -69,6 +76,8 @@ target_link_libraries(${PROJECT_NAME}
   ScePaf_stub_weak 
   SceHid_stub
   freetype
+  # vita2d_load_JPEG_file: most vndb covers are jpeg.
+  jpeg
   # libfreetype.a's ftbzip2 support references BZ2_*; freetype must come
   # before bz2 for static resolution. The engine already links it.
   bz2

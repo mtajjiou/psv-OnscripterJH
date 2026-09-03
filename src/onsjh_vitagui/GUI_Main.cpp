@@ -36,6 +36,7 @@
 #include "vitaPackage.h"
 #include "filesystem.h"
 #include "ZipHandler.h"
+#include "VndbCovers.h"
 
 #include "GUI_common.h"
 #include "build_version.h"
@@ -383,6 +384,10 @@ void draw_appinfo(ScreenState state, int choose) {
 		RomInfo::to_char(ui_text(UI_BTN_INSTALL)), FONT_SIZE,
 		(state == SHORTCUT_MODE));
 
+	draw_button(APPINFO_BUTTON_LEFT, APPINFO_BUTTON_TOP(4),
+		APPINFO_BUTTON_WIDTH, APPINFO_BUTTON_HEIGHT,
+		RomInfo::to_char(ui_text(UI_BTN_COVER)), FONT_SIZE,
+		state == COVER_CONFIRM);
 	draw_button(APPINFO_BUTTON_LEFT, APPINFO_BUTTON_TOP(3),
 		APPINFO_BUTTON_WIDTH, APPINFO_BUTTON_HEIGHT,
 		RomInfo::to_char("comming soon"), FONT_SIZE,
@@ -543,6 +548,9 @@ void draw_alert(char *msg, int fontsize) {
  * callback, so the bar moves and CIRCLE stays responsive without the
  * launcher needing a worker thread.
  */
+/* What the last cover fetch had to say, shown by COVER_DONE. */
+static char cover_result_message[256] = { '\0' };
+
 static ZipInstallProgress install_progress;
 static ZipInstallStatus  install_status = ZIP_INSTALL_OK;
 static char install_message[512];
@@ -715,6 +723,15 @@ void draw_screen(ScreenState state, int curr, int choose, int slot) {
 		break;
 	case SHORTCUT_WAIT:
 		draw_alert((char*)ui_text(UI_MAKE_PACKAGE_RUN), FONT_SIZE);
+		break;
+	case COVER_CONFIRM:
+		draw_message((char*)ui_text(UI_COVER_ASK), choose, FONT_SIZE);
+		break;
+	case COVER_RUN:
+		draw_alert((char*)ui_text(UI_COVER_RUN), FONT_SIZE);
+		break;
+	case COVER_DONE:
+		draw_alert(cover_result_message, FONT_SIZE);
 		break;
 	case SHORTCUT_DONE_MODE:
 		draw_alert((char*)ui_text(UI_MAKE_PACKAGE_OK), FONT_SIZE);
@@ -1107,6 +1124,7 @@ ScreenState on_appinfo_button_event(point p) {
 	static rectangle restore_button_area = APPINFO_BUTTON_AREA(1);
 	static rectangle delete_button_area = APPINFO_BUTTON_AREA(2);
 	static rectangle reset_button_area = APPINFO_BUTTON_AREA(3);
+	static rectangle cover_button_area = APPINFO_BUTTON_AREA(4);
 	if (IS_TOUCHED(backup_button_area, p)) {
 		return START_MODE;
 	}
@@ -1121,6 +1139,10 @@ ScreenState on_appinfo_button_event(point p) {
 
 	if (IS_TOUCHED(reset_button_area, p)) {
 		return DELETE_MODE;
+	}
+
+	if (IS_TOUCHED(cover_button_area, p)) {
+		return COVER_CONFIRM;
 	}
 
 	return UNKNOWN;
@@ -1184,6 +1206,8 @@ ScreenState on_appinfo_event_with_dpad() {
 			return SHORTCUT_MODE;
 		case 3:
 			return DELETE_MODE;
+		case 4:
+			return COVER_CONFIRM;
 		}
 	}
 	return UNKNOWN;
@@ -1339,6 +1363,25 @@ ScreenState on_alert_event(ScreenState state) {
 
 int  game_delete(int choose) {
 	return 1;
+}
+
+/* Fetching blocks for as long as the request takes; COVER_RUN is drawn
+ * before this is called, so the screen says what is happening.  The list is
+ * not rebuilt here -- the caller reloads it, which is what picks up the new
+ * image. */
+int game_cover(int choose) {
+	if (choose < 0 || choose >= (int)rom_list.size()) return 0;
+	if (rom_list[choose].is_zip) return 0;
+
+	char saved[512];
+	VndbResult result = vndb_fetch_cover(rom_list[choose].char_name(),
+					     rom_list[choose].char_path(),
+					     saved, sizeof(saved));
+
+	snprintf(cover_result_message, sizeof(cover_result_message), "%s",
+		 vndb_result_text(result));
+
+	return result == VNDB_OK;
 }
 
 void  game_start(int choose) {
@@ -1527,6 +1570,19 @@ int mainloop() {
 				else
 					new_state = SHORTCUT_FAIL_MODE;
 				break;
+			case COVER_CONFIRM:
+				new_state = on_message_event(choose, game_cover, COVER_RUN,
+							    PRINT_APPINFO, PRINT_APPINFO, 1);
+				break;
+			case COVER_RUN:
+				game_cover(choose);
+				new_state = COVER_DONE;
+				break;
+			case COVER_DONE:
+				on_alert_event(PRINT_APPINFO);
+				/* Reload so the cover that was just written is the icon
+				 * the list draws. */
+				return 1;
 			case SHORTCUT_DONE_MODE:
 				new_state = on_alert_event(PRINT_APPINFO);
 				break;

@@ -59,6 +59,7 @@ enum UIStringId {
     UI_BTN_START,
     UI_BTN_CONFIG,
     UI_BTN_INSTALL,
+    UI_BTN_COVER,
     UI_PROMPT_NO,
     UI_PROMPT_YES,
     UI_PROMPT_CLOSE,
@@ -71,6 +72,15 @@ enum UIStringId {
     UI_MAKE_PACKAGE_RUN,
     UI_MAKE_PACKAGE_OK,
     UI_MAKE_PACKAGE_FAIL,
+
+    /* Cover art from vndb */
+    UI_COVER_ASK,
+    UI_COVER_RUN,
+    UI_COVER_OK,
+    UI_COVER_NOT_FOUND,
+    UI_COVER_NO_NET,
+    UI_COVER_FAIL,
+    UI_COVER_WRITE_FAIL,
 
     /* Long text */
     UI_HELP,

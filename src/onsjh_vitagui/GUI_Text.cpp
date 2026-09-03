@@ -49,6 +49,7 @@ const char *g_strings[UI_STRING_COUNT][UI_LANG_COUNT] = {
     /* UI_BTN_START          */ { "start",                  "启动" },
     /* UI_BTN_CONFIG         */ { "config",                 "设置" },
     /* UI_BTN_INSTALL        */ { "install",                "安装" },
+    /* UI_BTN_COVER          */ { "cover",                  "封面" },
     /* UI_PROMPT_NO          */ { "no",                     "取消" },
     /* UI_PROMPT_YES         */ { "yes",                    "确定" },
     /* UI_PROMPT_CLOSE       */ { "close",                  "关闭" },
@@ -64,6 +65,19 @@ const char *g_strings[UI_STRING_COUNT][UI_LANG_COUNT] = {
     /* UI_MAKE_PACKAGE_OK    */ { "Bubble created.",        "快捷启动气泡生成完毕！" },
     /* UI_MAKE_PACKAGE_FAIL  */ { "Could not create the bubble.",
                                   "快捷启动气泡生成失败..." },
+
+    /* UI_COVER_ASK          */ { "Look this game up on vndb.org and fetch its cover?",
+                                  "\xE4\xBB\x8E vndb.org \xE8\x8E\xB7\xE5\x8F\x96\xE6\x9C\xAC\xE6\xB8\xB8\xE6\x88\x8F\xE7\x9A\x84\xE5\xB0\x81\xE9\x9D\xA2\xEF\xBC\x9F" },
+    /* UI_COVER_RUN          */ { "Asking vndb.org...",
+                                  "\xE6\xAD\xA3\xE5\x9C\xA8\xE8\xAF\xB7\xE6\xB1\x82 vndb.org..." },
+    /* UI_COVER_OK           */ { "Cover saved.",           "\xE5\xB0\x81\xE9\x9D\xA2\xE5\xB7\xB2\xE4\xBF\x9D\xE5\xAD\x98" },
+    /* UI_COVER_NOT_FOUND    */ { "vndb.org has no cover under that name.",
+                                  "vndb.org \xE4\xB8\x8A\xE6\xB2\xA1\xE6\x9C\x89\xE8\xBF\x99\xE4\xB8\xAA\xE5\x90\x8D\xE7\xA7\xB0" },
+    /* UI_COVER_NO_NET       */ { "No network connection.", "\xE6\xB2\xA1\xE6\x9C\x89\xE7\xBD\x91\xE7\xBB\x9C\xE8\xBF\x9E\xE6\x8E\xA5" },
+    /* UI_COVER_FAIL         */ { "Could not reach vndb.org.",
+                                  "\xE6\x97\xA0\xE6\xB3\x95\xE8\xBF\x9E\xE6\x8E\xA5 vndb.org" },
+    /* UI_COVER_WRITE_FAIL   */ { "The cover could not be saved.",
+                                  "\xE5\xB0\x81\xE9\x9D\xA2\xE4\xBF\x9D\xE5\xAD\x98\xE5\xA4\xB1\xE8\xB4\xA5" },
 
     /* UI_HELP */
     { "In-game controls\n\n"

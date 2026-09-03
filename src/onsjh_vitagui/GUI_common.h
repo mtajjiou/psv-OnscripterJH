@@ -85,7 +85,7 @@
 #define APPINFO_BUTTONS_WIDTH       (int)((APPINFO_PANEL_WIDTH / 2) - (APPINFO_PANEL_PADDING * 2))
 #define APPINFO_BUTTONS_HEIGHT      (int)((APPINFO_PANEL_HEIGHT / 2) - (APPINFO_PANEL_PADDING * 2))
 
-#define APPINFO_BUTTON              4
+#define APPINFO_BUTTON              5
 #define APPINFO_BUTTON_MARGIN       5
 #define APPINFO_BUTTON_WIDTH        (int)(APPINFO_BUTTONS_WIDTH - (APPINFO_BUTTON_MARGIN * 2))
 #define APPINFO_BUTTON_HEIGHT       (int)((APPINFO_BUTTONS_HEIGHT - (APPINFO_BUTTON_MARGIN * (APPINFO_BUTTON + 1))) / APPINFO_BUTTON)
@@ -180,6 +180,10 @@ typedef enum {
 	SHORTCUT_WAIT,
 	SHORTCUT_DONE_MODE,
 	SHORTCUT_FAIL_MODE,
+	/* Fetching a cover from vndb: ask, run, then report. */
+	COVER_CONFIRM,
+	COVER_RUN,
+	COVER_DONE,
 } ScreenState;
 typedef enum {
 	USE_ICON = 1,

@@ -23,6 +23,10 @@
  */
 
 #include "ScriptParser.h"
+
+extern "C" {
+#include "crashreport.h"
+}
 #include "Utils.h"
 #ifdef USE_BUILTIN_LAYER_EFFECTS
 #include "builtin_layer.h"
@@ -676,6 +680,18 @@ void ScriptParser::errorAndExit( const char *str, const char *reason )
             if (j > 0) { line[j] = '\0'; utils::printError("       | %s\n", line); }
         }
     }
+
+    /* The log has all of the above; the report has the little that a bug
+     * report needs and nothing else, which is what someone can actually be
+     * asked to send. */
+    {
+        char why[192];
+        snprintf(why, sizeof(why), "parse error at %s:%d [%s]%s%s",
+                 current_label_info.name, current_line, str,
+                 reason ? "; " : "", reason ? reason : "");
+        crash_write(why);
+    }
+
     exit(-1);
 }
 
@@ -714,6 +730,11 @@ void ScriptParser::setCurrentLabel( const char *label )
     current_label_info = script_h.lookupLabel( label );
     current_line = script_h.getLineByAddress( current_label_info.start_address );
     script_h.setCurrent( current_label_info.start_address );
+
+    /* Where the game has got to, for the report a crash leaves behind.  A
+     * label is a scene, so this is a handful of writes a minute rather than
+     * one per line. */
+    crash_set_position( current_label_info.name, current_line );
 }
 
 void ScriptParser::readToken()

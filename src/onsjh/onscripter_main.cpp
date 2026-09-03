@@ -31,8 +31,16 @@
 #include "encoding_detect.h"
 #include "build_version.h"
 
+#if defined(PSV)
+/* Beside the logs, which is where someone reporting a bug is already
+ * looking, and where the launcher's log viewer can reach them. */
+#define CRASH_MARKER_FILE "ux0:data/onsemu/session.txt"
+#define CRASH_REPORT_FILE "ux0:data/onsemu/crash.txt"
+#endif
+
 extern "C" {
 #include "logfile.h"
+#include "crashreport.h"
 }
 
 ONScripter ons;
@@ -393,6 +401,20 @@ extern "C"
         // Parse options
         argv++;
         parseOption(argc - 1, argv);
+
+#if defined(PSV)
+        /* A run that ended in a crash left its marker behind; turn it into
+         * a report before starting a new session over the top of it.  This
+         * is the only thing that catches a hard crash: nothing of ours runs
+         * at the time one happens. */
+        if (crash_previous_was_unclean(CRASH_MARKER_FILE)) {
+            if (crash_promote_marker(CRASH_MARKER_FILE, CRASH_REPORT_FILE))
+                utils::printInfo("crash: the previous run did not exit cleanly; "
+                                 "report written to %s\n", CRASH_REPORT_FILE);
+        }
+        crash_begin(CRASH_MARKER_FILE, CRASH_REPORT_FILE, ONS_BUILD_STRING,
+                    ons.getArchivePath() ? ons.getArchivePath() : "(none)");
+#endif
         /* What the launcher actually handed over.  An option that never
          * arrives and an option that arrives but does nothing look the same
          * from the outside, and this is the line that tells them apart.

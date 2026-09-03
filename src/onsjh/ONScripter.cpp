@@ -25,6 +25,10 @@
 
 #include "ONScripter.h"
 #include "Utils.h"
+
+extern "C" {
+#include "crashreport.h"
+}
 #include "coding2utf16.h"
 #include "encoding_detect.h"
 #ifdef USE_FONTCONFIG
@@ -1610,6 +1614,10 @@ int ONScripter::refreshMode()
 void ONScripter::quit()
 {
     saveAll();
+
+    /* Reaching here is what "finished properly" means, so the marker a
+     * crash would have been read from is removed. */
+    crash_end();
 
 #ifdef USE_CDROM
     if ( cdrom_info ){

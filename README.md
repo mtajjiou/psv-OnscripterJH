@@ -237,7 +237,7 @@ harmless.
 - [x] **Log Viewer** — In-app logs accessible from menu
 - [x] **Recovery Options** — Retry, skip, or fallback actions
 - [x] **Corruption Detection** — CRC checked per entry during extraction
-- [ ] **Crash Reporter** — Saves error logs for debugging
+- [x] **Crash Reporter** — Saves error logs for debugging
 
 ### Performance & Optimization
 - [ ] **Lazy Loading** — Loads game list asynchronously

@@ -1058,11 +1058,24 @@ void draw_formats_screen() {
  * The end of the log is what matters, so the view starts at the bottom and
  * scrolls up from there.
  */
-static int  log_view_which = 0;    /* 0 engine, 1 launcher */
+static int  log_view_which = 0;    /* 0 engine, 1 launcher, 2 last crash */
+#define LOG_VIEW_PAGES 3
 static int  log_view_scroll = 0;   /* lines from the bottom */
 
 static const char *log_view_path() {
-	return log_view_which ? LAUNCHER_LOG_FILE : ENGINE_LOG_FILE;
+	switch (log_view_which) {
+	case 1:  return LAUNCHER_LOG_FILE;
+	case 2:  return CRASH_REPORT_FILE;
+	default: return ENGINE_LOG_FILE;
+	}
+}
+
+static const char *log_view_name() {
+	switch (log_view_which) {
+	case 1:  return ui_text(UI_LOG_LAUNCHER);
+	case 2:  return ui_text(UI_LOG_CRASH);
+	default: return ui_text(UI_LOG_ENGINE);
+	}
 }
 
 void draw_log_screen() {
@@ -1096,9 +1109,7 @@ void draw_log_screen() {
 	/* Which log, how big it is, and where in it we are looking. */
 	char title[128];
 	const long size = log_size(log_view_path());
-	snprintf(title, sizeof(title), "%s  %ld bytes",
-		 log_view_which ? ui_text(UI_LOG_LAUNCHER) : ui_text(UI_LOG_ENGINE),
-		 size);
+	snprintf(title, sizeof(title), "%s  %ld bytes", log_view_name(), size);
 	th_text(left + padding, top + padding + TH_FONT_M, TH_TEXT, TH_FONT_M,
 		title);
 
@@ -1168,8 +1179,8 @@ ScreenState on_log_event() {
 			return UNKNOWN;
 		}
 		if (btn & SCE_CTRL_SQUARE) {
-			log_view_which = !log_view_which;
-			log_view_scroll = 0;   /* the end of the other one */
+			log_view_which = (log_view_which + 1) % LOG_VIEW_PAGES;
+			log_view_scroll = 0;   /* the end of the next one */
 			return UNKNOWN;
 		}
 		if (btn & SCE_CTRL_CANCEL || btn & SCE_CTRL_ENTER) {

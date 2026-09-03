@@ -80,6 +80,7 @@ enum UIStringId {
     UI_LOG_EMPTY,
     UI_LOG_ENGINE,
     UI_LOG_LAUNCHER,
+    UI_LOG_CRASH,
     UI_PROMPT_SWITCH,
 
     /* What to offer after an install fails */

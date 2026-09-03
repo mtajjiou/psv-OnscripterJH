@@ -71,6 +71,7 @@ const char *g_strings[UI_STRING_COUNT][UI_LANG_COUNT] = {
                                   "日志为空。请先开启\"写入调试日志\"，\n然后重新运行游戏。" },
     /* UI_LOG_ENGINE         */ { "engine",                  "引擎" },
     /* UI_LOG_LAUNCHER       */ { "launcher",                "启动器" },
+    /* UI_LOG_CRASH          */ { "last crash",              "崩溃报告" },
     /* UI_PROMPT_SWITCH      */ { "other log",               "切换日志" },
 
     /* UI_RETRY              */ { "retry",                   "重试" },

@@ -29,6 +29,10 @@
 #include <strings.h>
 
 #include "DirectReader.h"
+
+extern "C" {
+#include "crashreport.h"
+}
 #include "Utils.h"
 #include "coding2utf16.h"
 
@@ -345,6 +349,10 @@ size_t DirectReader::getFileLength( const char *file_name )
 
 size_t DirectReader::getFile( const char *file_name, unsigned char *buffer, int *location )
 {
+    /* Kept in memory only: a write per file open would be a write per
+     * image, and what matters is the last one before it stopped. */
+    crash_set_file( file_name );
+
     int compression_type;
     size_t len, c, total = 0;
     FILE *fp = getFileHandle( file_name, compression_type, &len );

@@ -62,6 +62,14 @@ ${CC:-cc} -std=c99 -Wall -Wextra -g \
 
 "$work/test_logtail" "$work"
 
+# --- crash report ---------------------------------------------------------
+${CC:-cc} -std=c99 -Wall -Wextra -g \
+  -I"$root/src/common" \
+  "$root/test/test_crashreport.c" "$root/src/common/crashreport.c" \
+  -o "$work/test_crashreport"
+
+"$work/test_crashreport" "$work"
+
 # --- game metadata cache --------------------------------------------------
 ${CC:-cc} -std=c99 -Wall -Wextra -g \
   -I"$root/src/common" \

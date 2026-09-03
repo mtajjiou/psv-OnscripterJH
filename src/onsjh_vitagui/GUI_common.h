@@ -132,6 +132,8 @@
 /* Where each binary writes what it prints, when logging is on. */
 #define LAUNCHER_LOG_FILE "ux0:data/onsemu/launcher.log"
 #define ENGINE_LOG_FILE   "ux0:data/onsemu/onsjh.log"
+/* Written by the engine when it stops: what it was doing at the time. */
+#define CRASH_REPORT_FILE "ux0:data/onsemu/crash.txt"
 /* Arguments handed to the engine.
  *
  * The five the settings can produce, --root and its path, --touch-mode and

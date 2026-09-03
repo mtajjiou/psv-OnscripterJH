@@ -59,6 +59,55 @@
 
 extern vita2d_font *font;
 
+/* --- button glyphs ----------------------------------------------------
+ *
+ * The face buttons, drawn rather than written: the font's box-drawing
+ * characters read as punctuation next to the words they belong with.  White
+ * with the shape in the alpha channel, so they take the colour of whatever
+ * they sit in.  See script/make_button_glyphs.py.
+ */
+#define TH_GLYPH_SOURCE 32   /* the pngs are 32x32 */
+
+extern vita2d_texture *th_glyph_circle;
+extern vita2d_texture *th_glyph_cross;
+extern vita2d_texture *th_glyph_square;
+extern vita2d_texture *th_glyph_triangle;
+/* Which of the two confirms is a system setting; these follow it. */
+extern vita2d_texture *th_glyph_enter;
+extern vita2d_texture *th_glyph_cancel;
+
+void th_load_glyphs();
+void th_glyph(vita2d_texture *glyph, int x, int baseline, int size,
+              unsigned int color);
+/* A glyph and its label, drawn together.  Returns how wide it was. */
+int  th_hint(int x, int baseline, vita2d_texture *glyph, const char *label,
+             unsigned int color, int size);
+int  th_hint_width(vita2d_texture *glyph, const char *label, int size);
+
+/* --- motion -----------------------------------------------------------
+ *
+ * Everything that moves does it the same way: a value chases a target by a
+ * fraction of the remaining distance each frame.  It is frame-rate bound,
+ * which on a console that draws at a fixed 60Hz is exactly what is wanted,
+ * and it needs no clock, no tweens and no state beyond the value itself.
+ */
+static inline float th_ease(float current, float target, float rate)
+{
+    float next = current + (target - current) * rate;
+    /* Stop rather than approach forever, so a finished animation costs
+     * nothing and lands exactly where it was going. */
+    if (next > target - 0.35f && next < target + 0.35f) return target;
+    return next;
+}
+
+/* A colour at a different alpha, for fading something in. */
+static inline unsigned int th_alpha(unsigned int color, float amount)
+{
+    unsigned int a = (unsigned int)((float)((color >> 24) & 0xFF) * amount);
+    if (amount <= 0.0f) a = 0;
+    return (color & 0x00FFFFFF) | (a << 24);
+}
+
 /* A filled block with its corners nipped off.  vita2d has no rounded
  * rectangle, and four small notches read as a rounded card at this size
  * while costing four more rectangles of the colour behind it. */

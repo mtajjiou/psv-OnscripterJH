@@ -42,6 +42,7 @@ add_executable(${PROJECT_NAME}
   GUI_Utils.cpp
   ZipHandler.cpp
   VndbCovers.cpp
+  GUI_Theme.cpp
   vitaPackage.cpp
   ./../common/filesystem.cpp
   ./../common/zipreader.c

@@ -87,6 +87,12 @@ set(VITA_PACK_ARGS
   -a ${CMAKE_CURRENT_SOURCE_DIR}/asset/logo.png=sce_sys/livearea/contents/logo.png
   -a ${CMAKE_CURRENT_SOURCE_DIR}/asset/startup.png=sce_sys/livearea/contents/startup.png
   -a ${CMAKE_CURRENT_SOURCE_DIR}/asset/template.xml=sce_sys/livearea/contents/template.xml 
+  # The face-button glyphs the launcher draws its hints with; see
+  # script/make_button_glyphs.py, which produced them.
+  -a ${CMAKE_CURRENT_SOURCE_DIR}/asset/btn_circle.png=btn_circle.png
+  -a ${CMAKE_CURRENT_SOURCE_DIR}/asset/btn_cross.png=btn_cross.png
+  -a ${CMAKE_CURRENT_SOURCE_DIR}/asset/btn_square.png=btn_square.png
+  -a ${CMAKE_CURRENT_SOURCE_DIR}/asset/btn_triangle.png=btn_triangle.png
 )
 set(VITA_PACK_ARGS ${VITA_PACK_ARGS} 
   -a ${CMAKE_CURRENT_BINARY_DIR}/src/onsjh/onsjh.self=onsjh.bin)

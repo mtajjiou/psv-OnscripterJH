@@ -55,8 +55,13 @@ const char *g_strings[UI_STRING_COUNT][UI_LANG_COUNT] = {
     /* UI_PROMPT_NO          */ { "no",                     "取消" },
     /* UI_PROMPT_YES         */ { "yes",                    "确定" },
     /* UI_PROMPT_CLOSE       */ { "close",                  "关闭" },
-    /* UI_FOOTER_HINTS       */ { "L settings   R help   Select about   |  %d/%d",
-                                  "L 设置菜单   R 查看帮助   Select 关于   |  %d/%d" },
+    /* The footer is drawn as button glyphs with these labels beside them,
+     * so the hints are the words alone now.  What is left of the old line
+     * is the position, which is still a format. */
+    /* UI_FOOTER_HINTS       */ { "%d / %d",                "%d / %d" },
+    /* UI_HINT_SETTINGS      */ { "settings",               "设置" },
+    /* UI_HINT_HELP          */ { "help",                   "帮助" },
+    /* UI_HINT_ABOUT         */ { "about",                  "关于" },
 
     /* UI_INSTALLING         */ { "Installing...",          "安装中..." },
     /* UI_NOT_IMPLEMENTED    */ { "[not implemented yet]",  "[暂未开放的功能]" },

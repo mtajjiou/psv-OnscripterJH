@@ -107,6 +107,45 @@ static void cycle_sitting(int slot)
 /* One game in the grid: its cover filling a card, with the name on a band
  * across the bottom.  The old grid drew the image letterboxed inside its box
  * and no name at all, which for a shelf of games is the wrong way round. */
+/* Where the selection ring is, and where it is heading.
+ *
+ * The ring is not drawn by the card that owns it: the cards would overdraw
+ * each other's rings, and the ring has to move between them rather than
+ * jump.  Each card that is selected leaves its rectangle here, and the ring
+ * is drawn after the grid, having moved part of the way there. */
+static float ring_x, ring_y, ring_w, ring_h;
+static int   ring_target_x, ring_target_y, ring_target_w, ring_target_h;
+static bool  ring_visible = false;
+static bool  ring_settled = false;
+
+static void ring_aim(int x, int y, int w, int h) {
+	ring_target_x = x; ring_target_y = y;
+	ring_target_w = w; ring_target_h = h;
+	ring_visible = true;
+}
+
+/* Called once per frame, after the cards are drawn. */
+static void ring_draw() {
+	if (!ring_visible) return;
+
+	if (!ring_settled) {
+		/* First appearance lands where it belongs rather than flying in
+		 * from the corner it was left at. */
+		ring_x = ring_target_x; ring_y = ring_target_y;
+		ring_w = ring_target_w; ring_h = ring_target_h;
+		ring_settled = true;
+	}
+	else {
+		const float rate = 0.38f;
+		ring_x = th_ease(ring_x, (float)ring_target_x, rate);
+		ring_y = th_ease(ring_y, (float)ring_target_y, rate);
+		ring_w = th_ease(ring_w, (float)ring_target_w, rate);
+		ring_h = th_ease(ring_h, (float)ring_target_h, rate);
+	}
+
+	th_focus((int)ring_x, (int)ring_y, (int)ring_w, (int)ring_h);
+}
+
 void draw_icon(int curr, int row, int col) {
 	const int x = ICON_LEFT(col);
 	const int y = ICON_TOP(row);
@@ -145,16 +184,18 @@ void draw_icon(int curr, int row, int col) {
 			TH_BG, TH_FONT_S, ".zip");
 	}
 
-	if (selected) th_focus(x, y, w, h);
+	if (selected) ring_aim(x, y, w, h);
 }
 
 void draw_icons(int curr) {
 	vita2d_draw_rectangle(ITEMS_PANEL_LEFT, ITEMS_PANEL_TOP,
 		ITEMS_PANEL_WIDTH, ITEMS_PANEL_HEIGHT, TH_BG);
 
+	ring_visible = false;
 	for (int i = 0; i + curr < rom_list.size() && i < (ICONS_COL * ICONS_ROW); i++) {
 		draw_icon(i + curr, i / ICONS_COL, i % ICONS_COL);
 	}
+	ring_draw();
 }
 
 /* One game as a row: thumbnail, name, and where it lives underneath in the
@@ -175,7 +216,7 @@ void draw_list_row(int curr, int row) {
 	rom_list[curr].touch_area.bottom = y + h;
 
 	th_card(x, y, w, h, selected ? TH_SURFACE_HI : TH_SURFACE, TH_BG);
-	if (selected) vita2d_draw_rectangle(x, y, TH_RING, h, TH_ACCENT);
+	if (selected) ring_aim(x, y, w, h);
 
 	/* A square of cover at the left, cropped to fill it. */
 	const int thumb = h - 8;
@@ -207,9 +248,11 @@ void draw_list(int curr) {
 	vita2d_draw_rectangle(ITEMS_PANEL_LEFT, ITEMS_PANEL_TOP,
 		ITEMS_PANEL_WIDTH, ITEMS_PANEL_HEIGHT, TH_BG);
 
+	ring_visible = false;
 	for (int i = 0; i + curr < rom_list.size() && i < LIST_ROW; i++) {
 		draw_list_row(i + curr, i);
 	}
+	ring_draw();
 }
 
 void draw_title() {
@@ -246,21 +289,26 @@ void draw_help() {
 		return;
 	}
 
-	static char helpbuf[256];
-	snprintf(helpbuf, sizeof(helpbuf), ui_text(UI_FOOTER_HINTS),
-		g_choose + 1, (int)rom_list.size());
+	/* Button, word, gap -- the shoulder buttons have no glyph of their own,
+	 * so they are written, which is how the console writes them too. */
+	int x = TH_PAD;
+	x += th_hint(x, baseline, NULL, "L", TH_TEXT, TH_FONT_S) + 5;
+	x += th_hint(x, baseline, NULL, ui_text(UI_HINT_SETTINGS), TH_TEXT_DIM,
+		     TH_FONT_S) + TH_PAD + 6;
+	x += th_hint(x, baseline, NULL, "R", TH_TEXT, TH_FONT_S) + 5;
+	x += th_hint(x, baseline, NULL, ui_text(UI_HINT_HELP), TH_TEXT_DIM,
+		     TH_FONT_S) + TH_PAD + 6;
+	x += th_hint(x, baseline, NULL, "Select", TH_TEXT, TH_FONT_S) + 5;
+	x += th_hint(x, baseline, NULL, ui_text(UI_HINT_ABOUT), TH_TEXT_DIM,
+		     TH_FONT_S) + TH_PAD + 6;
+	x += th_hint(x, baseline, th_glyph_enter, ui_text(UI_BTN_START),
+		     TH_TEXT_DIM, TH_FONT_S);
 
-	/* The position indicator is the one thing here that changes as you
-	 * move, so it sits on the right on its own rather than at the end of a
-	 * sentence of hints. */
-	char *split = strstr(helpbuf, "|");
-	if (split) {
-		*split = '\0';
-		th_text_right(SCREEN_WIDTH - TH_PAD, baseline, TH_TEXT, TH_FONT_S,
-			split + 1);
-	}
-	th_text(TH_PAD, baseline, TH_TEXT_DIM, TH_FONT_S,
-		th_fit(helpbuf, TH_FONT_S, SCREEN_WIDTH - 200));
+	static char position[32];
+	snprintf(position, sizeof(position), ui_text(UI_FOOTER_HINTS),
+		g_choose + 1, (int)rom_list.size());
+	th_text_right(SCREEN_WIDTH - TH_PAD, baseline, TH_TEXT, TH_FONT_S,
+		position);
 }
 
 /* Flat, with the accent as the pressed state rather than an inverted box. */
@@ -281,6 +329,18 @@ struct config_item {
 	const char *name;
 	const char *value;
 };
+
+/* How far the layer over the library has arrived: 0 when it has just been
+ * opened, 1 once it has settled.  A panel that appears fully formed reads as
+ * a screen swap; one that fades up and lifts the last few pixels reads as
+ * something laid on top of what is still there. */
+static float layer_anim = 0.0f;
+static ScreenState layer_last = UNKNOWN;
+
+static bool state_is_layer(ScreenState state) {
+	return state >= PRINT_APPINFO || state == CONFIG_SCREEN ||
+	       state == HELP_MSG || state == ABOUT_MSG;
+}
 
 /* Where the last dialog was drawn, so a tap can be tested against it.  The
  * box is sized from its text every frame, so recording it keeps the touch
@@ -318,13 +378,17 @@ void draw_config() {
 	/* The settings sit on a card over a dimmed library rather than over a
 	 * black panel, so it is clear they are a layer on top of it. */
 	vita2d_draw_rectangle(0, HEADER_HEIGHT, SCREEN_WIDTH, ITEMS_PANEL_HEIGHT,
-		TH_SCRIM);
+		th_alpha(TH_SCRIM, layer_anim));
 
 	const int panel_w = 560;
 	const int row_h   = 44;
 	const int panel_h = CONFIG_NUM * row_h + TH_PAD * 2 + 34;
 	const int panel_x = (SCREEN_WIDTH - panel_w) / 2;
-	const int panel_y = HEADER_HEIGHT + (ITEMS_PANEL_HEIGHT - panel_h) / 2;
+	/* Settled position, which is what the touch handling is told about;
+	 * the drawing is offset while it arrives so a tap during those few
+	 * frames still lands on the row it looks like it landed on. */
+	const int settled_y = HEADER_HEIGHT + (ITEMS_PANEL_HEIGHT - panel_h) / 2;
+	const int panel_y = settled_y + (int)((1.0f - layer_anim) * 14.0f);
 
 	th_shadow(panel_x, panel_y, panel_w, panel_h);
 	th_card(panel_x, panel_y, panel_w, panel_h, TH_SURFACE, TH_BG);
@@ -362,11 +426,11 @@ void draw_config() {
 	}
 
 	/* Where the rows are, for the touch handling. */
-	config_rows_top = first_row;
+	config_rows_top = first_row + (settled_y - panel_y);
 	config_row_height = row_h;
 	config_panel_left = panel_x;
 	config_panel_width = panel_w;
-	config_panel_top = panel_y;
+	config_panel_top = settled_y;
 	config_panel_height = panel_h;
 }
 
@@ -382,9 +446,12 @@ void draw_appinfo_icon(int curr) {
 }
 
 void draw_appinfo(ScreenState state, int choose) {
-	/* The panel sits over a dimmed library, like the settings do. */
+	/* The panel sits over a dimmed library, like the settings do.  It fades
+	 * rather than lifting: its buttons are placed by the layout macros, and
+	 * the touch areas are the same macros, so moving the drawing would put
+	 * the two out of step for as long as it took to arrive. */
 	vita2d_draw_rectangle(0, HEADER_HEIGHT, SCREEN_WIDTH, ITEMS_PANEL_HEIGHT,
-		TH_SCRIM);
+		th_alpha(TH_SCRIM, layer_anim));
 
 	th_card(APPINFO_PANEL_LEFT, APPINFO_PANEL_TOP,
 		APPINFO_PANEL_WIDTH, APPINFO_PANEL_HEIGHT, TH_SURFACE, TH_BG);
@@ -507,7 +574,8 @@ void draw_slots(int index_, int slot) {
 /* Dialogs: a dark card over a dimmed screen, with the two answers written
  * where the box splits for touch -- cancel on the left, confirm on the
  * right, which is also the order the buttons are listed in. */
-static void dialog_box(const char *msg, const char *footer, int fontsize)
+static void dialog_box(const char *msg, const char *no_label,
+                       const char *yes_label, int fontsize)
 {
 	int text_width  = vita2d_font_text_width(font, fontsize, (char *)msg);
 	int text_height = vita2d_font_text_height(font, fontsize, (char *)msg);
@@ -536,16 +604,31 @@ static void dialog_box(const char *msg, const char *footer, int fontsize)
 
 	vita2d_draw_rectangle(left + padding, top + height - 44,
 		width - padding * 2, 1, TH_LINE);
-	th_text_center(left, width, top + height - padding + 6, TH_TEXT_DIM,
-		TH_FONT_S, footer);
+
+	/* The answers, as the buttons that give them.  Laid out from their
+	 * measured width so the pair sits centred whatever the words are. */
+	const int baseline = top + height - padding + 6;
+	int total = th_hint_width(th_glyph_cancel, no_label, TH_FONT_S);
+	if (yes_label) total += TH_PAD * 2 +
+		th_hint_width(th_glyph_enter, yes_label, TH_FONT_S);
+
+	int x = left + (width - total) / 2;
+	x += th_hint(x, baseline, th_glyph_cancel, no_label, TH_TEXT_DIM,
+		     TH_FONT_S);
+	if (yes_label) {
+		x += TH_PAD * 2;
+		th_hint(x, baseline, th_glyph_enter, yes_label, TH_TEXT, TH_FONT_S);
+	}
 }
 
 void draw_message(char *msg, int choose, int fontsize) {
-	dialog_box(msg, confirm_msg, fontsize);
+	/* Two answers: cancel on the left, confirm on the right -- the order
+	 * the touch handling splits the box in. */
+	dialog_box(msg, ui_text(UI_PROMPT_NO), ui_text(UI_PROMPT_YES), fontsize);
 }
 
 void draw_alert(char *msg, int fontsize) {
-	dialog_box(msg, close_msg, fontsize);
+	dialog_box(msg, ui_text(UI_PROMPT_CLOSE), NULL, fontsize);
 }
 
 /*
@@ -676,6 +759,14 @@ ScreenState run_install(int choose) {
 }
 
 void draw_screen(ScreenState state, int curr, int choose, int slot) {
+
+	/* Opening a layer restarts it; moving between two layers does not, so
+	 * stepping from the game panel into its settings does not blink. */
+	bool layered = state_is_layer(state);
+	if (!layered) layer_anim = 0.0f;
+	else if (!state_is_layer(layer_last)) layer_anim = 0.0f;
+	else layer_anim = th_ease(layer_anim * 100.0f, 100.0f, 0.34f) / 100.0f;
+	layer_last = state;
 
 	vita2d_start_drawing();
 	vita2d_clear_screen();
@@ -1830,13 +1921,16 @@ int main()
 			mainscreen_list_mode = USE_LIST;
 		}
 		init_input();
+		/* After init_input(), which decides which button confirms. */
+		th_load_glyphs();
 
+		/* The dialogs draw their answers as button glyphs now; these are
+		 * kept only because the install screen still prints one. */
 		confirm_msg = new char[256];
-		sprintf(confirm_msg, "%s %s    %s %s", ICON_CANCEL, ui_text(UI_PROMPT_NO),
-			ICON_ENTER, ui_text(UI_PROMPT_YES));
+		sprintf(confirm_msg, "%s", ui_text(UI_PROMPT_YES));
 		confirm_msg_width = vita2d_font_text_width(font, FONT_SIZE, confirm_msg);
 		close_msg = new char[256];
-		sprintf(close_msg, "%s %s", ICON_ENTER, ui_text(UI_PROMPT_CLOSE));
+		sprintf(close_msg, "%s", ui_text(UI_PROMPT_CLOSE));
 		close_msg_width = vita2d_font_text_width(font, FONT_SIZE, close_msg);
 
 		//load_config();

@@ -65,6 +65,9 @@ enum UIStringId {
     UI_PROMPT_YES,
     UI_PROMPT_CLOSE,
     UI_FOOTER_HINTS,
+    UI_HINT_SETTINGS,
+    UI_HINT_HELP,
+    UI_HINT_ABOUT,
 
     /* Install and package flow */
     UI_INSTALLING,

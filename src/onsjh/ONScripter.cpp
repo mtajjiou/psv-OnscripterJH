@@ -447,6 +447,24 @@ int ONScripter::textDisplaySpeed()
  * asks -- and they need different fixes.  One line at the first character
  * separates them: if it never appears, the text is not coming through here
  * at all. */
+/* Said the first time a character is drawn with no wait at all.
+ *
+ * This is the other half of the answer: the engine can be told a speed,
+ * agree to it, and still never use it, because a character drawn while
+ * skipping or with ctrl held is drawn instantly.  A stuck modifier looks
+ * exactly like a setting that does nothing. */
+void ONScripter::reportInstantText()
+{
+	static bool said = false;
+
+	if (said) return;
+	said = true;
+	utils::printInfo("text: a character was drawn with no wait "
+	                 "(skip=%d ctrl=%d) -- text speed does not apply while "
+	                 "either is on\n",
+	                 skip_mode, ctrl_pressed_status ? 1 : 0);
+}
+
 int ONScripter::reportTextSpeed()
 {
 	const int wait = textDisplaySpeed();
@@ -1483,10 +1501,12 @@ void ONScripter::loadEnvData()
     /* Said once, into the log the player can turn on: when the setting
      * appears to do nothing, this is the line that says whether the engine
      * was told, what it decided, and how long a character now takes. */
-    utils::printInfo("text speed: no=%d (%dms) chosen=%d default=%d force=%d\n",
-                     text_speed_no, default_text_speed[text_speed_no],
-                     chosen_text_speed_no, default_text_speed_no,
-                     force_text_speed ? 1 : 0);
+    /* No milliseconds here: default_text_speed[] is filled from the
+     * script's define section, which has not run yet, so the number would
+     * read 0 and mean nothing.  The first-character line below has it. */
+    utils::printInfo("text speed: no=%d chosen=%d default=%d force=%d\n",
+                     text_speed_no, chosen_text_speed_no,
+                     default_text_speed_no, force_text_speed ? 1 : 0);
     utils::printInfo("volumes: music=%d se=%d voice=%d\n",
                      music_volume, se_volume, voice_volume);
 }

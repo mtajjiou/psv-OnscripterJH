@@ -133,15 +133,11 @@ bool ZipHandler::ensureParents(const std::string &base,
     return true;
 }
 
-std::vector<ZipEntryInfo> ZipHandler::scanZipFolder() {
-    std::vector<ZipEntryInfo> zips;
-
-    /* Create the drop folder so the first-run instructions are true even
-     * before the user has put anything in it. */
-    ensureDirectory(GAME_ZIP_FOLDER);
-
-    SceUID dfd = sceIoDopen(GAME_ZIP_FOLDER);
-    if (dfd < 0) return zips;
+/* Collect the .zip files directly inside one directory. */
+void ZipHandler::scanOneFolder(const char *folder,
+                               std::vector<ZipEntryInfo> &zips) {
+    SceUID dfd = sceIoDopen(folder);
+    if (dfd < 0) return;
 
     SceIoDirent dir;
     int res;
@@ -153,7 +149,7 @@ std::vector<ZipEntryInfo> ZipHandler::scanZipFolder() {
         if (!hasZipSuffix(dir.d_name)) continue;
 
         ZipEntryInfo info;
-        info.path = std::string(GAME_ZIP_FOLDER) + "/" + dir.d_name;
+        info.path = std::string(folder) + "/" + dir.d_name;
         info.display_name = dir.d_name;
         info.display_name.erase(info.display_name.size() - 4);  /* ".zip" */
         info.file_size = (uint64_t)dir.d_stat.st_size;
@@ -161,6 +157,25 @@ std::vector<ZipEntryInfo> ZipHandler::scanZipFolder() {
     } while (res > 0);
 
     sceIoDclose(dfd);
+}
+
+std::vector<ZipEntryInfo> ZipHandler::scanZipFolder() {
+    std::vector<ZipEntryInfo> zips;
+
+    /* Create the drop folder so the first-run instructions are true even
+     * before the user has put anything in it. */
+    ensureDirectory(GAME_ZIP_FOLDER);
+    scanOneFolder(GAME_ZIP_FOLDER, zips);
+
+    /* Also pick up archives dropped straight into the game folders. That is
+     * where people naturally put them -- next to the games they already
+     * have -- and an archive sitting there was previously just invisible. */
+    static const char *game_dirs[] = {
+        "ux0:onsemu", "ur0:onsemu", "uma0:onsemu"
+    };
+    for (size_t i = 0; i < sizeof(game_dirs) / sizeof(game_dirs[0]); i++)
+        scanOneFolder(game_dirs[i], zips);
+
     return zips;
 }
 

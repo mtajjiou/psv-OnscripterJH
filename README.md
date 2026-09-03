@@ -34,14 +34,24 @@ settings persistence, storage/save management, in-app help.
 - PSVita with VitaShell or similar homebrew launcher
 - Vitasdk for building (see Build section)
 
+This fork installs as **ONS Easy Setup** (title id `ONSEASY01`), separate
+from upstream's *Vita Ons* (`VITAONSJH`), so both can be installed at once
+and there is no doubt about which one you launched.
+
+> Downloading the CI build gives you `VitaOns-vpk.zip`, because GitHub
+> always wraps artifacts in a zip. Unzip it first and install the
+> `VitaOns.vpk` inside — handing the outer zip to VitaShell fails with
+> "incompatible or no content found".
+
 ### Quick Start
 
 1. **Drop game ZIPs in `ux0:data/game_zips/`** (the launcher creates this
-   folder on first run)
+   folder on first run) — or just put them straight in `ux0:onsemu/`
+   beside your existing games; both are scanned.
    ```
-   ux0:/data/game_zips/
-   ├── game1.zip
-   └── game2.zip
+   ux0:/data/game_zips/        ux0:/onsemu/
+   ├── game1.zip               ├── game2.zip      <- also found
+   └── ...                     └── already_installed_game/
    ```
 
 2. **Launch the app** — the list shows installed games first, then any
@@ -173,13 +183,13 @@ sh ./script/install_vitasdk.sh [vitasdkdir]
 # Build the enhanced version
 sh ./script/build_vitavpk.sh vpk [vitasdkdir]
 
-# Output: build/vita_onscripter.vpk
+# Output: build/VitaOns.vpk
 ```
 
 ### Deploy
 ```bash
 # Send to PSVita over FTP
-sh ./script/send_vitavpk.sh ./../build/vita_onscripter.vpk 10.2.12.6 VITAONSJH
+sh ./script/send_vitavpk.sh ./../build/VitaOns.vpk 10.2.12.6 ONSEASY01
 ```
 
 ### Tests

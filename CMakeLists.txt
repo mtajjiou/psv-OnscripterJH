@@ -15,8 +15,11 @@ project(VitaOns)
 include("${VITASDK}/share/vita.cmake" REQUIRED)
 
 ## Configuration options for this app
-set(VITA_APP_NAME "Vita Ons")
-set(VITA_TITLEID  "VITAONSJH")
+# A distinct title id from upstream's VITAONSJH, so this fork installs
+# alongside the original instead of replacing it -- and so there is no
+# doubt about which build is running.
+set(VITA_APP_NAME "ONS Easy Setup")
+set(VITA_TITLEID  "ONSEASY01")
 set(VITA_VERSION  "00.51")
 
 # use this for custom target denpends

@@ -58,9 +58,9 @@ typedef bool (*ZipProgressCallback)(const ZipInstallProgress &progress,
 
 class ZipHandler {
 public:
-    /* List the .zip files sitting in GAME_ZIP_FOLDER, newest listing order
-     * following the filesystem.  Creates the folder if it is missing so
-     * users have somewhere obvious to drop archives. */
+    /* List the .zip files waiting to be installed: those in
+     * GAME_ZIP_FOLDER, which is created if missing, and those dropped
+     * straight into the ux0:/ur0:/uma0: onsemu game folders. */
     static std::vector<ZipEntryInfo> scanZipFolder();
 
     /* Folder name this archive would install to, under GAME_INSTALL_FOLDER.
@@ -88,6 +88,8 @@ public:
     static const char *statusMessage(ZipInstallStatus status);
 
 private:
+    static void scanOneFolder(const char *folder,
+                              std::vector<ZipEntryInfo> &zips);
     static bool ensureDirectory(const std::string &path);
     static bool ensureParents(const std::string &base,
                               const std::string &relative);

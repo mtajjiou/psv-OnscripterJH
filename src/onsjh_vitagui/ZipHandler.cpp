@@ -64,10 +64,17 @@ int writeChunk(void *user, const void *data, size_t len) {
     return 0;
 }
 
+/* Case-insensitive ".zip" test. Spelled out rather than using strcasecmp,
+ * which the vitasdk toolchain does not declare via <string.h>. */
 bool hasZipSuffix(const char *name) {
     size_t len = strlen(name);
     if (len < 4) return false;
-    return strcasecmp(name + len - 4, ".zip") == 0;
+
+    const char *ext = name + len - 4;
+    return ext[0] == '.' &&
+           (ext[1] == 'z' || ext[1] == 'Z') &&
+           (ext[2] == 'i' || ext[2] == 'I') &&
+           (ext[3] == 'p' || ext[3] == 'P');
 }
 
 /* The engine opens game paths with plain byte strings and chokes on names
@@ -190,8 +197,8 @@ uint64_t ZipHandler::installedSize(const std::string &zip_path) {
 }
 
 uint64_t ZipHandler::freeSpace() {
-    uint64_t max_size = 0, free_size = 0, unk = 0;
-    if (sceAppMgrGetDevInfo("ux0:", &max_size, &free_size, &unk) < 0)
+    uint64_t max_size = 0, free_size = 0;
+    if (sceAppMgrGetDevInfo("ux0:", &max_size, &free_size) < 0)
         return 0;
     return free_size;
 }

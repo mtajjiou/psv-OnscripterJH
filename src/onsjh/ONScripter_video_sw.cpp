@@ -96,11 +96,14 @@ int ONScripter::playSoftwareVideo(const char *path, bool click_flag,
         return 0;
     }
 
-    /* Letterbox into the same rectangle the hardware path draws into, so a
-     * software-decoded video sits where a hardware one would. */
-    SDL_Rect dst_rect = { (960 - screen_device_width) / 2,
-                          (544 - screen_device_height) / 2,
-                          screen_device_width, screen_device_height };
+    /* Letterbox into the same rectangle the engine draws the game into, so
+     * a software-decoded video sits where a hardware one would.  Full
+     * screen fills the window; otherwise it is the device rectangle, at the
+     * shift flushDirect uses rather than a centring of my own. */
+    SDL_Rect dst_rect = { 0, 0, 960, 544 };
+    if (!fullscreen_mode)
+        dst_rect = (SDL_Rect){ screen_device_shiftx, screen_device_shifty,
+                               screen_device_width, screen_device_height };
 
     bool hooked = false;
     if (info.has_audio && audio_open_flag) {
@@ -241,16 +244,11 @@ int ONScripter::playSoftwareVideo(const char *path, bool click_flag,
     videodec_close(dec);
     SDL_DestroyTexture(frame_tex);
 
-    /* Put the engine's own texture back the way the hardware path leaves
-     * it, so the scene after the video draws from the accumulated screen
-     * rather than the last video frame. */
-    if (texture) SDL_DestroyTexture(texture);
-    texture = SDL_CreateTextureFromSurface(renderer, accumulation_surface);
-    if (texture) {
-        SDL_RenderClear(renderer);
-        SDL_RenderCopy(renderer, texture, NULL, NULL);
-        SDL_RenderPresent(renderer);
-    }
+    /* Let the engine repaint, so the scene after the video comes from the
+     * accumulated screen rather than the last video frame -- and at the
+     * engine's own size, which a copy to the whole window would stretch. */
+    SDL_Rect whole = screen_rect;
+    flushDirect(whole, refreshMode());
 
     return ret;
 }

@@ -103,12 +103,25 @@ void ONScripter::showControlsOverlay()
     if (panel_tex == NULL) return;
     SDL_SetTextureBlendMode(panel_tex, SDL_BLENDMODE_BLEND);
 
-    SDL_Rect dst_rect = { (960 - panel_w) / 2, (544 - panel_h) / 2,
+    /* The game is not drawn to the whole window -- flushDirect letterboxes
+     * it into the device rectangle unless the player asked for full screen.
+     * Copying it to NULL instead would stretch the image for as long as the
+     * list was up. */
+    SDL_Rect game_rect = { 0, 0, 960, 544 };
+    if (!fullscreen_mode)
+        game_rect = (SDL_Rect){ screen_device_shiftx, screen_device_shifty,
+                                screen_device_width, screen_device_height };
+
+    if (panel_w > game_rect.w) panel_w = game_rect.w;
+    if (panel_h > game_rect.h) panel_h = game_rect.h;
+
+    SDL_Rect dst_rect = { game_rect.x + (game_rect.w - panel_w) / 2,
+                          game_rect.y + (game_rect.h - panel_h) / 2,
                           panel_w, panel_h };
 
     /* The game stays exactly as it was underneath. */
     SDL_RenderClear(renderer);
-    if (texture) SDL_RenderCopy(renderer, texture, NULL, NULL);
+    if (texture) SDL_RenderCopy(renderer, texture, NULL, &game_rect);
     SDL_RenderCopy(renderer, panel_tex, NULL, &dst_rect);
     SDL_RenderPresent(renderer);
 
@@ -140,11 +153,9 @@ void ONScripter::showControlsOverlay()
 
     SDL_DestroyTexture(panel_tex);
 
-    /* Put the screen back from the accumulated image rather than from what
-     * happens to be on the renderer. */
-    if (texture) SDL_DestroyTexture(texture);
-    texture = SDL_CreateTextureFromSurface(renderer, accumulation_surface);
-    SDL_RenderClear(renderer);
-    if (texture) SDL_RenderCopy(renderer, texture, NULL, NULL);
-    SDL_RenderPresent(renderer);
+    /* Hand the screen back to the engine's own repaint, so the image
+     * returns at the size and position the engine puts it at -- and so the
+     * texture it draws from is the one it created, still streaming. */
+    SDL_Rect whole = screen_rect;
+    flushDirect(whole, refreshMode());
 }

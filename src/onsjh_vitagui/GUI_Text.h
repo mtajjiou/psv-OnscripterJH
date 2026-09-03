@@ -81,6 +81,13 @@ enum UIStringId {
     UI_LOG_ENGINE,
     UI_LOG_LAUNCHER,
     UI_PROMPT_SWITCH,
+
+    /* What to offer after an install fails */
+    UI_RETRY,
+    UI_RETRY_RESUME,
+    UI_CLEAN_RETRY,
+    UI_FAIL_SPACE_HINT,
+    UI_FAIL_RESUME_HINT,
     UI_SPEED_SLOW,
     UI_SPEED_NORMAL,
     UI_SPEED_FAST,

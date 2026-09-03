@@ -1207,6 +1207,25 @@ static char saves_result_message[160] = { '\0' };
 static ZipInstallProgress install_progress;
 static ZipInstallStatus  install_status = ZIP_INSTALL_OK;
 static char install_message[512];
+
+/* What can be done about the failure that just happened.
+ *
+ * An install that fails is not always a dead end, and which way out exists
+ * depends on why it failed: a card that filled up can be cleared, a write
+ * that failed can be tried again -- and, since an interrupted install
+ * leaves a journal, trying again carries on from where it stopped rather
+ * than starting the archive over.  An archive with no game in it, on the
+ * other hand, will fail the same way however many times it is asked. */
+enum InstallRecovery {
+	RECOVER_NONE = 0,   /* nothing to offer; just say what happened */
+	RECOVER_RETRY,
+	RECOVER_CLEAN_RETRY /* clear temporary files first, then retry */
+};
+static InstallRecovery install_recovery = RECOVER_NONE;
+/* Whether that retry would carry on rather than start over.  Worked out
+ * once when the install fails, not while the dialog is on screen: it reads
+ * the archive, and the dialog is drawn every frame. */
+static bool install_resumable = false;
 static char install_confirm_message[512];
 /* What the delete prompt says, built when the button is pressed so the
  * folder is measured once rather than every frame, and what it said
@@ -1373,6 +1392,8 @@ ScreenState run_install(int choose) {
 	install_progress.bytes_total = 0;
 	install_progress.percent     = 0;
 	install_progress.current_file.clear();
+	install_recovery = RECOVER_NONE;
+	install_resumable = false;
 
 	/* Timed, so the next archive can be given an estimate based on what
 	 * this card and this console actually managed. */
@@ -1392,8 +1413,44 @@ ScreenState run_install(int choose) {
 		return INSTALL_DONE;
 	}
 
-	snprintf(install_message, sizeof(install_message), "%s",
+	/* Say what happened, then what can be done about it. */
+	int written = snprintf(install_message, sizeof(install_message), "%s",
 		ZipHandler::statusMessage(install_status));
+	if (written < 0) written = 0;
+
+	switch (install_status) {
+	case ZIP_INSTALL_NO_SPACE:
+		install_recovery = RECOVER_CLEAN_RETRY;
+		snprintf(install_message + written, sizeof(install_message) - written,
+			 "%s", ui_text(UI_FAIL_SPACE_HINT));
+		break;
+	case ZIP_INSTALL_WRITE_FAILED:
+	case ZIP_INSTALL_CANCELED:
+		install_recovery = RECOVER_RETRY;
+		break;
+	default:
+		/* A corrupt archive, one with no game in it, or a folder that is
+		 * already there: all of them fail the same way next time. */
+		install_recovery = RECOVER_NONE;
+		break;
+	}
+
+	/* An install that got part way leaves a journal, so a retry resumes.
+	 * Worth saying: "retry" otherwise reads as "start the half hour
+	 * again". */
+	if (install_recovery != RECOVER_NONE) {
+		const uint64_t done = ZipHandler::resumableBytes(rom_list[choose].path);
+		install_resumable = (done > 0);
+		if (done > 0) {
+			char done_str[16];
+			getSizeString(done_str, done);
+			written = (int)strlen(install_message);
+			snprintf(install_message + written,
+				 sizeof(install_message) - written,
+				 ui_text(UI_FAIL_RESUME_HINT), done_str);
+		}
+	}
+
 	return INSTALL_FAIL;
 }
 
@@ -1472,7 +1529,19 @@ void draw_screen(ScreenState state, int curr, int choose, int slot) {
 		break;
 	case INSTALL_DONE:
 	case INSTALL_FAIL:
-		draw_alert(install_message, FONT_SIZE);
+		if (install_recovery == RECOVER_NONE) {
+			draw_alert(install_message, FONT_SIZE);
+		}
+		else {
+			/* Close on the left, the way out on the right, which is
+			 * the order every other dialog here reads in. */
+			dialog_box(install_message, ui_text(UI_PROMPT_CLOSE),
+				   install_recovery == RECOVER_CLEAN_RETRY
+					   ? ui_text(UI_CLEAN_RETRY)
+					   : (install_resumable ? ui_text(UI_RETRY_RESUME)
+							        : ui_text(UI_RETRY)),
+				   FONT_SIZE);
+		}
 		break;
 	case SETTING_MODE:
 		draw_slots(choose, -1);
@@ -2872,7 +2941,21 @@ int mainloop() {
 				 * archive row is re-evaluated. */
 				return 1;
 			case INSTALL_FAIL:
-				on_alert_event(MAIN_SCREEN);
+				if (install_recovery == RECOVER_NONE) {
+					on_alert_event(MAIN_SCREEN);
+					return 1;
+				}
+				new_state = on_message_event(choose, NULL, INSTALL_RUN,
+							     MAIN_SCREEN, MAIN_SCREEN, 1);
+				if (new_state == INSTALL_RUN) {
+					/* Clearing first is the whole point of the
+					 * offer when the card filled up; the
+					 * install then resumes from its journal. */
+					if (install_recovery == RECOVER_CLEAN_RETRY)
+						run_clean();
+					install_recovery = RECOVER_NONE;
+					break;
+				}
 				return 1;
 			case CONFIG_SCREEN:
 				new_state = on_config_event();

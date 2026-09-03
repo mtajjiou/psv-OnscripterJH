@@ -25,6 +25,7 @@
 #include <psp2/io/stat.h> 
 #include <psp2/ctrl.h>
 #include <psp2/kernel/processmgr.h>
+#include <psp2/kernel/clib.h>
 #include <stdio.h>
 #include <string.h>
 #include <vita2d.h>
@@ -1523,8 +1524,10 @@ int main()
 		NSC_VERSION / 100, NSC_VERSION % 100);
 	/* Which build this actually is.  The launcher prints it too, since a
 	 * crash before the engine starts leaves this as the only marker in the
-	 * log of what was installed. */
-	printf("%s\n", ONS_BUILD_STRING);
+	 * log of what was installed.  sceClibPrintf rather than printf: the
+	 * launcher's stdout does not reach the console log, as its existing
+	 * banner above demonstrates by never appearing there. */
+	sceClibPrintf("%s\n", ONS_BUILD_STRING);
 
 	sceIoMkdir("ux0:data/onsemu", 0777);
 	vita2d_init();

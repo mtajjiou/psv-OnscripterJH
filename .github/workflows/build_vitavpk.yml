@@ -16,7 +16,12 @@ jobs:
   install_vitasdk:
     runs-on: ubuntu-latest # default batch, powershell
     steps:
+    # Full history: the version is derived from the commit count, and
+    # checkout's default shallow clone reports 1 for every build, which
+    # made every vpk claim version 01.01.
     - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
     - name: check for a cached vitasdk
       id: check_vitasdk
       uses: actions/cache/restore@v4
@@ -48,7 +53,12 @@ jobs:
     runs-on: ubuntu-latest
     needs: install_vitasdk
     steps:
+    # Full history: the version is derived from the commit count, and
+    # checkout's default shallow clone reports 1 for every build, which
+    # made every vpk claim version 01.01.
     - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
     - name: Setup cmake
       uses: jwlawson/actions-setup-cmake@v2
       with:

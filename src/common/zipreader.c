@@ -46,6 +46,15 @@ struct zip_reader {
     zip_entry *entries;
     int        count;
     uint64_t   total_size;
+    /* The two buffers extraction works through, allocated once with the
+     * reader rather than per entry.  A game is thousands of small files, so
+     * per-entry buffers meant thousands of allocation pairs of 32K and 64K
+     * -- churn that costs nothing to avoid, and that on a console with no
+     * memory to spare is also the thing most likely to fail part way
+     * through an install.  Holding them also keeps the stored path off the
+     * stack, where a 32K frame is a lot to ask of a thread. */
+    unsigned char *in_buf;
+    unsigned char *out_buf;
 };
 
 static uint16_t rd16(const unsigned char *p) {
@@ -238,6 +247,14 @@ zip_reader *zip_open(const char *path, int *err) {
         return NULL;
     }
 
+    z->in_buf  = (unsigned char *)malloc(IN_CHUNK);
+    z->out_buf = (unsigned char *)malloc(OUT_CHUNK);
+    if (!z->in_buf || !z->out_buf) {
+        zip_close(z);
+        if (err) *err = ZIP_ERR_MEMORY;
+        return NULL;
+    }
+
     eocd_pos = find_eocd(z->fp, eocd);
     if (eocd_pos < 0) {
         zip_close(z);
@@ -278,6 +295,8 @@ void zip_close(zip_reader *z) {
     if (!z) return;
     free_entries(z->entries, z->count);
     if (z->fp) fclose(z->fp);
+    free(z->in_buf);
+    free(z->out_buf);
     free(z);
 }
 
@@ -332,11 +351,11 @@ static int seek_to_data(zip_reader *z, const zip_entry *e) {
 
 static int extract_stored(zip_reader *z, const zip_entry *e,
                           zip_write_cb cb, void *user, uLong *crc) {
-    unsigned char buf[IN_CHUNK];
+    unsigned char *buf = z->in_buf;
     uint32_t left = e->compressed_size;
 
     while (left > 0) {
-        size_t want = left < sizeof(buf) ? left : sizeof(buf);
+        size_t want = left < IN_CHUNK ? left : IN_CHUNK;
         size_t got  = fread(buf, 1, want, z->fp);
         if (got != want) return ZIP_ERR_IO;
         *crc = crc32(*crc, buf, (uInt)got);
@@ -349,26 +368,17 @@ static int extract_stored(zip_reader *z, const zip_entry *e,
 static int extract_deflated(zip_reader *z, const zip_entry *e,
                             zip_write_cb cb, void *user, uLong *crc) {
     z_stream strm;
-    unsigned char *in, *out;
+    unsigned char *in  = z->in_buf;
+    unsigned char *out = z->out_buf;
     uint32_t left = e->compressed_size;
     int rc = ZIP_OK;
     int zret;
 
-    in  = (unsigned char *)malloc(IN_CHUNK);
-    out = (unsigned char *)malloc(OUT_CHUNK);
-    if (!in || !out) {
-        free(in);
-        free(out);
-        return ZIP_ERR_MEMORY;
-    }
+    if (!in || !out) return ZIP_ERR_MEMORY;
 
     memset(&strm, 0, sizeof(strm));
     /* Negative window bits: raw deflate, no zlib header. */
-    if (inflateInit2(&strm, -MAX_WBITS) != Z_OK) {
-        free(in);
-        free(out);
-        return ZIP_ERR_MEMORY;
-    }
+    if (inflateInit2(&strm, -MAX_WBITS) != Z_OK) return ZIP_ERR_MEMORY;
 
     do {
         size_t want, got;
@@ -409,8 +419,6 @@ static int extract_deflated(zip_reader *z, const zip_entry *e,
     } while (1);
 
     inflateEnd(&strm);
-    free(in);
-    free(out);
     return rc;
 }
 

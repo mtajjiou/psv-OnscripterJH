@@ -243,7 +243,7 @@ harmless.
 - [x] **Lazy Loading** — Loads game list asynchronously
 - [x] **Icon Caching** — Pre-cache game icons for faster UI
 - [ ] **Background Tasks** — Extraction happens without blocking UI
-- [ ] **Memory Pooling** — Pre-allocate buffers for ZIP operations
+- [x] **Memory Pooling** — Pre-allocate buffers for ZIP operations
 - [ ] **Parallel Extraction** — Multi-threaded ZIP if PSVita allows
 
 ### Documentation & Help

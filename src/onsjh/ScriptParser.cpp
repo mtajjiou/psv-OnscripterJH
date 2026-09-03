@@ -611,6 +611,35 @@ void ScriptParser::errorAndExit( const char *str, const char *reason )
                  current_label_info.name,
                  current_line,
                  str );
+
+    /* The label and line number alone say where the parser gave up but not
+     * what it choked on, which leaves no way to tell a wrong code page from
+     * an unsupported command from a corrupt script.  Print the token, and
+     * its bytes: a mis-decoded line looks fine as text and wrong in hex. */
+    {
+        const char *tok = script_h.getStringBuffer();
+        if (tok && tok[0]) {
+            char text[128];
+            char hex[160];
+            int i, n;
+
+            for (i = 0; i < (int)sizeof(text) - 1 && tok[i]; i++) {
+                unsigned char c = (unsigned char)tok[i];
+                /* Control bytes would scramble the log; the hex has them. */
+                text[i] = (c >= 0x20 && c != 0x7F) ? (char)c : '.';
+            }
+            text[i] = '\0';
+            n = i;
+
+            hex[0] = '\0';
+            for (i = 0; i < n && i < 24; i++)
+                snprintf(hex + i * 3, sizeof(hex) - (size_t)i * 3, "%02X ",
+                         (unsigned char)tok[i]);
+
+            utils::printError("     offending token: [%s]\n", text);
+            utils::printError("     bytes: %s%s\n", hex, n > 24 ? "..." : "");
+        }
+    }
     exit(-1);
 }
 

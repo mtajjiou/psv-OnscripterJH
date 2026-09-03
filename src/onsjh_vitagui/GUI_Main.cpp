@@ -148,6 +148,15 @@ void draw_icon(int curr, int row, int col) {
 	if (selected) th_focus(x, y, w, h);
 }
 
+void draw_icons(int curr) {
+	vita2d_draw_rectangle(ITEMS_PANEL_LEFT, ITEMS_PANEL_TOP,
+		ITEMS_PANEL_WIDTH, ITEMS_PANEL_HEIGHT, TH_BG);
+
+	for (int i = 0; i + curr < rom_list.size() && i < (ICONS_COL * ICONS_ROW); i++) {
+		draw_icon(i + curr, i / ICONS_COL, i % ICONS_COL);
+	}
+}
+
 /* One game as a row: thumbnail, name, and where it lives underneath in the
  * quiet weight.  The selected row is a lighter surface with an accent edge,
  * rather than an inverted block. */

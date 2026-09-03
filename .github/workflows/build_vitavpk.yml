@@ -11,7 +11,7 @@ env:
   VITASDK: /opt/vitasdk
   # Changing install_vitasdk.sh invalidates the cached SDK, so a fix to the
   # install never has to fight a stale cache.
-  VITASDK_CACHE_KEY: vitasdk-2
+  VITASDK_CACHE_KEY: vitasdk-3
 jobs:
   install_vitasdk:
     runs-on: ubuntu-latest # default batch, powershell
@@ -22,11 +22,18 @@ jobs:
       uses: actions/cache/restore@v4
       with:
         path: ${{ env.VITASDK }}
-        key: ${{ env.VITASDK_CACHE_KEY }}-${{ hashFiles('script/install_vitasdk.sh') }}
+        key: ${{ env.VITASDK_CACHE_KEY }}-${{ hashFiles('script/install_vitasdk.sh', 'script/build_ffmpeg.sh') }}
         lookup-only: true
     - name: install vitasdk
       if: steps.check_vitasdk.outputs.cache-hit != 'true'
       run: cd ./script && bash install_vitasdk.sh ${{ env.VITASDK }}
+    # The packaged ffmpeg decodes no MPEG-1/2, H.264 or WMV video, so we
+    # build one that does. It goes into the same tree, under the same cache
+    # key, so a change to either script rebuilds both rather than pairing a
+    # new engine with a stale library.
+    - name: build ffmpeg with the video decoders
+      if: steps.check_vitasdk.outputs.cache-hit != 'true'
+      run: cd ./script && bash build_ffmpeg.sh ${{ env.VITASDK }}
     # Saved explicitly, and only on success: a failed install used to be
     # cached anyway, so every later run restored a broken SDK and skipped
     # reinstalling it.
@@ -35,7 +42,7 @@ jobs:
       uses: actions/cache/save@v4
       with:
         path: ${{ env.VITASDK }}
-        key: ${{ env.VITASDK_CACHE_KEY }}-${{ hashFiles('script/install_vitasdk.sh') }}
+        key: ${{ env.VITASDK_CACHE_KEY }}-${{ hashFiles('script/install_vitasdk.sh', 'script/build_ffmpeg.sh') }}
 
   build_vitaonsjh:
     runs-on: ubuntu-latest
@@ -50,7 +57,7 @@ jobs:
       uses: actions/cache/restore@v4
       with:
         path: ${{ env.VITASDK }}
-        key: ${{ env.VITASDK_CACHE_KEY }}-${{ hashFiles('script/install_vitasdk.sh') }}
+        key: ${{ env.VITASDK_CACHE_KEY }}-${{ hashFiles('script/install_vitasdk.sh', 'script/build_ffmpeg.sh') }}
         fail-on-cache-miss: true
     - name: build vpk
       run: cd ./script && bash build_vitavpk.sh vpk

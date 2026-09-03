@@ -5,6 +5,7 @@ Written out at test time rather than committed so the repository does not
 carry binary blobs that are hard to review.
 """
 import os
+import shutil
 import sys
 import zipfile
 
@@ -76,5 +77,49 @@ def build(out_dir):
     with open(os.path.join(out_dir, "notazip.bin"), "wb") as f:
         f.write(b"this is definitely not a zip archive" * 10)
 
+def build_video(out_dir):
+    """Encodes one second of colour bars in each format a game might ship.
+
+    25fps because MPEG-1 only allows the broadcast frame rates.
+
+    Skipped when ffmpeg is unavailable; the decoder tests skip with it.
+    """
+    import subprocess
+
+    if shutil.which("ffmpeg") is None:
+        return False
+
+    common = ["-y", "-loglevel", "error",
+              "-f", "lavfi", "-i", "testsrc=size=160x120:rate=25:duration=1",
+              "-f", "lavfi", "-i", "sine=frequency=440:duration=1"]
+
+    jobs = [
+        # MPEG-1 in a program stream: what an old visual novel's .mpg is.
+        (["-c:v", "mpeg1video", "-c:a", "mp2", "-f", "mpeg"], "clip_mpeg1.mpg"),
+        # DivX-era AVI.
+        (["-c:v", "mpeg4", "-c:a", "mp3", "-f", "avi"], "clip_mpeg4.avi"),
+        # H.264 in MP4: the one the hardware accepts.
+        (["-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac",
+          "-f", "mp4"], "clip_h264.mp4"),
+    ]
+    for args, name in jobs:
+        subprocess.run(["ffmpeg"] + common + ["-shortest"] + args +
+                       [os.path.join(out_dir, name)], check=True)
+
+    # A video with no audio track at all still has to play.
+    subprocess.run(["ffmpeg", "-y", "-loglevel", "error",
+                    "-f", "lavfi", "-i", "testsrc=size=160x120:rate=25:duration=1",
+                    "-c:v", "mpeg1video", "-f", "mpeg",
+                    os.path.join(out_dir, "clip_silent.mpg")], check=True)
+
+    # ...and an audio-only file is not a video, which is its own error.
+    subprocess.run(["ffmpeg", "-y", "-loglevel", "error",
+                    "-f", "lavfi", "-i", "sine=frequency=440:duration=1",
+                    os.path.join(out_dir, "audio_only.wav")], check=True)
+    return True
+
+
 if __name__ == "__main__":
-    build(sys.argv[1] if len(sys.argv) > 1 else ".")
+    out = sys.argv[1] if len(sys.argv) > 1 else "."
+    build(out)
+    build_video(out)

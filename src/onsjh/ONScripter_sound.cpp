@@ -383,13 +383,12 @@ int ONScripter::playAVC(const char *filename, bool click_flag, bool loop_flag)
 
     if (!video_format_is_playable(fmt))
     {
-        utils::printError(
-            "video: [%s] is %s, which this hardware cannot decode.\n"
-            "       Skipping it and continuing.  To play it, convert the file to\n"
-            "       H.264 video with AAC audio in an MP4 and save it next to the\n"
-            "       original as [%s.mp4]; it will be used automatically.\n",
-            path, video_format_name(fmt), basename);
-        return ret;
+        /* The hardware decoder would fail here without saying why, so take
+         * the software path instead of skipping the scene. */
+        utils::printInfo("video: [%s] is %s, which the hardware decoder will "
+                         "not take; decoding it in software\n",
+                         path, video_format_name(fmt));
+        return playSoftwareVideo(path, click_flag, loop_flag);
     }
 
     // initialize the video player

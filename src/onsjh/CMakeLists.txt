@@ -34,6 +34,7 @@ link_directories(
 add_executable(${PROJECT_NAME}
   ./../common/vita_sbrk.c # use this to solve heap alloc restriction
   ./../common/videofmt.c
+  ./../common/videodec.c
   AnimationInfo.cpp
   DirectReader.cpp
   DirtyRect.cpp
@@ -54,6 +55,7 @@ add_executable(${PROJECT_NAME}
   ONScripter_rmenu.cpp
   ONScripter_sound.cpp
   ONScripter_text.cpp
+  ONScripter_video_sw.cpp
   Parallel.cpp
   SarReader.cpp
   ScriptHandler.cpp
@@ -73,6 +75,15 @@ add_executable(${PROJECT_NAME}
 )
 
 target_link_libraries(${PROJECT_NAME}
+  # Software video decoding for the formats sceAvPlayer refuses. Order
+  # matters for static archives: format pulls codec, both pull util, and
+  # the codecs draw on the audio and image scalers.
+  avformat
+  avcodec
+  swscale
+  swresample
+  avutil
+
   SDL2_mixer
   SDL2_ttf
   SDL2_image

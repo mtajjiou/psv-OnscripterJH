@@ -1,6 +1,8 @@
 #!/bin/sh
 # Host-side tests for the portable pieces of the easy-setup work.
 # Needs a host compiler, zlib headers and python3 (to build the fixtures).
+# The video decoder tests additionally need ffmpeg's development libraries
+# and the ffmpeg command line, and are skipped when those are absent.
 #
 #   sh test/run_tests.sh
 set -e
@@ -12,6 +14,7 @@ trap 'rm -rf "$work"' EXIT
 
 python3 "$root/test/make_fixtures.py" "$work"
 
+# --- zip reader -----------------------------------------------------------
 ${CC:-cc} -std=c99 -Wall -Wextra -g \
   -I"$root/src/common" \
   "$root/test/test_zipreader.c" "$root/src/common/zipreader.c" \
@@ -19,6 +22,7 @@ ${CC:-cc} -std=c99 -Wall -Wextra -g \
 
 "$work/test_zipreader" "$work"
 
+# --- script encoding detection --------------------------------------------
 ${CXX:-c++} -std=c++11 -Wall -Wextra -g \
   -I"$root/src/onsjh" \
   "$root/test/test_encoding_detect.cpp" "$root/src/onsjh/encoding_detect.cpp" \
@@ -26,9 +30,28 @@ ${CXX:-c++} -std=c++11 -Wall -Wextra -g \
 
 "$work/test_encoding_detect" "$work"
 
+# --- video container sniffing ---------------------------------------------
 ${CC:-cc} -std=c99 -Wall -Wextra -g \
   -I"$root/src/common" \
   "$root/test/test_videofmt.c" "$root/src/common/videofmt.c" \
   -o "$work/test_videofmt"
 
 "$work/test_videofmt"
+
+# --- software video decoding ----------------------------------------------
+# Skipped rather than failed on a machine without ffmpeg, but said out loud:
+# a silent skip is how untested code ships.
+if pkg-config --exists libavformat libavcodec libswscale libswresample 2>/dev/null \
+   && [ -f "$work/clip_mpeg1.mpg" ]; then
+  ${CC:-cc} -std=c99 -Wall -Wextra -g \
+    -I"$root/src/common" \
+    "$root/test/test_videodec.c" "$root/src/common/videodec.c" \
+    $(pkg-config --cflags --libs libavformat libavcodec libswscale libswresample libavutil) \
+    -o "$work/test_videodec"
+
+  "$work/test_videodec" "$work"
+else
+  echo
+  echo "SKIPPED test_videodec: needs ffmpeg development libraries and the"
+  echo "ffmpeg command line to build the video fixtures."
+fi

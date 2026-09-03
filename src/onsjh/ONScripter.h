@@ -751,6 +751,8 @@ private:
     int playMIDI(bool loop_flag);
     
     int playAVC(const char *filename, bool click_flag, bool loop_flag=false);
+    /* Decodes in software what the hardware player will not take. */
+    int playSoftwareVideo(const char *path, bool click_flag, bool loop_flag=false);
     int playMPEG(const char *filename, bool click_flag, bool loop_flag=false);
     int playAVI( const char *filename, bool click_flag );
     enum { WAVE_PLAY        = 0,

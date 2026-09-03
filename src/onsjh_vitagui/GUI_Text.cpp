@@ -76,7 +76,8 @@ const char *g_strings[UI_STRING_COUNT][UI_LANG_COUNT] = {
       "R         toggle skipping\n"
       "left right    backlog\n"
       "up down      move the cursor\n"
-      "left stick    same as the d-pad\n",
+      "left stick    same as the d-pad\n"
+      "hold Select   show this list in game\n",
 
       "使用帮助(游戏内)\n\n"
       "○　　　　确认/继续\n"
@@ -87,7 +88,8 @@ const char *g_strings[UI_STRING_COUNT][UI_LANG_COUNT] = {
       "Ｒ　　　　开启/停止快进\n"
       "←→　　　回想模式选择\n"
       "↑↓　　　选项/按钮选择\n"
-      "左摇杆　　等同方向键\n" },
+      "左摇杆　　等同方向键\n"
+      "长按 Select　游戏中显示本列表\n" },
 
     /* UI_ABOUT */
     { "About ONS Easy Setup\n\n"

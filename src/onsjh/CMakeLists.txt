@@ -62,6 +62,7 @@ add_executable(${PROJECT_NAME}
   ONScripter_sound.cpp
   ONScripter_text.cpp
   ONScripter_video_sw.cpp
+  ONScripter_help.cpp
   Parallel.cpp
   SarReader.cpp
   ScriptHandler.cpp

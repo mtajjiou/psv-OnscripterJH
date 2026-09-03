@@ -753,6 +753,9 @@ private:
     int playAVC(const char *filename, bool click_flag, bool loop_flag=false);
     /* Decodes in software what the hardware player will not take. */
     int playSoftwareVideo(const char *path, bool click_flag, bool loop_flag=false);
+    /* Draws the button list over the game and waits for a press.  Changes
+     * no engine state; see ONScripter_help.cpp. */
+    void showControlsOverlay();
     int playMPEG(const char *filename, bool click_flag, bool loop_flag=false);
     int playAVI( const char *filename, bool click_flag );
     enum { WAVE_PLAY        = 0,

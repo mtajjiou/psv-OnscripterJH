@@ -26,6 +26,7 @@
 #include "ONScripter.h"
 #include "Utils.h"
 #if defined(LINUX)
+#include <string.h>   /* memset, for the synthesised select event */
 #include <sys/types.h>
 #include <sys/wait.h>
 #endif
@@ -131,6 +132,19 @@ ONS_Key transKey(ONS_Key key)
 #endif
     return key;
 }
+
+#if defined(PSV)
+/* Raw joystick button numbers, matching the table in transJoystickButton
+ * below.  Select is the only button with no in-game meaning worth losing:
+ * it cycles the text speed, which is one press to put back. */
+#define PSV_JOY_SELECT 10
+#define CONTROLS_HOLD_MS 600
+
+/* Select is held back until its release so that a hold can mean something
+ * else without a tap also doing it. */
+static Uint32 select_pressed_at = 0;
+static bool   select_is_down    = false;
+#endif
 
 ONS_Key transJoystickButton(Uint8 button)
 {
@@ -1349,6 +1363,13 @@ void ONScripter::runEventLoop()
             break;
 #endif
           case SDL_JOYBUTTONDOWN:
+#if defined(PSV)
+            if (event.jbutton.button == PSV_JOY_SELECT){
+                select_pressed_at = SDL_GetTicks();
+                select_is_down    = true;
+                break;
+            }
+#endif
             event.key.type = SDL_KEYDOWN;
             event.key.keysym.sym = transJoystickButton(event.jbutton.button);
             if(event.key.keysym.sym == SDLK_UNKNOWN)
@@ -1363,6 +1384,38 @@ void ONScripter::runEventLoop()
             break;
 
           case SDL_JOYBUTTONUP:
+#if defined(PSV)
+            if (event.jbutton.button == PSV_JOY_SELECT){
+                bool held = select_is_down &&
+                    (SDL_GetTicks() - select_pressed_at >= CONTROLS_HOLD_MS);
+                select_is_down = false;
+
+                if (held){
+                    /* Long press: the controls, and nothing else -- the
+                     * text speed is deliberately left alone. */
+                    showControlsOverlay();
+                    break;
+                }
+
+                /* Short press: deliver the press that the down event held
+                 * back, then its release, so select behaves as it always
+                 * has. */
+                SDL_KeyboardEvent ke;
+                memset(&ke, 0, sizeof(ke));
+                ke.keysym.sym = transKey(transJoystickButton(PSV_JOY_SELECT));
+
+                ke.type = SDL_KEYDOWN;
+                ret = keyDownEvent( &ke );
+                if ( btndown_flag ) ret |= keyPressEvent( &ke );
+
+                ke.type = SDL_KEYUP;
+                keyUpEvent( &ke );
+                ret |= keyPressEvent( &ke );
+
+                if (ret) return;
+                break;
+            }
+#endif
             event.key.type = SDL_KEYUP;
             event.key.keysym.sym = transJoystickButton(event.jbutton.button);
             if(event.key.keysym.sym == SDLK_UNKNOWN)

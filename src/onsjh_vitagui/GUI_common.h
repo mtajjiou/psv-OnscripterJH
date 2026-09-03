@@ -131,6 +131,8 @@
 
 #define SITTINGS_FILE "sittings.txt"
 #define SITTINGS_NUM 5
+/* The one setting that is a three-way choice rather than a toggle. */
+#define SITTINGS_ENCODING 4
 
 #define SITTINGS_DEFAULT 8
 #define SITTINGS_RETURN 9

@@ -18,3 +18,10 @@ ${CC:-cc} -std=c99 -Wall -Wextra -g \
   -lz -o "$work/test_zipreader"
 
 "$work/test_zipreader" "$work"
+
+${CXX:-c++} -std=c++11 -Wall -Wextra -g \
+  -I"$root/src/onsjh" \
+  "$root/test/test_encoding_detect.cpp" "$root/src/onsjh/encoding_detect.cpp" \
+  -o "$work/test_encoding_detect"
+
+"$work/test_encoding_detect" "$work"

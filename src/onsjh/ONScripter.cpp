@@ -26,6 +26,7 @@
 #include "ONScripter.h"
 #include "Utils.h"
 #include "coding2utf16.h"
+#include "encoding_detect.h"
 #ifdef USE_FONTCONFIG
 #include <fontconfig/fontconfig.h>
 #endif
@@ -453,6 +454,12 @@ int ONScripter::openScript()
     }
 
     return ScriptParser::openScript();
+}
+
+int ONScripter::guessScriptEncoding()
+{
+    return detectScriptEncoding(script_h.getScriptBuffer(),
+                                (size_t)script_h.getScriptBufferLength());
 }
 
 int ONScripter::init()

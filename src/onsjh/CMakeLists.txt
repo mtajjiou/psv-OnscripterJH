@@ -59,6 +59,7 @@ add_executable(${PROJECT_NAME}
   ScriptParser.cpp
   ScriptParser_command.cpp
   coding2utf16.cpp
+  encoding_detect.cpp
   # conv_shared.cpp
   gbk2utf16.cpp
   onscripter_main.cpp

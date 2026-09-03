@@ -283,8 +283,18 @@ int parseOption(string &cmdstr,int (&cmd)[10],char *cmd_str[10],int flag = 0) {
 					else if (tmp == "textbox") {
 						cmd[3] = 1;
 					}
+					/* Slot 4 is not a toggle but a choice:
+					 * 0 auto (the engine detects), 1 shift-jis,
+					 * 2 gbk.  Older settings files only ever
+					 * contain enc:sjis, which still reads as 1. */
 					else if (tmp == "enc:sjis") {
 						cmd[4] = 1;
+					}
+					else if (tmp == "enc:gbk") {
+						cmd[4] = 2;
+					}
+					else if (tmp == "enc:auto") {
+						cmd[4] = 0;
 					}
 					else {
 						printf(" unknown option %s\n", tmp.c_str());
@@ -330,11 +340,10 @@ int parseOption(string &cmdstr,int (&cmd)[10],char *cmd_str[10],int flag = 0) {
 			index_++;
 		}
 		if (cmd[4]) {
-			cmd_str[index_] = (char*)"--enc:sjis";
+			cmd_str[index_] = (char*)(cmd[4] == 2 ? "--enc:gbk" : "--enc:sjis");
 			cmdstr += " ";
 			cmdstr += cmd_str[index_];
 			index_++;
-
 		}
 			
 		return index_;

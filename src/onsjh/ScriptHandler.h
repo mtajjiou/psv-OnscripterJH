@@ -172,6 +172,12 @@ public:
 
     int  openScript( char *path );
 
+    /* The decrypted script, for code that needs to look at the raw bytes --
+     * the encoding detector does, since nothing in the file says which code
+     * page it was written in. */
+    const char *getScriptBuffer() const { return script_buffer; }
+    int  getScriptBufferLength() const { return script_buffer_length; }
+
     LabelInfo lookupLabel( const char* label );
     LabelInfo lookupLabelNext( const char* label );
     void errorAndExit( const char *str );

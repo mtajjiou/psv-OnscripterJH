@@ -14,6 +14,7 @@ This is an enhanced fork of [YuriSizuku/psv-OnscripterJH](https://github.com/Yur
 - **Safe folder names** — destination names are reduced to ASCII, since the engine cannot open paths containing non-ASCII bytes
 - **Space check** — refuses to start an install that would not fit, keeping a margin free
 - **Clean failures** — a failed or canceled install removes what it wrote; corrupt, zip64, encrypted and script-less archives each report what is actually wrong
+- **Automatic script encoding** — the engine reads the script and decides whether it is Shift-JIS (Japanese) or GBK (Chinese), instead of making you know your game's code page. A Japanese game read as GBK garbles every line and dies with `text cannot be displayed in define section`; that no longer happens by default. The per-game **文字编码 (encoding)** setting is `自动(auto)` out of the box and can be forced to `日文(sjis)` or `中文(gbk)`; on the command line these are `--enc:auto`, `--enc:sjis` and `--enc:gbk`
 
 **Not implemented yet** — see the checklist below:
 game icons from the archive, video format detection, per-game touch presets,

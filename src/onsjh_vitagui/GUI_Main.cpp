@@ -92,7 +92,7 @@ string sittings[] = {
 		"缓存字体 (cache font)",
 		"文字阴影 (text shadow)",
 		"显示文字框 (text box)",
-		"日文游戏 (enc: sjis)",
+		"文字编码 (encoding)",
 		"",
 		"",
 		"",
@@ -100,6 +100,16 @@ string sittings[] = {
 		"返回 (return)"
 };
 DrawListMode mainscreen_list_mode;
+
+/* Advances one setting to its next value.  Everything is a plain on/off
+ * toggle except the encoding, which cycles auto -> sjis -> gbk. */
+static void cycle_sitting(int slot)
+{
+	if (slot == SITTINGS_ENCODING)
+		cmd[slot] = (cmd[slot] + 1) % 3;
+	else
+		cmd[slot] = !cmd[slot];
+}
 
 void draw_icon(int curr, int row, int col) {
 	if (config.use_dpad && row == select_row && col == select_col) 
@@ -439,12 +449,22 @@ void draw_slots(int index_, int slot) {
 			while (tmp.length() < 30)
 				tmp += " ";
 			tmp += "[";
-			tmp += cmd[i] ? "开启(on)" : "关闭(off)";
-			tmp += "]";
-			if (cmd[i])
-				tmp += "●";
-			else
-				tmp += "○";
+			if (i == SITTINGS_ENCODING) {
+				/* Three states, not on/off: the engine guesses by
+				 * default, and the other two force a code page for
+				 * the rare script it cannot tell apart. */
+				tmp += cmd[i] == 1 ? "日文(sjis)"
+					: (cmd[i] == 2 ? "中文(gbk)" : "自动(auto)");
+				tmp += "]";
+			}
+			else {
+				tmp += cmd[i] ? "开启(on)" : "关闭(off)";
+				tmp += "]";
+				if (cmd[i])
+					tmp += "●";
+				else
+					tmp += "○";
+			}
 		}
 		draw_button(SLOT_BUTTON_LEFT, SLOT_BUTTON_TOP(i),
 			SLOT_BUTTON_WIDTH, SLOT_BUTTON_HEIGHT,
@@ -1172,7 +1192,7 @@ ScreenState on_slot_event_with_touch(int &slot) {
 				return PRINT_APPINFO;
 			}
 			else if (slot < SITTINGS_NUM) {
-				cmd[slot] = !cmd[slot];
+				cycle_sitting(slot);
 			}
 			return UNKNOWN;
 		}
@@ -1210,7 +1230,7 @@ ScreenState on_slot_event_with_dpad(int &slot) {
 			return PRINT_APPINFO;
 		}
 		else if (slot < SITTINGS_NUM) {
-			cmd[slot] = !cmd[slot];
+			cycle_sitting(slot);
 		}
 		return UNKNOWN;
 	}

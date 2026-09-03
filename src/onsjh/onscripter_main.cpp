@@ -28,9 +28,15 @@
 #include "gbk2utf16.h"
 #include "sjis2utf16.h"
 #include "version.h"
+#include "encoding_detect.h"
 
 ONScripter ons;
 Coding2UTF16 *coding2utf16 = NULL;
+
+/* Set when --enc:sjis or --enc:gbk was given.  Without one, the script's
+ * encoding is detected from the script itself, which is what a player who
+ * does not know their game's code page needs. */
+static bool coding_chosen_explicitly = false;
 
 #if defined(IOS)
 #import <Foundation/NSArray.h>
@@ -66,7 +72,9 @@ void optionHelp()
     printf( "      --render-font-outline\trender the outline of a text instead of casting a shadow\n");
     printf( "      --edit\t\tenable online modification of the volume and variables when 'z' is pressed\n");
     printf( "      --key-exe file\tset a file (*.EXE) that includes a key table\n");
-    printf( "      --enc:sjis\tuse sjis coding script\n");
+    printf( "      --enc:sjis\tread the script as shift-jis (japanese)\n");
+    printf( "      --enc:gbk\tread the script as gbk (chinese)\n");
+    printf( "      --enc:auto\tdetect the script encoding; the default\n");
     printf( "      --debug:1\t\tprint debug info\n");
     printf( "      --fontcache\tcache default font\n");
     printf( "  -h, --help\t\tshow this help and exit\n");
@@ -198,6 +206,15 @@ void parseOption(int argc, char *argv[]) {
             }
             else if (!strcmp(argv[0]+1, "-enc:sjis")){
                 if (coding2utf16 == NULL) coding2utf16 = new SJIS2UTF16();
+                coding_chosen_explicitly = true;
+            }
+            else if (!strcmp(argv[0]+1, "-enc:gbk")){
+                if (coding2utf16 == NULL) coding2utf16 = new GBK2UTF16();
+                coding_chosen_explicitly = true;
+            }
+            else if (!strcmp(argv[0]+1, "-enc:auto")){
+                /* The default; accepted so a front end can be explicit
+                 * about wanting detection. */
             }
             else if (!strcmp(argv[0]+1, "-debug:1")){
                 ons.setDebugLevel(1);
@@ -333,11 +350,37 @@ extern "C"
             delete[] args;
         }
 
+        /* Something must be in place before the script is read, so start
+         * from GBK as this fork always has.  Detection below replaces it if
+         * the script turns out to disagree. */
         if (coding2utf16 == NULL) coding2utf16 = new GBK2UTF16();
 
         // ----------------------------------------
         // Run ONScripter
         if (ons.openScript()) exit(-1);
+
+        /* The script is decrypted but not yet parsed, so this is the one
+         * moment where the raw bytes are available and swapping the codec
+         * still costs nothing.  Reading a japanese game as GBK (or the
+         * reverse) garbles every line and usually dies at the first piece of
+         * dialogue with "text cannot be displayed in define section". */
+        if (!coding_chosen_explicitly) {
+            int guess = ons.guessScriptEncoding();
+            if (guess == SCRIPT_ENCODING_SJIS) {
+                utils::printInfo("script looks like shift-jis; reading it as japanese "
+                                 "(override with --enc:gbk)\n");
+                delete coding2utf16;
+                coding2utf16 = new SJIS2UTF16();
+            }
+            else if (guess == SCRIPT_ENCODING_GBK) {
+                utils::printInfo("script looks like gbk; reading it as chinese "
+                                 "(override with --enc:sjis)\n");
+            }
+            else {
+                utils::printInfo("script encoding is not clear from its bytes; "
+                                 "keeping gbk (override with --enc:sjis)\n");
+            }
+        }
         if (ons.init()) exit(-1);
         SDL_Log("## after ons.init()");
         ons.executeLabel();

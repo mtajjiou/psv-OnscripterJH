@@ -119,6 +119,10 @@ public:
     int  openScript();
     int  init();
 
+    /* Which code page the loaded script appears to be written in.  Valid
+     * only after openScript(); the caller decides what to do about it. */
+    int  guessScriptEncoding();
+
     // ----------------------------------------
     // Commands
     typedef int (ONScripter::*FuncList)();

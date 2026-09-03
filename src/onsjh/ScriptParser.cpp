@@ -640,6 +640,42 @@ void ScriptParser::errorAndExit( const char *str, const char *reason )
             utils::printError("     bytes: %s%s\n", hex, n > 24 ? "..." : "");
         }
     }
+
+    /* The token alone can be a fragment -- a command that consumed fewer
+     * arguments than its line carries leaves the rest to be parsed as if it
+     * were a new line, and then the token is the tail rather than the
+     * source.  Print the surrounding script so the actual line, and the one
+     * before it, are visible. */
+    {
+        const char *buf = script_h.getScriptBuffer();
+        const char *cur = script_h.getCurrent();
+        int len = script_h.getScriptBufferLength();
+
+        if (buf && cur && cur >= buf && cur <= buf + len) {
+            int pos   = (int)(cur - buf);
+            int start = pos - 160; if (start < 0) start = 0;
+            int end   = pos + 80;  if (end > len) end = len;
+            char line[128];
+            int i, j = 0;
+
+            utils::printError("     script around offset %d:\n", pos);
+            for (i = start; i < end; i++) {
+                unsigned char c = (unsigned char)buf[i];
+
+                if (c == '\n' || j == (int)sizeof(line) - 1) {
+                    line[j] = '\0';
+                    if (j > 0) utils::printError("       | %s\n", line);
+                    j = 0;
+                    continue;
+                }
+                /* Keep it one line per line and printable: the point is to
+                 * read the commands, and any high bytes already showed up
+                 * in the hex above. */
+                line[j++] = (c >= 0x20 && c != 0x7F) ? (char)c : '.';
+            }
+            if (j > 0) { line[j] = '\0'; utils::printError("       | %s\n", line); }
+        }
+    }
     exit(-1);
 }
 

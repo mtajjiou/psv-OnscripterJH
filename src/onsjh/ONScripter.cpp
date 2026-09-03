@@ -440,6 +440,28 @@ int ONScripter::textDisplaySpeed()
 	return sentence_font.wait_time;
 }
 
+/* The same, said once into the log the first time a character is drawn.
+ *
+ * "The setting does nothing" has two very different causes -- the engine
+ * never got the value, or the script is driving the text itself and never
+ * asks -- and they need different fixes.  One line at the first character
+ * separates them: if it never appears, the text is not coming through here
+ * at all. */
+int ONScripter::reportTextSpeed()
+{
+	const int wait = textDisplaySpeed();
+	static bool said = false;
+
+	if (!said) {
+		said = true;
+		utils::printInfo("text: first character waits %dms "
+		                 "(speed %d, script asked %d, force %d)\n",
+		                 wait, text_speed_no, sentence_font.wait_time,
+		                 force_text_speed ? 1 : 0);
+	}
+	return wait;
+}
+
 void ONScripter::setVsyncOff() {
     vsync = false;
 }
@@ -1457,6 +1479,16 @@ void ONScripter::loadEnvData()
     if (chosen_music_volume  >= 0) music_volume  = chosen_music_volume;
     if (chosen_se_volume     >= 0) se_volume     = chosen_se_volume;
     if (chosen_voice_volume  >= 0) voice_volume  = chosen_voice_volume;
+
+    /* Said once, into the log the player can turn on: when the setting
+     * appears to do nothing, this is the line that says whether the engine
+     * was told, what it decided, and how long a character now takes. */
+    utils::printInfo("text speed: no=%d (%dms) chosen=%d default=%d force=%d\n",
+                     text_speed_no, default_text_speed[text_speed_no],
+                     chosen_text_speed_no, default_text_speed_no,
+                     force_text_speed ? 1 : 0);
+    utils::printInfo("volumes: music=%d se=%d voice=%d\n",
+                     music_volume, se_volume, voice_volume);
 }
 
 void ONScripter::saveEnvData()

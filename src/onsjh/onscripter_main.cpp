@@ -393,6 +393,13 @@ extern "C"
         // Parse options
         argv++;
         parseOption(argc - 1, argv);
+        /* What the launcher actually handed over.  An option that never
+         * arrives and an option that arrives but does nothing look the same
+         * from the outside, and this is the line that tells them apart.
+         * After parsing rather than before, so --log has opened the file by
+         * now and the list is in it. */
+        for (int i = 0; i < argc - 1; i++)
+            utils::printInfo("arg[%d] = %s\n", i, argv[i]);
         const char *argfilename = "ons_args";
         FILE *fp = NULL;
         if (ons.getArchivePath()) {

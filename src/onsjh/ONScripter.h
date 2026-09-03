@@ -834,6 +834,7 @@ private:
     int  chosen_text_speed_no = -1;
     int  chosen_music_volume = -1, chosen_se_volume = -1, chosen_voice_volume = -1;
     int  textDisplaySpeed();
+    int  reportTextSpeed();
     int  default_music_volume = DEFAULT_VOLUME;
     int  default_se_volume    = DEFAULT_VOLUME;
     int  default_voice_volume = DEFAULT_VOLUME;

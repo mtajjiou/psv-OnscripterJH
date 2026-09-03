@@ -843,7 +843,7 @@ bool ONScripter::processText()
             drawChar( out_text, &sentence_font, true, true, accumulation_surface, &text_info );
 
             event_mode = WAIT_TIMER_MODE | WAIT_INPUT_MODE;
-            waitEvent( textDisplaySpeed() );
+            waitEvent( reportTextSpeed() );
         }
         
         num_chars_in_sentence++;
@@ -1037,7 +1037,7 @@ bool ONScripter::processText()
         
         if (!skip_mode && !ctrl_pressed_status){
             event_mode = WAIT_TIMER_MODE | WAIT_INPUT_MODE;
-            waitEvent( textDisplaySpeed() );
+            waitEvent( reportTextSpeed() );
         }
 
         if ( script_h.getStringBuffer()[ string_buffer_offset + 1 ] &&

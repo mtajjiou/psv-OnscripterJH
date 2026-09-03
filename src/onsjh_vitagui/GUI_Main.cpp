@@ -976,6 +976,7 @@ void draw_alert(char *msg, int fontsize) {
 /* What the last cover fetch had to say, shown by COVER_DONE. */
 static char cover_result_message[256] = { '\0' };
 static char clean_result_message[128] = { '\0' };
+static char saves_result_message[160] = { '\0' };
 
 static ZipInstallProgress install_progress;
 static ZipInstallStatus  install_status = ZIP_INSTALL_OK;
@@ -2132,8 +2133,6 @@ int game_delete(int choose) {
  * Deleting a game to free space takes its saves with it, and there is
  * nowhere else on the card they are kept.  This is what makes deleting a
  * game recoverable, and the way to carry progress across a reinstall. */
-static char saves_result_message[160] = { '\0' };
-
 static void run_backup_saves(int choose) {
 	if (choose < 0 || choose >= (int)rom_list.size()) return;
 

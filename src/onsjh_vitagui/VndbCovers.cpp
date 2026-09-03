@@ -13,6 +13,7 @@
 #include <psp2/net/net.h>
 #include <psp2/net/netctl.h>
 #include <psp2/net/http.h>
+#include <psp2/libssl.h>   /* sceSslInit lives here, not under net/ */
 #include <psp2/sysmodule.h>
 
 #include <stdio.h>
@@ -53,14 +54,11 @@ bool startNetwork()
     param.size   = NET_MEMORY;
     param.flags  = 0;
 
-    int ret = sceNetInit(&param);
-    /* Already up is not a failure: the engine may have started it. */
-    if (ret < 0 && ret != (int)SCE_NET_ERROR_EBUSY){
-        free(g_net_memory);
-        g_net_memory = NULL;
-        return false;
-    }
-
+    /* A failure here is usually "already initialised", which is not a
+     * problem, and the headers name no constant for it.  Rather than read
+     * the code, ask the result: networkIsUp() below fails plainly if the
+     * stack really did not come up. */
+    sceNetInit(&param);
     sceNetCtlInit();
 
     if (sceHttpInit(HTTP_MEMORY) < 0) return false;
@@ -138,7 +136,7 @@ int httpFetch(const char *url, const char *post_body,
 
     *received = 0;
 
-    tmpl = sceHttpCreateTemplate(USER_AGENT, SCE_HTTP_VERSION_1_1, SCE_TRUE);
+    tmpl = sceHttpCreateTemplate(USER_AGENT, SCE_HTTP_VERSION_1_1, 1);
     if (tmpl < 0) return -1;
 
     /* The console's root certificates predate the authority vndb uses, so a
@@ -149,7 +147,7 @@ int httpFetch(const char *url, const char *post_body,
      * requests -- not left off for the rest of the program. */
     sceHttpsDisableOption(SCE_HTTPS_FLAG_SERVER_VERIFY);
 
-    conn = sceHttpCreateConnectionWithURL(tmpl, url, SCE_TRUE);
+    conn = sceHttpCreateConnectionWithURL(tmpl, url, 1);
     if (conn < 0) goto done;
 
     req = sceHttpCreateRequestWithURL(conn,

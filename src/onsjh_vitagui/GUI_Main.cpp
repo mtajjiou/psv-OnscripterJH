@@ -288,21 +288,18 @@ void draw_help() {
 		return;
 	}
 
-	/* Button, word, gap -- the shoulder buttons have no glyph of their own,
-	 * so they are written, which is how the console writes them too. */
+	/* Chip, word, gap.  The named buttons are chips rather than the icon
+	 * set's pictures of them -- see th_chip. */
 	int x = TH_PAD;
-	x += th_hint(x, baseline, th_glyph_l,
-		     th_glyph_l ? NULL : "L", TH_TEXT, TH_FONT_S) + 5;
+	x += th_chip(x, baseline, "L", TH_FONT_S) + 5;
 	x += th_hint(x, baseline, NULL, ui_text(UI_HINT_SETTINGS), TH_TEXT_DIM,
-		     TH_FONT_S) + TH_PAD + 6;
-	x += th_hint(x, baseline, th_glyph_r,
-		     th_glyph_r ? NULL : "R", TH_TEXT, TH_FONT_S) + 5;
+		     TH_FONT_S) + TH_PAD;
+	x += th_chip(x, baseline, "R", TH_FONT_S) + 5;
 	x += th_hint(x, baseline, NULL, ui_text(UI_HINT_HELP), TH_TEXT_DIM,
-		     TH_FONT_S) + TH_PAD + 6;
-	x += th_hint(x, baseline, th_glyph_select,
-		     th_glyph_select ? NULL : "Select", TH_TEXT, TH_FONT_S) + 5;
+		     TH_FONT_S) + TH_PAD;
+	x += th_chip(x, baseline, "SELECT", TH_FONT_S) + 5;
 	x += th_hint(x, baseline, NULL, ui_text(UI_HINT_ABOUT), TH_TEXT_DIM,
-		     TH_FONT_S) + TH_PAD + 6;
+		     TH_FONT_S) + TH_PAD;
 	x += th_hint(x, baseline, th_glyph_enter, ui_text(UI_BTN_START),
 		     TH_TEXT_DIM, TH_FONT_S);
 
@@ -629,21 +626,22 @@ static void dialog_box(const char *msg, const char *no_label,
  * proportional font lines up nothing. */
 void draw_help_screen() {
 	struct help_row {
-		vita2d_texture **glyph;   /* a face button, or */
-		const char *text;         /* what the console calls it */
+		vita2d_texture **glyph;   /* a face button, drawn from its icon */
+		const char *chip;         /* a named button, drawn as a chip */
+		const char *text;         /* or plain words, for the sticks */
 		UIStringId description;
 	};
 	const help_row rows[] = {
-		{ &th_glyph_circle,   NULL,          UI_HELP_CONFIRM },
-		{ &th_glyph_cross,    NULL,          UI_HELP_SKIP },
-		{ &th_glyph_square,   NULL,          UI_HELP_AUTO },
-		{ &th_glyph_triangle, NULL,          UI_HELP_MENU },
-		{ &th_glyph_l,        "L",           UI_HELP_SKIP_PAGE },
-		{ &th_glyph_r,        "R",           UI_HELP_TOGGLE_SKIP },
-		{ &th_glyph_dpad,     "left right",  UI_HELP_BACKLOG },
-		{ &th_glyph_dpad,     "up down",     UI_HELP_CURSOR },
-		{ &th_glyph_lstick,   "left stick",  UI_HELP_STICK },
-		{ &th_glyph_select,   "hold Select", UI_HELP_OVERLAY },
+		{ &th_glyph_circle,   NULL,     NULL,             UI_HELP_CONFIRM },
+		{ &th_glyph_cross,    NULL,     NULL,             UI_HELP_SKIP },
+		{ &th_glyph_square,   NULL,     NULL,             UI_HELP_AUTO },
+		{ &th_glyph_triangle, NULL,     NULL,             UI_HELP_MENU },
+		{ NULL,               "L",      NULL,             UI_HELP_SKIP_PAGE },
+		{ NULL,               "R",      NULL,             UI_HELP_TOGGLE_SKIP },
+		{ NULL,               NULL,     "left, right",    UI_HELP_BACKLOG },
+		{ NULL,               NULL,     "up, down",       UI_HELP_CURSOR },
+		{ NULL,               NULL,     "left stick",     UI_HELP_STICK },
+		{ NULL,               "SELECT", "hold",           UI_HELP_OVERLAY },
 	};
 	const int count = (int)(sizeof(rows) / sizeof(rows[0]));
 
@@ -680,15 +678,21 @@ void draw_help_screen() {
 	for (int i = 0; i < count; i++) {
 		const int baseline = top + padding + 40 + (i + 1) * row_h;
 
-		/* The image when there is one, the name when there is not: the
-		 * face buttons ship with the launcher, the rest only if someone
-		 * puts them in asset/. */
-		if (rows[i].glyph && *rows[i].glyph)
-			th_glyph(*rows[i].glyph, left + padding, baseline, TH_FONT_M,
-				 TH_TEXT);
-		else if (rows[i].text)
-			th_text(left + padding, baseline, TH_TEXT, TH_FONT_S,
-				rows[i].text);
+		int cx = left + padding;
+		if (rows[i].glyph && *rows[i].glyph) {
+			th_glyph(*rows[i].glyph, cx, baseline, TH_FONT_M, TH_TEXT);
+		}
+		else {
+			/* "hold" then the chip, so the row reads as a sentence. */
+			if (rows[i].text && rows[i].chip) {
+				th_text(cx, baseline, TH_TEXT_DIM, TH_FONT_S, rows[i].text);
+				cx += vita2d_font_text_width(font, TH_FONT_S, rows[i].text) + 6;
+			}
+			if (rows[i].chip)
+				th_chip(cx, baseline, rows[i].chip, TH_FONT_S);
+			else if (rows[i].text)
+				th_text(cx, baseline, TH_TEXT, TH_FONT_S, rows[i].text);
+		}
 
 		th_text(left + padding + col_w, baseline, TH_TEXT_DIM, TH_FONT_S,
 			ui_text(rows[i].description));

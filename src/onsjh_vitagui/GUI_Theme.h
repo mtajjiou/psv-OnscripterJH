@@ -95,6 +95,16 @@ int  th_hint(int x, int baseline, vita2d_texture *glyph, const char *label,
              unsigned int color, int size);
 int  th_hint_width(vita2d_texture *glyph, const char *label, int size);
 
+/* A button with a name rather than a shape -- L, R, SELECT -- drawn as a
+ * bordered chip around its letters.
+ *
+ * The icon set has pictures for these, but they are pictures of the physical
+ * buttons: a shoulder button seen at an angle, an oval with SELECT written
+ * in it.  Those read at the size a manual prints them and turn to mush at
+ * the height of a line of text, which is what they are sitting in here. */
+int  th_chip(int x, int baseline, const char *label, int size);
+int  th_chip_width(const char *label, int size);
+
 /* --- motion -----------------------------------------------------------
  *
  * Everything that moves does it the same way: a value chases a target by a

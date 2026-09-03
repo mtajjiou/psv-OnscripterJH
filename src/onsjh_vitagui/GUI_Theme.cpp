@@ -33,15 +33,9 @@ void th_load_glyphs()
     th_glyph_square   = vita2d_load_PNG_file("app0:btn_square.png");
     th_glyph_triangle = vita2d_load_PNG_file("app0:btn_triangle.png");
 
-    /* These four have no shape of their own, so the launcher writes their
-     * names unless someone supplies images.  vita2d_load_PNG_file returns
-     * NULL for a file that is not there, which is exactly the fallback. */
-    th_glyph_l      = vita2d_load_PNG_file("app0:btn_l.png");
-    th_glyph_r      = vita2d_load_PNG_file("app0:btn_r.png");
-    th_glyph_start  = vita2d_load_PNG_file("app0:btn_start.png");
-    th_glyph_select = vita2d_load_PNG_file("app0:btn_select.png");
-    th_glyph_dpad   = vita2d_load_PNG_file("app0:btn_dpad.png");
-    th_glyph_lstick = vita2d_load_PNG_file("app0:btn_lstick.png");
+    /* The named buttons -- L, R, START, SELECT -- are drawn as chips of
+     * their letters instead; see th_chip.  The pointers stay so a build
+     * that wants to put images back has somewhere to put them. */
 
     /* Which button confirms is a system setting, and the launcher already
      * follows it for the input.  The glyphs follow the same answer, so the
@@ -94,9 +88,36 @@ void th_glyph(vita2d_texture *glyph, int x, int baseline, int size,
                               scale, scale);
 }
 
+/* Glyphs are drawn at the height of the letters beside them rather than at
+ * the font size, which includes the space above and below them.  At full
+ * size a filled button icon towers over the word it belongs to. */
+static int glyph_size(int size)
+{
+    return size * 3 / 4;
+}
+
+int th_chip_width(const char *label, int size)
+{
+    return vita2d_font_text_width(font, size - 4, label) + 12;
+}
+
+int th_chip(int x, int baseline, const char *label, int size)
+{
+    const int text_size = size - 4;
+    const int w = th_chip_width(label, size);
+    const int h = size;
+    const int top = baseline - h + 4;
+
+    th_card(x, top, w, h, TH_SURFACE_HI, TH_SURFACE);
+    th_border(x, top, w, h, 1, TH_LINE);
+    th_text_center(x, w, baseline, TH_TEXT, text_size, label);
+
+    return w;
+}
+
 int th_hint_width(vita2d_texture *glyph, const char *label, int size)
 {
-    int w = (glyph ? th_glyph_width(glyph, size) + 5 : 0);
+    int w = (glyph ? th_glyph_width(glyph, glyph_size(size)) + 5 : 0);
     if (label && label[0]) w += vita2d_font_text_width(font, size, label);
     return w;
 }
@@ -107,8 +128,8 @@ int th_hint(int x, int baseline, vita2d_texture *glyph, const char *label,
     int start = x;
 
     if (glyph){
-        th_glyph(glyph, x, baseline, size, color);
-        x += th_glyph_width(glyph, size) + 5;
+        th_glyph(glyph, x, baseline, glyph_size(size), color);
+        x += th_glyph_width(glyph, glyph_size(size)) + 5;
     }
     if (label && label[0]){
         vita2d_font_draw_text(font, x, baseline, color, size, label);

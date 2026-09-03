@@ -93,12 +93,6 @@ set(VITA_PACK_ARGS
   -a ${CMAKE_CURRENT_SOURCE_DIR}/asset/btn_cross.png=btn_cross.png
   -a ${CMAKE_CURRENT_SOURCE_DIR}/asset/btn_square.png=btn_square.png
   -a ${CMAKE_CURRENT_SOURCE_DIR}/asset/btn_triangle.png=btn_triangle.png
-  -a ${CMAKE_CURRENT_SOURCE_DIR}/asset/btn_l.png=btn_l.png
-  -a ${CMAKE_CURRENT_SOURCE_DIR}/asset/btn_r.png=btn_r.png
-  -a ${CMAKE_CURRENT_SOURCE_DIR}/asset/btn_start.png=btn_start.png
-  -a ${CMAKE_CURRENT_SOURCE_DIR}/asset/btn_select.png=btn_select.png
-  -a ${CMAKE_CURRENT_SOURCE_DIR}/asset/btn_dpad.png=btn_dpad.png
-  -a ${CMAKE_CURRENT_SOURCE_DIR}/asset/btn_lstick.png=btn_lstick.png
 )
 set(VITA_PACK_ARGS ${VITA_PACK_ARGS} 
   -a ${CMAKE_CURRENT_BINARY_DIR}/src/onsjh/onsjh.self=onsjh.bin)

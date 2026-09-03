@@ -38,16 +38,17 @@ const ControlRow kRows[] = {
     { "app0:btn_cross.png",    NULL,          "hold to fast-forward" },
     { "app0:btn_square.png",   NULL,          "auto mode" },
     { "app0:btn_triangle.png", NULL,          "menu, leaves the backlog" },
-    /* These four are only drawn if someone has put images in the vpk; the
-     * name is what is shown otherwise, which is how the console writes
-     * them anyway. */
-    { "app0:btn_l.png",        "L",           "skip to the end of the page" },
-    { "app0:btn_r.png",        "R",           "start or stop skipping" },
-    { "app0:btn_start.png",    "Start",       "click through a wait" },
-    { "app0:btn_select.png",   "Select",      "tap: text speed, hold: this" },
-    { "app0:btn_dpad.png",     "left right",  "backlog" },
-    { "app0:btn_dpad.png",     "up down",     "move between choices" },
-    { "app0:btn_lstick.png",   "left stick",  "same as the d-pad" },
+    /* Written rather than drawn.  The icon set has pictures for these, but
+     * they are pictures of the physical buttons -- a shoulder seen at an
+     * angle, an oval with SELECT set inside it -- and at the height of a
+     * line of text they are blobs.  The console writes them too. */
+    { NULL,                    "L",           "skip to the end of the page" },
+    { NULL,                    "R",           "start or stop skipping" },
+    { NULL,                    "Start",       "click through a wait" },
+    { NULL,                    "Select",      "tap: text speed, hold: this" },
+    { NULL,                    "left, right", "backlog" },
+    { NULL,                    "up, down",    "move between choices" },
+    { NULL,                    "left stick",  "same as the d-pad" },
 };
 const int kNumRows = (int)(sizeof(kRows) / sizeof(kRows[0]));
 

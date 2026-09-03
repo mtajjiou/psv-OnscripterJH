@@ -80,11 +80,16 @@ target_link_libraries(${PROJECT_NAME}
   vita2d_ext
   ScePgf_stub
   SceHid_stub
+  # freetype must come before png/z/bz2: static archives resolve in order,
+  # and libfreetype.a's png, gzip and bzip2 support reference all three.
+  freetype
   bz2
   m
   c
   png
   jpeg
+  # SDL2_image's webp loader uses the demux API, which is a separate archive.
+  webpdemux
   webp
   z
   SceNetCtl_stub 
@@ -106,7 +111,6 @@ target_link_libraries(${PROJECT_NAME}
   SceAppMgr_stub 
 
   luajit-5.1
-  freetype
   SceCommonDialog_stub
   SceCtrl_stub
   SceDisplay_stub

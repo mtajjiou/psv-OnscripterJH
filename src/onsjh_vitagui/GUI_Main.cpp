@@ -174,14 +174,17 @@ void draw_icon(int curr, int row, int col) {
 			th_fit(rom_list[curr].char_name(), TH_FONT_S, w - 12));
 	}
 
-	/* An archive is not installed yet; saying so on the card saves the
-	 * player finding out by opening it. */
-	if (rom_list[curr].is_zip) {
-		const int tag_w = vita2d_font_text_width(font, TH_FONT_S, ".zip") + 12;
+	/* What this row is, if it is not simply a game: an archive waiting to
+	 * be installed, or an install that stopped part way.  Either way the
+	 * player finds out here rather than by opening it. */
+	const char *tag = rom_list[curr].is_zip ? ".zip"
+			: (rom_list[curr].is_partial ? ui_text(UI_UNFINISHED) : NULL);
+	if (tag) {
+		const int tag_w = vita2d_font_text_width(font, TH_FONT_S, tag) + 12;
 		vita2d_draw_rectangle(x + w - tag_w - 6, y + 6, tag_w, TH_FONT_S + 6,
-			TH_ACCENT);
+			rom_list[curr].is_partial ? TH_DANGER : TH_ACCENT);
 		th_text_center(x + w - tag_w - 6, tag_w, y + TH_FONT_S + 7,
-			TH_BG, TH_FONT_S, ".zip");
+			TH_BG, TH_FONT_S, tag);
 	}
 
 	if (selected) ring_aim(x, y, w, h);
@@ -235,6 +238,10 @@ void draw_list_row(int curr, int row) {
 	if (rom_list[curr].is_zip) {
 		th_text_right(x + w - TH_PAD, y + (h / 2) + 2, TH_ACCENT, TH_FONT_S,
 			".zip");
+	}
+	else if (rom_list[curr].is_partial) {
+		th_text_right(x + w - TH_PAD, y + (h / 2) + 2, TH_DANGER, TH_FONT_S,
+			ui_text(UI_UNFINISHED));
 	}
 }
 
@@ -938,6 +945,19 @@ void prepare_install_confirm(int choose) {
 
 	getSizeString(needed_str, needed);
 	getSizeString(free_str, available);
+
+	/* Picking up where a previous attempt stopped is a different question
+	 * from installing, and worth asking differently: the answer decides
+	 * whether the player waits for the whole archive or the rest of it. */
+	const uint64_t already = ZipHandler::resumableBytes(zip_path);
+	if (already > 0) {
+		char done_str[16];
+		getSizeString(done_str, already);
+		snprintf(install_confirm_message, sizeof(install_confirm_message),
+			ui_text(UI_RESUME_ASK), rom_list[choose].char_name(),
+			done_str, needed_str, free_str);
+		return;
+	}
 	snprintf(install_confirm_message, sizeof(install_confirm_message),
 		"Install this game?\n\n"
 		"  %s\n"
@@ -2071,6 +2091,12 @@ static void run_search(ScreenState behind, int curr, int choose, int slot)
 }
 
 void  game_start(int choose) {
+	/* Half a game is not a game: launching one would fail somewhere inside
+	 * the engine, with a missing-file message about whichever file the
+	 * install had not reached. */
+	if (choose >= 0 && choose < (int)rom_list.size() && rom_list[choose].is_partial)
+		return;
+
 	/* Stamp the folder so the panel can say when this was last played.
 	 * A file beside the game rather than a list somewhere central: a game
 	 * moved to another card, or deleted, takes its own history with it. */
@@ -2282,6 +2308,14 @@ int mainloop() {
 				if (new_state == DELETE_MODE) prepare_delete_confirm(choose);
 				break;
 			case START_MODE:
+				if (choose >= 0 && choose < (int)rom_list.size() &&
+				    rom_list[choose].is_partial) {
+					snprintf(cover_result_message,
+						 sizeof(cover_result_message), "%s",
+						 ui_text(UI_RESUME_BLOCKED));
+					new_state = COVER_DONE;   /* an alert, then back */
+					break;
+				}
 				game_start(choose);
 				new_state = PRINT_APPINFO;
 				return -1;

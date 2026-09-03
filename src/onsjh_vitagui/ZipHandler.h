@@ -84,6 +84,14 @@ public:
     /* Free bytes on the partition holding GAME_INSTALL_FOLDER. */
     static uint64_t freeSpace();
 
+    /* An install that stopped part way leaves a journal in the folder it was
+     * writing, naming the archive and the last entry that was completed.
+     * Its presence is what makes a folder resumable -- and what makes it
+     * not yet a game. */
+    static bool isPartialInstall(const std::string &folder);
+    /* How many bytes of this archive are already on the card, or 0. */
+    static uint64_t resumableBytes(const std::string &zip_path);
+
     /* Message to show the user for a failed install. */
     static const char *statusMessage(ZipInstallStatus status);
 

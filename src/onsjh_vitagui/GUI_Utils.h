@@ -9,6 +9,8 @@
 #include <iostream>
 #include <vitasdk.h>
 
+#include "ZipHandler.h"   /* isPartialInstall, for a folder mid-install */
+
 using namespace std;
 
 typedef struct point {
@@ -66,9 +68,14 @@ public:
 	 * installed, so both show up in one list.  For an archive, path holds
 	 * the .zip and is_zip is 1. */
 	int is_zip;
+	/* An install that stopped part way: the folder exists but is not a
+	 * game yet.  It is listed so it can be finished or deleted, and
+	 * refuses to launch. */
+	int is_partial;
 	RomInfo() {
 		touch_area = { 0,0,0,0 };
 		is_zip = 0;
+		is_partial = 0;
 		size = 0;
 		icon = NULL;
 		w = h = 0;
@@ -77,6 +84,7 @@ public:
 	RomInfo(string zip_path, uint64_t zip_size, int) {
 		touch_area = { 0,0,0,0 };
 		is_zip = 1;
+		is_partial = 0;
 		size = zip_size;
 		path = zip_path;
 		icon = vita2d_load_PNG_file("app0:/sce_sys/icon1.png");
@@ -88,6 +96,7 @@ public:
 	RomInfo(string path_) {
 		touch_area = { 0,0,0,0 };
 		is_zip = 0;
+		is_partial = ZipHandler::isPartialInstall(path_) ? 1 : 0;
 		size = 0;
 		path = path_;
 		/* A cover fetched from vndb comes first, then a hand-placed

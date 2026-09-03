@@ -115,6 +115,11 @@ enum UIStringId {
     UI_SEARCH_EMPTY,
     UI_HINT_SEARCH,
 
+    /* An install that stopped part way */
+    UI_UNFINISHED,
+    UI_RESUME_ASK,
+    UI_RESUME_BLOCKED,
+
     /* The help screen is a table now: a button in the first column, what it
      * does in the second.  See draw_help_screen(). */
     UI_HELP_TITLE,

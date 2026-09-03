@@ -15,6 +15,7 @@
 #include <psp2/appmgr.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>   /* atoi, for reading the resume journal */
 
 #include "ZipHandler.h"
 #include "filesystem.h"
@@ -229,6 +230,82 @@ const char *ZipHandler::statusMessage(ZipInstallStatus status) {
     return "Install failed.";
 }
 
+/* The journal an interrupted install leaves behind.
+ *
+ * Two lines: the archive it came from, and the index of the last entry that
+ * was written in full.  Anything after that index is unfinished business.
+ * It lives in the destination folder, so a folder either has one -- and is
+ * a half-installed game -- or does not, and is a game. */
+static const char *JOURNAL_NAME = ".install.state";
+
+static std::string journalPath(const std::string &dest) {
+    return dest + "/" + JOURNAL_NAME;
+}
+
+static void writeJournal(const std::string &dest, const std::string &zip_path,
+                         int last_done) {
+    SceUID fd = sceIoOpen(journalPath(dest).c_str(),
+                          SCE_O_WRONLY | SCE_O_CREAT | SCE_O_TRUNC, 0777);
+    if (fd < 0) return;
+
+    char line[ZIP_MAX_NAME + 32];
+    int len = snprintf(line, sizeof(line), "%s\n%d\n", zip_path.c_str(),
+                       last_done);
+    sceIoWrite(fd, line, len);
+    sceIoClose(fd);
+}
+
+/* Returns the last completed entry, or -1 if there is no journal here.
+ * from_zip receives the archive it names. */
+static int readJournal(const std::string &dest, std::string &from_zip) {
+    SceUID fd = sceIoOpen(journalPath(dest).c_str(), SCE_O_RDONLY, 0777);
+    if (fd < 0) return -1;
+
+    char buffer[ZIP_MAX_NAME + 32];
+    int got = sceIoRead(fd, buffer, sizeof(buffer) - 1);
+    sceIoClose(fd);
+    if (got <= 0) return -1;
+    buffer[got] = '\0';
+
+    char *newline = strchr(buffer, '\n');
+    if (newline == NULL) return -1;
+    *newline = '\0';
+
+    from_zip = buffer;
+    return atoi(newline + 1);
+}
+
+static void clearJournal(const std::string &dest) {
+    sceIoRemove(journalPath(dest).c_str());
+}
+
+bool ZipHandler::isPartialInstall(const std::string &folder) {
+    SceUID fd = sceIoOpen(journalPath(folder).c_str(), SCE_O_RDONLY, 0777);
+    if (fd < 0) return false;
+    sceIoClose(fd);
+    return true;
+}
+
+uint64_t ZipHandler::resumableBytes(const std::string &zip_path) {
+    const std::string dest =
+        std::string(GAME_INSTALL_FOLDER) + "/" + destinationName(zip_path);
+
+    std::string from_zip;
+    const int last_done = readJournal(dest, from_zip);
+    if (last_done < 0 || from_zip != zip_path) return 0;
+
+    int err = 0;
+    zip_reader *z = zip_open(zip_path.c_str(), &err);
+    if (!z) return 0;
+
+    uint64_t done = 0;
+    for (int i = 0; i <= last_done && i < zip_count(z); i++)
+        if (!zip_entry_is_dir(z, i)) done += zip_entry_size(z, i);
+
+    zip_close(z);
+    return done;
+}
+
 ZipInstallStatus ZipHandler::install(const std::string &zip_path,
                                      std::string &installed_path,
                                      ZipProgressCallback callback,
@@ -250,9 +327,20 @@ ZipInstallStatus ZipHandler::install(const std::string &zip_path,
 
     const std::string dest =
         std::string(GAME_INSTALL_FOLDER) + "/" + destinationName(zip_path);
+
+    /* A folder that is already there is either a game -- in which case there
+     * is nothing to do -- or an install that stopped part way, which is
+     * picked up where it left off rather than started again.  On a card and
+     * an archive this size, starting again can mean many minutes. */
+    int resume_from = 0;
     if (checkFolderExist(dest.c_str())) {
-        zip_close(z);
-        return ZIP_INSTALL_EXISTS;
+        std::string from_zip;
+        const int last_done = readJournal(dest, from_zip);
+        if (last_done < 0 || from_zip != zip_path) {
+            zip_close(z);
+            return ZIP_INSTALL_EXISTS;
+        }
+        resume_from = last_done + 1;
     }
 
     uint64_t needed = zip_total_size(z);
@@ -276,6 +364,13 @@ ZipInstallStatus ZipHandler::install(const std::string &zip_path,
     const int count = zip_count(z);
 
     for (int i = 0; i < count && status == ZIP_INSTALL_OK; i++) {
+        /* Already on the card: counted so the bar starts where the last
+         * attempt stopped rather than at zero. */
+        if (i < resume_from) {
+            if (!zip_entry_is_dir(z, i)) progress.bytes_done += zip_entry_size(z, i);
+            continue;
+        }
+
         char clean[ZIP_MAX_NAME];
         if (zip_sanitize_name(zip_entry_name(z, i), clean, sizeof(clean)) != ZIP_OK)
             continue;   /* an unsafe name is skipped, never written */
@@ -325,17 +420,33 @@ ZipInstallStatus ZipHandler::install(const std::string &zip_path,
             else if (ctx.write_failed) status = ZIP_INSTALL_WRITE_FAILED;
             else                       status = ZIP_INSTALL_BAD_ARCHIVE;
         }
+        else {
+            /* Written in full, so an interrupted install can start after
+             * it.  One small write per file is cheap beside the file. */
+            writeJournal(dest, zip_path, i);
+        }
     }
 
     zip_close(z);
 
     if (status != ZIP_INSTALL_OK) {
-        /* Leave nothing half-installed: a partial folder would show up in
-         * the game list and fail confusingly at launch. */
-        removePath(dest);
+        /* What was written stays, with its journal, so the install can be
+         * finished later instead of paid for twice.
+         *
+         * Deleting it was how a half-installed folder was kept from
+         * appearing in the game list and failing confusingly at launch.
+         * That job moves to the journal: a folder that has one is listed as
+         * unfinished and refuses to start, so it is visible enough to
+         * resume or delete without pretending to be a game.
+         *
+         * Nothing was written for a failure this early, so there is nothing
+         * to keep and an empty folder would be litter. */
+        if (resume_from == 0 && progress.bytes_done == 0)
+            removePath(dest);
         return status;
     }
 
+    clearJournal(dest);
     installed_path = dest;
     return ZIP_INSTALL_OK;
 }

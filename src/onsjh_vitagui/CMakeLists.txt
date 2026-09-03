@@ -49,6 +49,7 @@ add_executable(${PROJECT_NAME}
   ./../common/manifest.c
   ./../common/formats.c
   ./../common/logfile.c
+  ./../common/logtail.c
   ./../common/dictionary.c
   ./../common/iniparser.c
   ./../common/sha1.cpp

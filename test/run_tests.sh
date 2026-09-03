@@ -54,6 +54,14 @@ ${CC:-cc} -std=c99 -Wall -Wextra -g \
 
 "$work/test_logfile" "$work"
 
+# --- reading the end of a log ---------------------------------------------
+${CC:-cc} -std=c99 -Wall -Wextra -g \
+  -I"$root/src/common" \
+  "$root/test/test_logtail.c" "$root/src/common/logtail.c" \
+  -o "$work/test_logtail"
+
+"$work/test_logtail" "$work"
+
 # --- game metadata cache --------------------------------------------------
 ${CC:-cc} -std=c99 -Wall -Wextra -g \
   -I"$root/src/common" \

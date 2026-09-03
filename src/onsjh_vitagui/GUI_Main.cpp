@@ -46,6 +46,7 @@
 
 extern "C" {
 #include "logfile.h"
+#include "logtail.h"
 }
 
 extern "C" {
@@ -488,7 +489,8 @@ void draw_config() {
 			config.debug_log ? ui_text(UI_ON) : ui_text(UI_OFF)},
 		{ui_text(UI_CFG_THEME),
 			config.theme == TH_MODE_LIGHT ? ui_text(UI_THEME_LIGHT)
-						      : ui_text(UI_THEME_DARK)}
+						      : ui_text(UI_THEME_DARK)},
+		{ui_text(UI_CFG_VIEW_LOG), ui_text(UI_LOG_OPEN)}
 	};
 
 	/* The settings sit on a card over a dimmed library rather than over a
@@ -1044,6 +1046,142 @@ void draw_formats_screen() {
 		ui_text(UI_PROMPT_CLOSE), TH_TEXT_DIM, TH_FONT_S);
 }
 
+/*
+ * Reading a log on the console.
+ *
+ * Everything both binaries print goes to a file when the player turns
+ * logging on, and until now the only way to read it was to take the memory
+ * card out.  That makes a bug report something only someone with a PC can
+ * file, which is the wrong way round: the person who hit the bug is the one
+ * holding the console.
+ *
+ * The end of the log is what matters, so the view starts at the bottom and
+ * scrolls up from there.
+ */
+static int  log_view_which = 0;    /* 0 engine, 1 launcher */
+static int  log_view_scroll = 0;   /* lines from the bottom */
+
+static const char *log_view_path() {
+	return log_view_which ? LAUNCHER_LOG_FILE : ENGINE_LOG_FILE;
+}
+
+void draw_log_screen() {
+	/* One window into the file, read fresh each frame: a log is small, the
+	 * read is a few kilobytes, and a stale view of a log is worse than a
+	 * slow one. */
+	static char  buffer[8192];
+	static char *lines[256];
+	const int    max_lines = (int)(sizeof(lines) / sizeof(lines[0]));
+
+	const int count = log_tail(log_view_path(), buffer, sizeof(buffer),
+				   lines, max_lines);
+
+	const int padding = 20;
+	const int row_h   = 20;
+	const int width   = SCREEN_WIDTH - 40;
+	const int height  = SCREEN_HEIGHT - 40;
+	const int left    = (SCREEN_WIDTH - width) / 2;
+	const int top     = (SCREEN_HEIGHT - height) / 2;
+
+	vita2d_draw_rectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, TH_SCRIM);
+	th_shadow(left, top, width, height);
+	th_card(left, top, width, height, TH_SURFACE, TH_BG);
+	th_border(left, top, width, height, 1, TH_LINE);
+
+	last_dialog_area.left = left;
+	last_dialog_area.top = top;
+	last_dialog_area.right = left + width;
+	last_dialog_area.bottom = top + height;
+
+	/* Which log, how big it is, and where in it we are looking. */
+	char title[128];
+	const long size = log_size(log_view_path());
+	snprintf(title, sizeof(title), "%s  %ld bytes",
+		 log_view_which ? ui_text(UI_LOG_LAUNCHER) : ui_text(UI_LOG_ENGINE),
+		 size);
+	th_text(left + padding, top + padding + TH_FONT_M, TH_TEXT, TH_FONT_M,
+		title);
+
+	const int body_top = top + padding + TH_FONT_M + 16;
+	const int body_h   = height - (body_top - top) - 44;
+	const int visible  = body_h / row_h;
+
+	if (count <= 0) {
+		th_text(left + padding, body_top + TH_FONT_S, TH_TEXT_DIM,
+			TH_FONT_S, ui_text(UI_LOG_EMPTY));
+	}
+	else {
+		/* Clamped here rather than where the buttons are handled: the
+		 * number of lines is only known once the file has been read. */
+		int max_scroll = count - visible;
+		if (max_scroll < 0) max_scroll = 0;
+		if (log_view_scroll > max_scroll) log_view_scroll = max_scroll;
+		if (log_view_scroll < 0) log_view_scroll = 0;
+
+		const int first = count - visible - log_view_scroll;
+		for (int i = 0; i < visible; i++) {
+			const int index = (first < 0 ? 0 : first) + i;
+			if (index >= count) break;
+			th_text(left + padding, body_top + (i + 1) * row_h,
+				TH_TEXT_DIM, TH_FONT_S,
+				th_fit(lines[index], TH_FONT_S, width - padding * 2));
+		}
+	}
+
+	vita2d_draw_rectangle(left + padding, top + height - 44,
+		width - padding * 2, 1, TH_LINE);
+
+	int switch_w = th_hint_width(th_glyph_square, ui_text(UI_PROMPT_SWITCH),
+				     TH_FONT_S);
+	int close_w  = th_hint_width(th_glyph_cancel, ui_text(UI_PROMPT_CLOSE),
+				     TH_FONT_S);
+	const int baseline = top + height - 22 + 6;
+	int x = left + (width - (switch_w + 28 + close_w)) / 2;
+	x += th_hint(x, baseline, th_glyph_square, ui_text(UI_PROMPT_SWITCH),
+		     TH_TEXT_DIM, TH_FONT_S);
+	th_hint(x + 28, baseline, th_glyph_cancel, ui_text(UI_PROMPT_CLOSE),
+		TH_TEXT_DIM, TH_FONT_S);
+}
+
+ScreenState on_log_event() {
+	while (1) {
+		int btn = read_buttons();
+
+		if (btn & SCE_CTRL_UP) {
+			log_view_scroll += (btn & SCE_CTRL_HOLD) ? 3 : 1;
+			return UNKNOWN;
+		}
+		if (btn & SCE_CTRL_DOWN) {
+			log_view_scroll -= (btn & SCE_CTRL_HOLD) ? 3 : 1;
+			if (log_view_scroll < 0) log_view_scroll = 0;
+			return UNKNOWN;
+		}
+		if (btn & SCE_CTRL_HOLD) continue;
+
+		if (btn & SCE_CTRL_LTRIGGER) {
+			log_view_scroll += 15;
+			return UNKNOWN;
+		}
+		if (btn & SCE_CTRL_RTRIGGER) {
+			log_view_scroll -= 15;
+			if (log_view_scroll < 0) log_view_scroll = 0;
+			return UNKNOWN;
+		}
+		if (btn & SCE_CTRL_SQUARE) {
+			log_view_which = !log_view_which;
+			log_view_scroll = 0;   /* the end of the other one */
+			return UNKNOWN;
+		}
+		if (btn & SCE_CTRL_CANCEL || btn & SCE_CTRL_ENTER) {
+			return CONFIG_SCREEN;
+		}
+		{
+			point p;
+			if (read_touchscreen(&p)) return CONFIG_SCREEN;
+		}
+	}
+}
+
 void draw_message(char *msg, int choose, int fontsize) {
 	/* Two answers: cancel on the left, confirm on the right -- the order
 	 * the touch handling splits the box in. */
@@ -1304,14 +1442,23 @@ void draw_screen(ScreenState state, int curr, int choose, int slot) {
 	 * belongs behind it -- the per-game panel has nothing to do with it,
 	 * and these states sit past PRINT_APPINFO in the enum only because they
 	 * were added last. */
-	bool covers_all = (state == COVERS_ALL_CONFIRM || state == COVERS_ALL_RUN ||
-			   state == COVERS_ALL_DONE ||
-			   state == CLEAN_CONFIRM || state == CLEAN_DONE);
-	if (covers_all) {
+	/* States that belong to the settings screen rather than to a game, so
+	 * the settings are what is drawn behind them.  They sit past
+	 * PRINT_APPINFO in the enum only because they were added last. */
+	bool from_settings = (state == COVERS_ALL_CONFIRM || state == COVERS_ALL_RUN ||
+			      state == COVERS_ALL_DONE ||
+			      state == CLEAN_CONFIRM || state == CLEAN_DONE ||
+			      state == LOG_VIEW);
+	if (from_settings) {
 		draw_config();
 	}
 	else if (state >= PRINT_APPINFO) {
 		draw_appinfo(state, choose);
+	}
+
+	/* Drawn after the settings behind it, so it sits on top. */
+	if (state == LOG_VIEW) {
+		draw_log_screen();
 	}
 
 	switch (state) {
@@ -1674,6 +1821,8 @@ static ScreenState activate_config_row(int row) {
 		config.theme = (config.theme + 1) % TH_MODE_COUNT;
 		th_set_theme((ThemeMode)config.theme);
 		break;
+	case 15:
+		return LOG_VIEW;
 	default:
 		break;
 	}
@@ -2800,6 +2949,9 @@ int mainloop() {
 			case COVERS_ALL_CONFIRM:
 				new_state = on_message_event(choose, NULL, COVERS_ALL_RUN,
 							    CONFIG_SCREEN, CONFIG_SCREEN, 1);
+				break;
+			case LOG_VIEW:
+				new_state = on_log_event();
 				break;
 			case CLEAN_CONFIRM:
 				new_state = on_message_event(choose, NULL, CLEAN_DONE,

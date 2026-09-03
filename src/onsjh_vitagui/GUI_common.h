@@ -143,7 +143,7 @@
  * so a row can be added without touching every signature. */
 #define CMD_OPTS 16
 
-#define CONFIG_NUM 15  /* ...the library actions, game defaults, logging, theme */
+#define CONFIG_NUM 16  /* ...the library actions, game defaults, logging, theme, log viewer */
 
 #define PACKAGE_TEMP "ux0:onsemu/temp/"
 
@@ -227,6 +227,9 @@ typedef enum {
 	COVER_DONE,
 	/* The same thing for the whole library, from the settings screen. */
 	/* Clearing temporary files, also from the settings screen. */
+	/* Reading a log on the console, since there is no other way to read
+	 * one without taking the card out. */
+	LOG_VIEW,
 	CLEAN_CONFIRM,
 	CLEAN_DONE,
 	COVERS_ALL_CONFIRM,

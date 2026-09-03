@@ -157,6 +157,20 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
   -DUSE_SIMD -DUSE_SIMD_ARM_NEON # -DUSE_STB
   -DUSE_BUILTIN_EFFECTS -DUSE_BUILTIN_LAYER_EFFECTS
   -DUSE_PARALLEL
+  # Backtick text. NScripter marks a run of one-byte (western) characters
+  # with a backtick, and english releases use it everywhere -- Tsukihime's
+  # define block carries `clickstr ``, 2`. Without this the parser has no
+  # backtick case at all: it treats the character as the start of ordinary
+  # text, which in the define section is the error
+  #
+  #   *** Parse error at define:171 [text cannot be displayed in define
+  #       section.] ***
+  #
+  # Enabling it adds the case to the tokeniser, the string parser, the
+  # clickstr list and the text renderer. FORCE_1BYTE_CHAR, which would make
+  # every string one-byte, stays off: japanese and chinese games are the
+  # majority here and must keep two-byte text.
+  -DENABLE_1BYTE_CHAR
 )
 
 vita_create_self(${PROJECT_NAME}.self ${PROJECT_NAME})

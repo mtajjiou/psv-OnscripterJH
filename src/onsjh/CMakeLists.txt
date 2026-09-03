@@ -33,6 +33,7 @@ link_directories(
 
 add_executable(${PROJECT_NAME}
   ./../common/vita_sbrk.c # use this to solve heap alloc restriction
+  ./../common/videofmt.c
   AnimationInfo.cpp
   DirectReader.cpp
   DirtyRect.cpp

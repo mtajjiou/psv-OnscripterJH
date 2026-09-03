@@ -24,6 +24,9 @@
 
 #include "ONScripter.h"
 #include "Utils.h"
+extern "C" {
+#include "videofmt.h"
+}
 #include <new>
 #if defined(LINUX)
 #include <signal.h>
@@ -343,6 +346,13 @@ int ONScripter::playAVC(const char *filename, bool click_flag, bool loop_flag)
     char *cur = strrchr(basename, '.');
     if(cur) *cur='\0';
 
+    unsigned char head[VIDEO_FMT_SNIFF_LEN];
+    int head_len = 0;
+    VideoFormat fmt;
+
+    /* A converted <name>.mp4 beside the original wins: that is how a player
+     * makes a PC video playable here, and the script keeps naming the file
+     * it always named. */
     snprintf(path, sizeof(path), "%s%s.mp4", archive_path, basename);
     fd = sceIoOpen(path, SCE_O_RDONLY, 0777);
     if(fd <= 0)
@@ -350,7 +360,37 @@ int ONScripter::playAVC(const char *filename, bool click_flag, bool loop_flag)
         snprintf(path, sizeof(path), "%s%s", archive_path, filename);
         fd = sceIoOpen(path, SCE_O_RDONLY, 0777);
     }
-    if(fd>=0) sceIoClose(fd);
+    if(fd>=0)
+    {
+        head_len = sceIoRead(fd, head, sizeof(head));
+        sceIoClose(fd);
+    }
+    else
+    {
+        utils::printError("video: [%s] is missing; skipping it\n", filename);
+        return ret;
+    }
+
+    /* Read the container from the file itself.  sceAvPlayer decodes H.264
+     * and AAC in an MP4 and nothing else, and handed anything else it fails
+     * without saying why, so the scene silently does nothing.  Say what the
+     * file is and what would fix it instead. */
+    fmt = video_format_sniff(head, head_len > 0 ? (size_t)head_len : 0);
+    if (fmt == VIDEO_FMT_UNKNOWN) fmt = video_format_from_name(path);
+
+    SDL_Log("## video [%s] container=%s playable=%d\n",
+            path, video_format_name(fmt), video_format_is_playable(fmt));
+
+    if (!video_format_is_playable(fmt))
+    {
+        utils::printError(
+            "video: [%s] is %s, which this hardware cannot decode.\n"
+            "       Skipping it and continuing.  To play it, convert the file to\n"
+            "       H.264 video with AAC audio in an MP4 and save it next to the\n"
+            "       original as [%s.mp4]; it will be used automatically.\n",
+            path, video_format_name(fmt), basename);
+        return ret;
+    }
 
     // initialize the video player
     SDL_Texture *texture = NULL;

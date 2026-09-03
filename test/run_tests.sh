@@ -25,3 +25,10 @@ ${CXX:-c++} -std=c++11 -Wall -Wextra -g \
   -o "$work/test_encoding_detect"
 
 "$work/test_encoding_detect" "$work"
+
+${CC:-cc} -std=c99 -Wall -Wextra -g \
+  -I"$root/src/common" \
+  "$root/test/test_videofmt.c" "$root/src/common/videofmt.c" \
+  -o "$work/test_videofmt"
+
+"$work/test_videofmt"

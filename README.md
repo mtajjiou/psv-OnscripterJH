@@ -84,6 +84,26 @@ once the game runs.
 
 ---
 
+## Videos
+
+Most videos play as they are. The engine decodes MPEG-1/2, MPEG-4, WMV/VC-1,
+H.264, VP8/9, Theora and the rest in software — see `script/build_ffmpeg.sh`
+for the built decoders — so a game's `.mpg` or `.avi` needs nothing done to
+it.
+
+Converting buys the *hardware* decoder, which takes H.264 with AAC in an MP4
+and nothing else, and plays it at full frame rate for a fraction of the
+battery a software decode costs. Worth doing if a video stutters or a long
+session matters:
+
+    sh script/convert_videos.sh ~/path/to/GameFolder --dry-run
+    sh script/convert_videos.sh ~/path/to/GameFolder
+
+Run it on a PC with `ffmpeg` installed. It writes `<name>.mp4` beside each
+video and leaves the original alone — the engine prefers the `.mp4` when both
+are there, so nothing in the game's script changes and you can delete the
+originals whenever you are satisfied.
+
 ## Per-game files
 
 Two optional files can sit in a game's folder, and neither has to be there.

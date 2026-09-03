@@ -62,6 +62,9 @@ target_link_libraries(${PROJECT_NAME}
   ScePaf_stub_weak 
   SceHid_stub
   freetype
+  # libfreetype.a's ftbzip2 support references BZ2_*; freetype must come
+  # before bz2 for static resolution. The engine already links it.
+  bz2
   png
   z
   m

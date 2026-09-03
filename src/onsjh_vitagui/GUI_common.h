@@ -128,6 +128,10 @@
 /* What the launcher already worked out about the games on the card, so it
  * does not work it out again on every start.  Safe to delete. */
 #define MANIFEST_FILE "ux0:data/onsemu/game_manifest.json"
+
+/* Where each binary writes what it prints, when logging is on. */
+#define LAUNCHER_LOG_FILE "ux0:data/onsemu/launcher.log"
+#define ENGINE_LOG_FILE   "ux0:data/onsemu/onsjh.log"
 /* Arguments handed to the engine.
  *
  * The five the settings can produce, --root and its path, --touch-mode and
@@ -136,7 +140,7 @@
  * ons_args file is nothing but eleventh arguments. */
 #define CMD_MAX 32
 
-#define CONFIG_NUM 13  /* ...then the two library actions and the game defaults */
+#define CONFIG_NUM 14  /* ...the library actions, game defaults and logging */
 
 #define PACKAGE_TEMP "ux0:onsemu/temp/"
 

@@ -57,6 +57,7 @@ const char *g_strings[UI_STRING_COUNT][UI_LANG_COUNT] = {
     /* UI_CFG_VOL_BGM        */ { "BGM volume (new games)",  "音乐音量(新游戏)" },
     /* UI_CFG_VOL_SE         */ { "SE volume (new games)",   "音效音量(新游戏)" },
     /* UI_CFG_VOL_VOICE      */ { "Voice volume (new games)","语音音量(新游戏)" },
+    /* UI_CFG_DEBUG_LOG      */ { "Write a debug log",       "写入调试日志" },
     /* UI_SPEED_SLOW         */ { "slow",                    "慢" },
     /* UI_SPEED_NORMAL       */ { "normal",                  "普通" },
     /* UI_SPEED_FAST         */ { "fast",                    "快" },

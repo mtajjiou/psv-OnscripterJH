@@ -48,6 +48,7 @@ add_executable(${PROJECT_NAME}
   ./../common/zipreader.c
   ./../common/manifest.c
   ./../common/formats.c
+  ./../common/logfile.c
   ./../common/dictionary.c
   ./../common/iniparser.c
   ./../common/sha1.cpp

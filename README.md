@@ -229,7 +229,7 @@ harmless.
 - [ ] **Language Selection** — EN, JP, Chinese, etc.
 - [x] **Text Speed Default** — Apply to all games
 - [x] **Volume Presets** — BGM, SE, Voice level defaults
-- [ ] **Debug Mode** — Enable logging for troubleshooting
+- [x] **Debug Mode** — Enable logging for troubleshooting
 - [ ] **Theme Support** — Dark/light mode for GUI
 
 ### Error Handling & Recovery

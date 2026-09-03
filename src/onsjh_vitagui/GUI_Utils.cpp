@@ -177,6 +177,7 @@ DEFAULT:
 			"list_mode = list\n"
 			"language = en\n"
 			"sort = name\n"
+			"debug_log = 0\n"
 			"[GUI_icon]\n"
 			"row = 4\n"
 			"column = 7\n"
@@ -229,6 +230,7 @@ DEFAULT:
 	config.vol_bgm    = iniparser_getint(ini, "GAME:vol_bgm", 100);
 	config.vol_se     = iniparser_getint(ini, "GAME:vol_se", 100);
 	config.vol_voice  = iniparser_getint(ini, "GAME:vol_voice", 100);
+	config.debug_log  = iniparser_getint(ini, "GUI:debug_log", 0);
 	iniparser_freedict(ini);
 }
 
@@ -264,6 +266,8 @@ void save_config() {
 	iniparser_set(ini, "GAME:vol_se", itc);
 	sprintf(itc, "%d", config.vol_voice);
 	iniparser_set(ini, "GAME:vol_voice", itc);
+	sprintf(itc, "%d", config.debug_log);
+	iniparser_set(ini, "GUI:debug_log", itc);
 
 	FILE *fp = fopen(CONFIG_FILE, "w");
 	iniparser_dump_ini(ini, fp);

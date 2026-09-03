@@ -31,6 +31,10 @@
 #include "encoding_detect.h"
 #include "build_version.h"
 
+extern "C" {
+#include "logfile.h"
+}
+
 ONScripter ons;
 Coding2UTF16 *coding2utf16 = NULL;
 
@@ -78,6 +82,7 @@ void optionHelp()
     printf( "      --enc:auto\tdetect the script encoding; the default\n");
     printf( "      --debug:1\t\tprint debug info\n");
     printf( "      --fontcache\tcache default font\n");
+    printf( "      --log file\twrite what is printed to this file\n");
     printf( "      --text-speed no\tdefault text speed, 0 slow to 2 fast\n");
     printf( "      --volumes m,s,v\tdefault volumes, 0-100 each\n");
     printf( "  -h, --help\t\tshow this help and exit\n");
@@ -242,6 +247,15 @@ void parseOption(int argc, char *argv[]) {
                         utils::printError(" --volumes wants music,se,voice: %s\n",
                                           argv[0]);
                 }
+            }
+            /* Where to write what this run prints, if anywhere.  Opened
+             * here rather than at the first message so the argument list
+             * itself is in the log. */
+            else if (!strcmp(argv[0]+1, "-log")){
+                argc--; argv++;
+                if (argc == 0) break;
+                if (log_open(argv[0]))
+                    utils::printInfo("log: writing to %s\n", argv[0]);
             }
             else if (!strcmp(argv[0]+1, "-fontcache")){
                 ons.setFontCache();

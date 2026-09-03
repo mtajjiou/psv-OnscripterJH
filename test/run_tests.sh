@@ -46,6 +46,14 @@ ${CC:-cc} -std=c99 -Wall -Wextra -g \
 
 "$work/test_formats" "$root/README.md"
 
+# --- log file -------------------------------------------------------------
+${CC:-cc} -std=c99 -Wall -Wextra -g \
+  -I"$root/src/common" \
+  "$root/test/test_logfile.c" "$root/src/common/logfile.c" \
+  -o "$work/test_logfile"
+
+"$work/test_logfile" "$work"
+
 # --- game metadata cache --------------------------------------------------
 ${CC:-cc} -std=c99 -Wall -Wextra -g \
   -I"$root/src/common" \

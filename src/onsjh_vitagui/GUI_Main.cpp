@@ -45,6 +45,10 @@
 #include "GUI_Text.h"
 
 extern "C" {
+#include "logfile.h"
+}
+
+extern "C" {
 #include "formats.h"
 }
 #include "GUI_Utils.h"
@@ -448,7 +452,9 @@ void draw_config() {
 							  : ui_text(UI_SPEED_NORMAL))},
 		{ui_text(UI_CFG_VOL_BGM),   RomInfo::to_char(config.vol_bgm)},
 		{ui_text(UI_CFG_VOL_SE),    RomInfo::to_char(config.vol_se)},
-		{ui_text(UI_CFG_VOL_VOICE), RomInfo::to_char(config.vol_voice)}
+		{ui_text(UI_CFG_VOL_VOICE), RomInfo::to_char(config.vol_voice)},
+		{ui_text(UI_CFG_DEBUG_LOG),
+			config.debug_log ? ui_text(UI_ON) : ui_text(UI_OFF)}
 	};
 
 	/* The settings sit on a card over a dimmed library rather than over a
@@ -1511,6 +1517,20 @@ ScreenState on_mainscreen_event(int steps, int &step, int &curr, int &touched) {
  * which is what the return value is for. */
 /* Volumes move in tens and stop at the ends rather than wrapping: running
  * past 100 back to 0 is a way to mute a game by accident. */
+/* Opens or closes the launcher's own log, so turning the setting on starts
+ * logging now rather than at the next start.  The engine gets the same
+ * treatment through --log when a game is launched. */
+static void apply_debug_log() {
+	if (config.debug_log) {
+		sceIoMkdir("ux0:data/onsemu", 0777);
+		if (log_open(LAUNCHER_LOG_FILE))
+			log_printf("launcher %s %s\n", ONS_BUILD_VERSION, ONS_BUILD_COMMIT);
+	}
+	else {
+		log_close();
+	}
+}
+
 static int volume_step(int value, int direction) {
 	value += direction * 10;
 	if (value > 100) value = 100;
@@ -1563,6 +1583,10 @@ static ScreenState activate_config_row(int row) {
 		break;
 	case 12:
 		config.vol_voice = volume_step(config.vol_voice, +1);
+		break;
+	case 13:
+		config.debug_log = !config.debug_log;
+		apply_debug_log();
 		break;
 	default:
 		break;
@@ -1696,6 +1720,10 @@ ScreenState on_config_event() {
 		case 12:
 			config.vol_voice = volume_step(config.vol_voice, -1);
 			break;
+		case 13:
+			config.debug_log = !config.debug_log;
+			apply_debug_log();
+			break;
 		default:
 			break;
 		}
@@ -1755,6 +1783,10 @@ ScreenState on_config_event() {
 			break;
 		case 12:
 			config.vol_voice = volume_step(config.vol_voice, 1);
+			break;
+		case 13:
+			config.debug_log = !config.debug_log;
+			apply_debug_log();
 			break;
 		default:
 			break;
@@ -2780,6 +2812,8 @@ int main()
 	{
 		font = vita2d_load_font_file("app0:default.ttf");
 		load_config();
+		/* Before anything else worth logging happens. */
+		apply_debug_log();
 		/* load_config() chose the language; the labels are built from it. */
 		init_sittings_text();
 
@@ -2865,6 +2899,11 @@ int main()
 		cmd_str[cmd_num++] = speed_str;
 		cmd_str[cmd_num++] = (char*)"--volumes";
 		cmd_str[cmd_num++] = volumes_str;
+
+		if (config.debug_log) {
+			cmd_str[cmd_num++] = (char*)"--log";
+			cmd_str[cmd_num++] = (char*)ENGINE_LOG_FILE;
+		}
 		/* What the launcher worked out, then what the game asked for --
 		 * in that order, so a hand-written ons_args overrides a guess. */
 		cmd_num = appendAutoArgs(rom_path, cmd_str, cmd_num, CMD_MAX);
@@ -2873,6 +2912,10 @@ int main()
 		for(int i=0; i<cmd_num; i++)
 		{
 			printf("cmd_str[%d] %s\n", i, cmd_str[i]);
+			/* The arguments the engine is about to be started with are
+			 * the first thing to look at when a game does not start,
+			 * and the launcher's process ends here. */
+			log_printf("launch argv[%d] = %s\n", i, cmd_str[i]);
 		}
 
 		printf("prepare sceAppMgrLoadExec %s\n", ONSJH_PATH);

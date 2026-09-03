@@ -42,6 +42,10 @@ typedef struct configure {
 	int vol_bgm;       /* 0-100 */
 	int vol_se;
 	int vol_voice;
+	/* Whether both binaries write what they print to ux0:data/onsemu/.
+	 * Off by default: it costs a write per line, and a log nobody asked
+	 * for is a log nobody reads. */
+	int debug_log;
 } configure;
 
 /* How the game list is ordered.  Name is free -- it is already in memory.

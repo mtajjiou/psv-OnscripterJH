@@ -65,6 +65,7 @@ enum UIStringId {
     UI_CFG_VOL_BGM,
     UI_CFG_VOL_SE,
     UI_CFG_VOL_VOICE,
+    UI_CFG_DEBUG_LOG,
     UI_SPEED_SLOW,
     UI_SPEED_NORMAL,
     UI_SPEED_FAST,

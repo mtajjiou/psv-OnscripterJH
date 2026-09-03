@@ -27,6 +27,10 @@
 #include <stdarg.h>
 #include <vitasdk.h>
 
+extern "C" {
+#include "logfile.h"
+}
+
 
 static char *config_path;
 
@@ -40,6 +44,10 @@ namespace utils{
 		va_end(va);
 
 		sceClibPrintf(str);
+		/* And to the card, when the player asked for a log: sceClibPrintf
+		 * goes to a debug channel a retail console has nothing attached
+		 * to, which is why bug reports have nothing in them. */
+		log_write(str);
 
 	}
 
@@ -51,6 +59,7 @@ namespace utils{
 		va_end(va);
 
 		sceClibPrintf(str);
+		log_write(str);
 
 	}
 }

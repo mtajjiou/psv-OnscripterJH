@@ -99,6 +99,11 @@ target_link_libraries(${PROJECT_NAME}
   FLAC
   FLAC++
   mpg123
+  # SDL2_mixer here is built with opus and xmp module support, so their
+  # archives must be linked too. opusfile/opus precede ogg, which they use.
+  opusfile
+  opus
+  xmp
   vorbisfile
   vorbis
   ogg

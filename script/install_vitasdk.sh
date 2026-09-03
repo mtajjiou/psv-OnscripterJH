@@ -46,6 +46,7 @@ PACKAGES="zlib bzip2 libpng libjpeg-turbo libwebp freetype \
     libvita2d libvita2d_ext \
     sdl2 sdl2_image sdl2_mixer sdl2_ttf \
     libogg libvorbis flac mpg123 libmikmod libmodplug \
+    opus opusfile libxmp \
     luajit taihen"
 
 if [ "${VITASDK_INSTALL_ALL:-0}" = "1" ]; then

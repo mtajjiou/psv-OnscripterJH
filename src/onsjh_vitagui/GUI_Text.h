@@ -55,6 +55,10 @@ enum UIStringId {
     UI_TOUCH_BOTH,
     UI_CFG_LANGUAGE,
     UI_CFG_FETCH_COVERS,
+    UI_CFG_SORT,
+    UI_SORT_NAME,
+    UI_SORT_RECENT,
+    UI_SORT_SIZE,
 
     /* Buttons and prompts */
     UI_BTN_START,
@@ -104,6 +108,12 @@ enum UIStringId {
     UI_NEVER_PLAYED,
     UI_ZIP_INFO,
     UI_ZIP_INFO_TIME,
+
+    /* Searching the list */
+    UI_SEARCH_TITLE,
+    UI_SEARCH_ACTIVE,
+    UI_SEARCH_EMPTY,
+    UI_HINT_SEARCH,
 
     /* The help screen is a table now: a button in the first column, what it
      * does in the second.  See draw_help_screen(). */

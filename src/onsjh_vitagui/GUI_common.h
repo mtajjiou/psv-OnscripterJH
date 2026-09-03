@@ -125,7 +125,7 @@
 #define GREEN               RGBA8(0x00, 0x80, 0x00, 0xFF)
 
 #define CONFIG_FILE "ux0:data/onsemu/ONSConfig.ini"
-#define CONFIG_NUM 7   /* language, then the covers row */
+#define CONFIG_NUM 8   /* order, language, then the covers row */
 
 #define PACKAGE_TEMP "ux0:onsemu/temp/"
 
@@ -191,6 +191,9 @@ typedef enum {
 	/* Removing an installed game, or an archive. */
 	DELETE_RUN,
 	DELETE_DONE,
+	/* Finding a game in a long list. */
+	SEARCH_OPEN,
+	SEARCH_CLEAR,
 } ScreenState;
 typedef enum {
 	USE_ICON = 1,

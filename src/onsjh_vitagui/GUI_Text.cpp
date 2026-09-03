@@ -48,6 +48,11 @@ const char *g_strings[UI_STRING_COUNT][UI_LANG_COUNT] = {
 
     /* UI_CFG_FETCH_COVERS   */ { "Fetch missing covers",   "\xE8\x8E\xB7\xE5\x8F\x96\xE7\xBC\xBA\xE5\xB0\x91\xE7\x9A\x84\xE5\xB0\x81\xE9\x9D\xA2" },
 
+    /* UI_CFG_SORT           */ { "Order",                  "\xE6\x8E\x92\xE5\xBA\x8F" },
+    /* UI_SORT_NAME          */ { "name",                   "\xE5\x90\x8D\xE7\xA7\xB0" },
+    /* UI_SORT_RECENT        */ { "recently played",        "\xE6\x9C\x80\xE8\xBF\x91\xE6\xB8\xB8\xE7\x8E\xA9" },
+    /* UI_SORT_SIZE          */ { "size",                   "\xE5\xA4\xA7\xE5\xB0\x8F" },
+
     /* UI_BTN_START          */ { "start",                  "启动" },
     /* UI_BTN_CONFIG         */ { "config",                 "设置" },
     /* UI_BTN_INSTALL        */ { "install",                "安装" },
@@ -119,6 +124,12 @@ const char *g_strings[UI_STRING_COUNT][UI_LANG_COUNT] = {
                                   "\xE5\x8E\x8B\xE7\xBC\xA9\xE5\x8C\x85 %s\xEF\xBC\x8C\xE8\xA7\xA3\xE5\x8E\x8B\xE7\xBA\xA6 %s" },
     /* UI_ZIP_INFO_TIME      */ { "about %d min %02d s to install",
                                   "\xE5\xAE\x89\xE8\xA3\x85\xE7\xBA\xA6\xE9\x9C\x80 %d \xE5\x88\x86 %02d \xE7\xA7\x92" },
+
+    /* UI_SEARCH_TITLE       */ { "Find a game",            "\xE6\x9F\xA5\xE6\x89\xBE\xE6\xB8\xB8\xE6\x88\x8F" },
+    /* UI_SEARCH_ACTIVE      */ { "\"%s\"",                   "\"%s\"" },
+    /* UI_SEARCH_EMPTY       */ { "Nothing matches \"%s\".\n\nPress %s to clear the search.",
+                                  "\xE6\xB2\xA1\xE6\x9C\x89\xE5\x8C\xB9\xE9\x85\x8D \"%s\" \xE7\x9A\x84\xE6\xB8\xB8\xE6\x88\x8F\xE3\x80\x82\n\n\xE6\x8C\x89 %s \xE6\xB8\x85\xE9\x99\xA4\xE6\x90\x9C\xE7\xB4\xA2" },
+    /* UI_HINT_SEARCH        */ { "find",                   "\xE6\x9F\xA5\xE6\x89\xBE" },
 
     /* UI_HELP_TITLE         */ { "In-game controls",       "\xE4\xBD\xBF\xE7\x94\xA8\xE5\xB8\xAE\xE5\x8A\xA9(\xE6\xB8\xB8\xE6\x88\x8F\xE5\x86\x85)" },
     /* UI_HELP_CONFIRM       */ { "confirm, continue",      "\xE7\xA1\xAE\xE8\xAE\xA4/\xE7\xBB\xA7\xE7\xBB\xAD" },

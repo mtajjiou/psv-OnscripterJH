@@ -26,6 +26,7 @@
 #include <psp2/ctrl.h>
 #include <psp2/kernel/processmgr.h>
 #include <psp2/kernel/clib.h>
+#include <psp2/ime_dialog.h>
 #include <stdio.h>
 #include <string.h>
 #include <vita2d.h>
@@ -303,6 +304,14 @@ void draw_help() {
 	const int baseline = FOOTER_TOP + 21;
 
 	if (rom_list.size() == 0) {
+		if (!rom_search.empty()) {
+			static char empty[160];
+			snprintf(empty, sizeof(empty), ui_text(UI_SEARCH_EMPTY),
+				 rom_search.c_str(), ICON_CANCEL);
+			th_text(TH_PAD, baseline, TH_TEXT_DIM, TH_FONT_S,
+				th_fit(empty, TH_FONT_S, SCREEN_WIDTH - TH_PAD * 2));
+			return;
+		}
 		th_text(TH_PAD, baseline, TH_TEXT_DIM, TH_FONT_S,
 			"No games yet -- put a folder or a .zip in ux0:onsemu/");
 		return;
@@ -324,11 +333,21 @@ void draw_help() {
 	x += th_hint(x, baseline, NULL, ui_text(UI_BTN_START), TH_TEXT_DIM,
 		     TH_FONT_S);
 
-	static char position[32];
+	static char position[64];
 	snprintf(position, sizeof(position), ui_text(UI_FOOTER_HINTS),
 		g_choose + 1, (int)rom_list.size());
-	th_text_right(SCREEN_WIDTH - TH_PAD, baseline, TH_TEXT, TH_FONT_S,
-		position);
+	int right = SCREEN_WIDTH - TH_PAD;
+	th_text_right(right, baseline, TH_TEXT, TH_FONT_S, position);
+
+	/* A filtered list looks like a short list unless it says otherwise. */
+	if (!rom_search.empty()) {
+		char active[80];
+		snprintf(active, sizeof(active), ui_text(UI_SEARCH_ACTIVE),
+			 rom_search.c_str());
+		right -= vita2d_font_text_width(font, TH_FONT_S, position) + TH_PAD;
+		th_text_right(right, baseline, TH_ACCENT, TH_FONT_S,
+			th_fit(active, TH_FONT_S, 260));
+	}
 }
 
 /* Flat, with the accent as the pressed state rather than an inverted box. */
@@ -391,6 +410,10 @@ void draw_config() {
 		{ui_text(UI_CFG_TOUCH_MODE),
 			config.use_btouch == 0 ? ui_text(UI_TOUCH_OFF)
 				: (config.use_btouch == 1 ? ui_text(UI_TOUCH_FRONT) : ui_text(UI_TOUCH_BOTH))},
+		{ui_text(UI_CFG_SORT),
+			config.sort_mode == SORT_RECENT ? ui_text(UI_SORT_RECENT)
+				: (config.sort_mode == SORT_SIZE ? ui_text(UI_SORT_SIZE)
+								 : ui_text(UI_SORT_NAME))},
 		{ui_text(UI_CFG_LANGUAGE),
 			config.language == UI_LANG_ZH ? "\xE4\xB8\xAD\xE6\x96\x87" : "English"},
 		/* Not a setting but an action, and this is where a player looks for
@@ -1062,6 +1085,10 @@ void draw_screen(ScreenState state, int curr, int choose, int slot) {
 		break;
 	}
 
+	/* Anything the system is showing over us -- the keyboard, mostly --
+	 * is drawn here, in our frame, or it does not appear at all. */
+	vita2d_common_dialog_update();
+
 	vita2d_end_drawing();
 	vita2d_wait_rendering_done();
 	vita2d_swap_buffers();
@@ -1183,6 +1210,14 @@ ScreenState on_mainscreen_event_with_dpad(int steps, int &step, int &curr, int &
 	if (!(btn & SCE_CTRL_HOLD) && btn & SCE_CTRL_SELECT) {
 		return ABOUT_MSG;
 	}
+	if (!(btn & SCE_CTRL_HOLD) && btn & SCE_CTRL_TRIANGLE) {
+		return SEARCH_OPEN;
+	}
+	/* Cancel gets the whole list back, which is the only thing it has to
+	 * do on this screen. */
+	if (!(btn & SCE_CTRL_HOLD) && (btn & SCE_CTRL_CANCEL) && !rom_search.empty()) {
+		return SEARCH_CLEAR;
+	}
 
 	if (!(btn & SCE_CTRL_HOLD) && btn & SCE_CTRL_ENTER) {
 		int tmp_curr = curr;
@@ -1234,13 +1269,19 @@ static ScreenState activate_config_row(int row) {
 			config.use_btouch = 0;
 		break;
 	case 5:
+		/* Ordering by size has to measure every folder, which apply_view
+		 * does the first time it is asked for. */
+		config.sort_mode = (config.sort_mode + 1) % SORT_COUNT;
+		apply_view();
+		break;
+	case 6:
 		/* Cycling the language rewrites every label, so the settings menu
 		 * strings are rebuilt here too rather than only at startup. */
 		config.language = (config.language + 1) % UI_LANG_COUNT;
 		ui_set_language((UILanguage)config.language);
 		init_sittings_text();
 		break;
-	case 6:
+	case 7:
 		return COVERS_ALL_CONFIRM;
 	default:
 		break;
@@ -1351,6 +1392,10 @@ ScreenState on_config_event() {
 			LIST_ROW = config.list_row;
 			break;
 		case 5:
+			config.sort_mode = (config.sort_mode + 1) % SORT_COUNT;
+			apply_view();
+			break;
+		case 6:
 			/* Cycling the language rewrites every label, so the settings
 			 * menu strings are rebuilt here too rather than only at
 			 * startup. */
@@ -1395,6 +1440,10 @@ ScreenState on_config_event() {
 			LIST_ROW = config.list_row;
 			break;
 		case 5:
+			config.sort_mode = (config.sort_mode + 1) % SORT_COUNT;
+			apply_view();
+			break;
+		case 6:
 			/* Cycling the language rewrites every label, so the settings
 			 * menu strings are rebuilt here too rather than only at
 			 * startup. */
@@ -1876,6 +1925,100 @@ int game_cover(int choose) {
 	return result == VNDB_OK;
 }
 
+/* Text in and out of the system keyboard.
+ *
+ * The dialog speaks UTF-16 and everything else here speaks UTF-8, so both
+ * conversions live together where they can be read against each other.
+ * Only the basic plane is handled, which covers every character that can be
+ * typed into a game folder's name. */
+static void utf8_to_utf16(const char *in, SceWChar16 *out, int max)
+{
+	int o = 0;
+	for (int i = 0; in[i] && o < max - 1; ){
+		unsigned char c = (unsigned char)in[i];
+		unsigned int cp;
+		if (c < 0x80)             { cp = c;                 i += 1; }
+		else if ((c & 0xE0) == 0xC0) { cp = ((c & 0x1F) << 6) |
+					       (in[i+1] & 0x3F);     i += 2; }
+		else if ((c & 0xF0) == 0xE0) { cp = ((c & 0x0F) << 12) |
+					       ((in[i+1] & 0x3F) << 6) |
+					       (in[i+2] & 0x3F);     i += 3; }
+		else                      { cp = '?';               i += 1; }
+		out[o++] = (SceWChar16)cp;
+	}
+	out[o] = 0;
+}
+
+static void utf16_to_utf8(const SceWChar16 *in, char *out, int max)
+{
+	int o = 0;
+	for (int i = 0; in[i] && o < max - 4; i++){
+		unsigned int cp = in[i];
+		if (cp < 0x80)        out[o++] = (char)cp;
+		else if (cp < 0x800){ out[o++] = (char)(0xC0 | (cp >> 6));
+				      out[o++] = (char)(0x80 | (cp & 0x3F)); }
+		else                { out[o++] = (char)(0xE0 | (cp >> 12));
+				      out[o++] = (char)(0x80 | ((cp >> 6) & 0x3F));
+				      out[o++] = (char)(0x80 | (cp & 0x3F)); }
+	}
+	out[o] = '\0';
+}
+
+/* Opens the console's own keyboard and puts what was typed in rom_search.
+ *
+ * The dialog draws itself over the application, which has to keep drawing
+ * for it to appear at all -- hence the loop, which is the launcher's normal
+ * frame with the dialog composited on top. */
+static void run_search(ScreenState behind, int curr, int choose, int slot)
+{
+	static SceWChar16 title[64];
+	static SceWChar16 initial[SCE_IME_DIALOG_MAX_TEXT_LENGTH + 1];
+	static SceWChar16 buffer[SCE_IME_DIALOG_MAX_TEXT_LENGTH + 1];
+
+	utf8_to_utf16(ui_text(UI_SEARCH_TITLE), title, 64);
+	utf8_to_utf16(rom_search.c_str(), initial,
+		      SCE_IME_DIALOG_MAX_TEXT_LENGTH);
+	memset(buffer, 0, sizeof(buffer));
+
+	SceImeDialogParam param;
+	sceImeDialogParamInit(&param);
+	param.supportedLanguages = 0;         /* whatever the console has */
+	param.languagesForced    = SCE_FALSE;
+	/* The console's ordinary keyboard, not the latin-only one: the
+	 * folders on this card are as likely to be named in japanese or
+	 * chinese as in english. */
+	param.type               = SCE_IME_TYPE_DEFAULT;
+	param.title              = title;
+	param.maxTextLength      = 63;
+	param.initialText        = initial;
+	param.inputTextBuffer    = buffer;
+
+	if (sceImeDialogInit(&param) < 0) return;
+
+	while (1) {
+		draw_screen(behind, curr, choose, slot);
+
+		SceCommonDialogStatus status = sceImeDialogGetStatus();
+		if (status == SCE_COMMON_DIALOG_STATUS_FINISHED) {
+			SceImeDialogResult result;
+			memset(&result, 0, sizeof(result));
+			sceImeDialogGetResult(&result);
+
+			/* Closing the keyboard rather than confirming leaves the
+			 * search as it was, which is what cancel should do. */
+			if (result.button == SCE_IME_DIALOG_BUTTON_ENTER) {
+				char typed[128];
+				utf16_to_utf8(buffer, typed, sizeof(typed));
+				rom_search = typed;
+				apply_view();
+			}
+			sceImeDialogTerm();
+			break;
+		}
+		if (status == SCE_COMMON_DIALOG_STATUS_NONE) break;
+	}
+}
+
 void  game_start(int choose) {
 	/* Stamp the folder so the panel can say when this was last played.
 	 * A file beside the game rather than a list somewhere central: a game
@@ -2016,6 +2159,18 @@ int mainloop() {
 			case MAIN_SCREEN:
 				if (!need_load) need_load = 1;
 				new_state = on_mainscreen_event(steps, step, curr, choose);
+				/* Both change which rows are on screen, so the list is
+				 * rebuilt from what is already in memory -- 2 rather than
+				 * 1, which would rescan the card and reload every icon. */
+				if (new_state == SEARCH_OPEN) {
+					run_search(MAIN_SCREEN, curr, choose, slot);
+					return 2;
+				}
+				if (new_state == SEARCH_CLEAR) {
+					rom_search.clear();
+					apply_view();
+					return 2;
+				}
 				/* A .zip row has no game to configure yet -- offer to
 				 * install it instead of opening the game info panel. */
 				if (new_state == PRINT_APPINFO &&
@@ -2228,7 +2383,11 @@ int main()
 		while (1) {
 			int again = mainloop();
 			if (again < 0) break;
-			load_rom_list();
+			/* 1 means the card changed -- an install, a delete, a cover
+			 * written -- and the list has to be read again.  2 means only
+			 * which rows are shown changed, and rereading the card would
+			 * throw away every icon to arrive at the same rows. */
+			if (again == 1) load_rom_list();
 		}
 
 		vita2d_start_drawing();

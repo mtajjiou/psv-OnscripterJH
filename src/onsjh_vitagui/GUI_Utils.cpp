@@ -31,7 +31,9 @@ int confirm_msg_width;
 char *close_msg;
 int close_msg_width;
 
+std::vector<RomInfo> rom_list_all;
 std::vector<RomInfo> rom_list;
+std::string rom_search;
 configure config;
 
 char *strdup(const char *c)
@@ -155,6 +157,7 @@ DEFAULT:
 			"version = %d\n"
 			"list_mode = list\n"
 			"language = en\n"
+			"sort = name\n"
 			"[GUI_icon]\n"
 			"row = 4\n"
 			"column = 7\n"
@@ -188,6 +191,10 @@ DEFAULT:
 		iniparser_getstring(ini, "GUI:language", "en"));
 	ui_set_language((UILanguage)config.language);
 
+	const char *sort = iniparser_getstring(ini, "GUI:sort", "name");
+	config.sort_mode = (sort && sort[0] == 'r') ? SORT_RECENT
+			 : ((sort && sort[0] == 's') ? SORT_SIZE : SORT_NAME);
+
 	ICONS_ROW = iniparser_getint(ini, "GUI_icon:row", ICONS_ROW);
 	config.icon_row = ICONS_ROW;
 	ICONS_COL = iniparser_getint(ini, "GUI_icon:column", ICONS_COL);
@@ -208,6 +215,9 @@ void save_config() {
 	
 	iniparser_set(ini, "GUI:list_mode", config.list_mode);
 	iniparser_set(ini, "GUI:language", ui_language_name((UILanguage)config.language));
+	iniparser_set(ini, "GUI:sort",
+		config.sort_mode == SORT_RECENT ? "recent"
+			: (config.sort_mode == SORT_SIZE ? "size" : "name"));
 	char itc[10];
 	sprintf(itc, "%d", GUI_VERSION);
 	iniparser_set(ini, "GUI:version", itc);
@@ -233,6 +243,77 @@ static bool by_display_name(const RomInfo &a, const RomInfo &b) {
 	return strcasecmp(x.c_str(), y.c_str()) < 0;
 }
 
+/* Most recently played first.  A game that has never been played has no
+ * stamp and sorts to the end rather than to the top, where it would push
+ * what you actually play out of sight.  The stamps are written as
+ * YYYY/MM/DD HH:MM, so comparing them as text compares them as dates. */
+static bool by_recently_played(const RomInfo &a, const RomInfo &b) {
+	if (a.last_date.empty() != b.last_date.empty())
+		return b.last_date.empty();
+	if (a.last_date != b.last_date)
+		return a.last_date > b.last_date;
+	return by_display_name(a, b);
+}
+
+/* Biggest first: the reason to sort by size is to find what to delete. */
+static bool by_size(const RomInfo &a, const RomInfo &b) {
+	if (a.size != b.size) return a.size > b.size;
+	return by_display_name(a, b);
+}
+
+/* Does this row match what was searched for?  Case-insensitive, anywhere in
+ * the name -- a player looking for "tsuki" should not have to know whether
+ * the folder starts with it. */
+static bool matches_search(const RomInfo &rom) {
+	if (rom_search.empty()) return true;
+
+	const string &name = rom.name.empty() ? rom.path : rom.name;
+	const size_t hay = name.length(), needle = rom_search.length();
+	if (needle > hay) return false;
+
+	for (size_t i = 0; i + needle <= hay; i++)
+		if (strncasecmp(name.c_str() + i, rom_search.c_str(), needle) == 0)
+			return true;
+	return false;
+}
+
+void measure_sizes() {
+	/* One directory walk per game, done when sorting by size is first
+	 * asked for rather than at every startup: on a card full of games it
+	 * is the slowest thing the launcher can do, and most of the time
+	 * nobody wants it. */
+	for (size_t i = 0; i < rom_list_all.size(); i++) {
+		if (rom_list_all[i].is_zip || rom_list_all[i].size > 0) continue;
+
+		uint64_t size = 0;
+		uint32_t folders = 0, files = 0;
+		getPathInfo(rom_list_all[i].char_path(), &size, &folders, &files);
+		rom_list_all[i].size = size;
+	}
+}
+
+void apply_view() {
+	if (config.sort_mode == SORT_SIZE) measure_sizes();
+
+	rom_list.clear();
+	for (size_t i = 0; i < rom_list_all.size(); i++)
+		if (matches_search(rom_list_all[i]))
+			rom_list.push_back(rom_list_all[i]);
+
+	switch (config.sort_mode) {
+	case SORT_RECENT:
+		std::sort(rom_list.begin(), rom_list.end(), by_recently_played);
+		break;
+	case SORT_SIZE:
+		std::sort(rom_list.begin(), rom_list.end(), by_size);
+		break;
+	case SORT_NAME:
+	default:
+		std::sort(rom_list.begin(), rom_list.end(), by_display_name);
+		break;
+	}
+}
+
 int load_rom_list() {
 
 	string drives[3] = { "ux0:/onsemu" ,"ur0:/onsemu" ,"uma0:/onsemu" };
@@ -242,9 +323,11 @@ int load_rom_list() {
 
 	/* Rebuilding means every row loads its image again, so let go of the
 	 * ones already held -- the list is rebuilt after every install and every
-	 * cover fetch, and a texture per row per reload adds up. */
-	for (size_t i = 0; i < rom_list.size(); i++)
-		if (rom_list[i].icon) vita2d_free_texture(rom_list[i].icon);
+	 * cover fetch, and a texture per row per reload adds up.  Only the
+	 * master frees: the rows on screen are copies sharing its textures. */
+	for (size_t i = 0; i < rom_list_all.size(); i++)
+		if (rom_list_all[i].icon) vita2d_free_texture(rom_list_all[i].icon);
+	rom_list_all.clear();
 	rom_list.clear();
 	for (int i = 0; i < 3; i++) {
 		dfd = sceIoDopen(drives[i].c_str());
@@ -265,7 +348,7 @@ int load_rom_list() {
 						file_name[0] == '.' ||
 						file_name.compare(0, 9, "__MACOSX") == 0;
 					if (SCE_S_ISDIR(dir.d_stat.st_mode) && !junk) {
-						rom_list.push_back(RomInfo(temp));
+						rom_list_all.push_back(RomInfo(temp));
 					}
 				}
 			} while (res > 0);
@@ -273,16 +356,14 @@ int load_rom_list() {
 		}
 	}
 
-	/* Alphabetical, so a game keeps its place in the list between runs.
-	 * Directory order is whatever the filesystem happens to return, which
-	 * moves as games are added and removed. */
-	std::sort(rom_list.begin(), rom_list.end(), by_display_name);
-
-	/* Archives waiting in ux0:data/game_zips are listed after the installed
-	 * games, so dropping a .zip on the card is enough to see it here. */
+	/* Archives waiting in ux0:data/game_zips, so dropping a .zip on the
+	 * card is enough to see it here. */
 	std::vector<ZipEntryInfo> zips = ZipHandler::scanZipFolder();
 	for (size_t i = 0; i < zips.size(); i++)
-		rom_list.push_back(RomInfo(zips[i].path, zips[i].file_size, 1));
+		rom_list_all.push_back(RomInfo(zips[i].path, zips[i].file_size, 1));
+
+	/* Ordered and filtered into what is actually shown. */
+	apply_view();
 
 	return rom_list.size();
 }

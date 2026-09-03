@@ -32,7 +32,19 @@ typedef struct configure {
 	int icon_col;
 	int list_row;
 	int language;      /* UILanguage; the launcher's interface language */
+	int sort_mode;     /* SortMode: how the list is ordered */
 } configure;
+
+/* How the game list is ordered.  Name is free -- it is already in memory.
+ * Recent reads the stamp each game carries.  Size has to walk each folder,
+ * so it is measured the first time it is asked for rather than at startup:
+ * see measure_sizes(). */
+enum SortMode {
+	SORT_NAME = 0,
+	SORT_RECENT,
+	SORT_SIZE,
+	SORT_COUNT
+};
 
 
 
@@ -164,7 +176,20 @@ public:
 	}
 };
 
+/* Every row found on the card.  rom_list is what is on screen: the same
+ * rows filtered by the search and put in the chosen order.  The rows in it
+ * are copies that share their texture with the master, so only rom_list_all
+ * ever frees one. */
+extern vector<RomInfo> rom_list_all;
 extern vector<RomInfo> rom_list;
+
+/* The active search, or empty.  Matching is on the name the player sees. */
+extern string rom_search;
+
+/* Rebuilds rom_list from rom_list_all for the current search and order. */
+void apply_view();
+/* Walks the folders once to fill in RomInfo::size, for sorting by it. */
+void measure_sizes();
 extern configure config;
 extern vita2d_font* font;
 

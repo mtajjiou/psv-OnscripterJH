@@ -93,6 +93,13 @@ public:
 	 * volume once rather than in every game's own menu.  A game that has
 	 * already been played keeps whatever it saved. */
 	void setDefaultTextSpeed(int no);
+	void setForceTextSpeed(bool force);
+	/* The same two, but authoritative: a value the player set for this
+	 * game in particular, which wins over what the game saved for itself.
+	 * Otherwise a per-game setting would appear to do nothing on a game
+	 * that has been played once. */
+	void setChosenTextSpeed(int no);
+	void setChosenVolumes(int music, int se, int voice);
 	void setDefaultVolumes(int music, int se, int voice);
 #endif
 
@@ -818,6 +825,15 @@ private:
     bool new_line_skip_flag;
     int  text_speed_no;
     int  default_text_speed_no = 1;
+    /* Whether the player's choice of text speed wins over a speed the
+     * script set for itself.  Without this the setting does nothing in most
+     * games: a script that calls setwindow or textspeed leaves wait_time at
+     * a fixed number, and the three speeds then feel identical. */
+    bool force_text_speed = false;
+    /* -1 when the player has not chosen for this game. */
+    int  chosen_text_speed_no = -1;
+    int  chosen_music_volume = -1, chosen_se_volume = -1, chosen_voice_volume = -1;
+    int  textDisplaySpeed();
     int  default_music_volume = DEFAULT_VOLUME;
     int  default_se_volume    = DEFAULT_VOLUME;
     int  default_voice_volume = DEFAULT_VOLUME;

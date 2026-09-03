@@ -84,7 +84,10 @@ void optionHelp()
     printf( "      --fontcache\tcache default font\n");
     printf( "      --log file\twrite what is printed to this file\n");
     printf( "      --text-speed no\tdefault text speed, 0 slow to 2 fast\n");
+    printf( "      --force-text-speed\tthe chosen speed wins over the script's\n");
     printf( "      --volumes m,s,v\tdefault volumes, 0-100 each\n");
+    printf( "      --set-text-speed no\tthis game's text speed, over its own\n");
+    printf( "      --set-volumes m,s,v\tthis game's volumes, over its own\n");
     printf( "  -h, --help\t\tshow this help and exit\n");
     printf( "  -v, --version\t\tshow the version information and exit\n");
     exit(0);
@@ -234,6 +237,28 @@ void parseOption(int argc, char *argv[]) {
                 argc--; argv++;
                 if (argc == 0) break;
                 ons.setDefaultTextSpeed(atoi(argv[0]));
+            }
+            else if (!strcmp(argv[0]+1, "-force-text-speed")){
+                ons.setForceTextSpeed(true);
+            }
+            /* The player's choice for this game in particular, which wins
+             * over what the game saved for itself. */
+            else if (!strcmp(argv[0]+1, "-set-text-speed")){
+                argc--; argv++;
+                if (argc == 0) break;
+                ons.setChosenTextSpeed(atoi(argv[0]));
+            }
+            else if (!strcmp(argv[0]+1, "-set-volumes")){
+                argc--; argv++;
+                if (argc == 0) break;
+                {
+                    int m = -1, s = -1, v = -1;
+                    if (sscanf(argv[0], "%d,%d,%d", &m, &s, &v) == 3)
+                        ons.setChosenVolumes(m, s, v);
+                    else
+                        utils::printError(" --set-volumes wants music,se,voice: %s\n",
+                                          argv[0]);
+                }
             }
             else if (!strcmp(argv[0]+1, "-volumes")){
                 /* One option rather than three, in "music,se,voice". */

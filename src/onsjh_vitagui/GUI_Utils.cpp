@@ -781,7 +781,7 @@ int appendGameArgs(const string &game_path, char *cmd_str[], int index, int max)
 	return index;
 }
 
-int parseOption(string &cmdstr,int (&cmd)[10],char *cmd_str[],int flag = 0) {
+int parseOption(string &cmdstr,int (&cmd)[CMD_OPTS],char *cmd_str[],int flag = 0) {
 	if (!flag) {
 		string tmp = "";
 		int i = 0;
@@ -837,6 +837,26 @@ int parseOption(string &cmdstr,int (&cmd)[10],char *cmd_str[],int flag = 0) {
 					}
 					else if (tmp == "touch:off") {
 						cmd[SITTINGS_TOUCH] = 4;
+					}
+					/* Text speed and volumes, per game.  A
+					 * value that is absent leaves 0, which
+					 * means the launcher's own setting still
+					 * decides. */
+					else if (tmp.compare(0, 6, "speed:") == 0) {
+						int v = atoi(tmp.c_str() + 6);
+						if (v >= 0 && v <= 3)
+							cmd[SITTINGS_TEXT_SPEED] = v;
+					}
+					else if (tmp.compare(0, 4, "bgm:") == 0 ||
+						 tmp.compare(0, 3, "se:") == 0 ||
+						 tmp.compare(0, 6, "voice:") == 0) {
+						const int slot =
+							tmp[0] == 'b' ? SITTINGS_VOL_BGM :
+							(tmp[0] == 's' ? SITTINGS_VOL_SE
+								       : SITTINGS_VOL_VOICE);
+						int v = atoi(tmp.c_str() +
+							     tmp.find(':') + 1);
+						if (v >= 0 && v <= 11) cmd[slot] = v;
 					}
 					else {
 						printf(" unknown option %s\n", tmp.c_str());
@@ -898,6 +918,33 @@ int parseOption(string &cmdstr,int (&cmd)[10],char *cmd_str[],int flag = 0) {
 			 * appends once, after this. */
 			cmdstr += " ";
 			cmdstr += touch_opt[cmd[SITTINGS_TOUCH]];
+		}
+
+		/* The same for the four that follow the launcher's defaults
+		 * when they are unset: written down here, handed to the engine
+		 * as its own options further on. */
+		{
+			char option[32];
+			if (cmd[SITTINGS_TEXT_SPEED]) {
+				snprintf(option, sizeof(option), " --speed:%d",
+					 cmd[SITTINGS_TEXT_SPEED]);
+				cmdstr += option;
+			}
+			if (cmd[SITTINGS_VOL_BGM]) {
+				snprintf(option, sizeof(option), " --bgm:%d",
+					 cmd[SITTINGS_VOL_BGM]);
+				cmdstr += option;
+			}
+			if (cmd[SITTINGS_VOL_SE]) {
+				snprintf(option, sizeof(option), " --se:%d",
+					 cmd[SITTINGS_VOL_SE]);
+				cmdstr += option;
+			}
+			if (cmd[SITTINGS_VOL_VOICE]) {
+				snprintf(option, sizeof(option), " --voice:%d",
+					 cmd[SITTINGS_VOL_VOICE]);
+				cmdstr += option;
+			}
 		}
 			
 		return index_;

@@ -401,6 +401,23 @@ void ONScripter::setDefaultTextSpeed(int no)
 	if (no >= 0 && no <= 2) default_text_speed_no = no;
 }
 
+void ONScripter::setForceTextSpeed(bool force)
+{
+	force_text_speed = force;
+}
+
+void ONScripter::setChosenTextSpeed(int no)
+{
+	if (no >= 0 && no <= 2) chosen_text_speed_no = no;
+}
+
+void ONScripter::setChosenVolumes(int music, int se, int voice)
+{
+	if (music >= 0 && music <= 100) chosen_music_volume = music;
+	if (se    >= 0 && se    <= 100) chosen_se_volume    = se;
+	if (voice >= 0 && voice <= 100) chosen_voice_volume = voice;
+}
+
 void ONScripter::setDefaultVolumes(int music, int se, int voice)
 {
 	if (music >= 0 && music <= 100) default_music_volume = music;
@@ -408,6 +425,21 @@ void ONScripter::setDefaultVolumes(int music, int se, int voice)
 	if (voice >= 0 && voice <= 100) default_voice_volume = voice;
 }
 #endif
+/* How long to wait between characters.
+ *
+ * A script that never sets a speed leaves wait_time at -1 and gets the
+ * player's choice, which is how ONScripter has always worked.  A script
+ * that does set one -- and most do, through setwindow -- used to override
+ * the player for the whole game, which made the setting look broken: all
+ * three speeds felt the same.  With force on, the player's choice wins,
+ * because it is a preference about reading rather than about the game. */
+int ONScripter::textDisplaySpeed()
+{
+	if (sentence_font.wait_time == -1 || force_text_speed)
+		return default_text_speed[text_speed_no];
+	return sentence_font.wait_time;
+}
+
 void ONScripter::setVsyncOff() {
     vsync = false;
 }
@@ -1417,6 +1449,14 @@ void ONScripter::loadEnvData()
         se_volume    = default_se_volume;
         music_volume = default_music_volume;
     }
+
+    /* What the player set for this game in particular is applied last, over
+     * whatever the game saved: they asked for it here, after having played
+     * it, so the saved value is the thing they are changing. */
+    if (chosen_text_speed_no >= 0) text_speed_no = chosen_text_speed_no;
+    if (chosen_music_volume  >= 0) music_volume  = chosen_music_volume;
+    if (chosen_se_volume     >= 0) se_volume     = chosen_se_volume;
+    if (chosen_voice_volume  >= 0) voice_volume  = chosen_voice_volume;
 }
 
 void ONScripter::saveEnvData()

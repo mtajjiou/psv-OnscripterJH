@@ -79,8 +79,10 @@ vita2d_font* font;
 
 int game_start_select = -1;
 string startup_cmd;
-int cmd_default[] = { 0,1,0,1,0,0,0,0,0,0 };
-int cmd[10] = {0};
+/* Window, font cache on, no shadow, text box on, detected encoding, and
+ * then the five that follow the launcher's own settings when they are 0. */
+int cmd_default[CMD_OPTS] = { 0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0 };
+int cmd[CMD_OPTS] = {0};
 int cmd_num = 0;
 char *cmd_str[CMD_MAX];
 string sittings[SLOT_BUTTON];
@@ -94,6 +96,10 @@ static void init_sittings_text()
 	sittings[3] = ui_text(UI_SET_TEXTBOX);
 	sittings[4] = ui_text(UI_SET_ENCODING);
 	sittings[SITTINGS_TOUCH] = ui_text(UI_SET_TOUCH);
+	sittings[SITTINGS_TEXT_SPEED] = ui_text(UI_CFG_TEXT_SPEED_GAME);
+	sittings[SITTINGS_VOL_BGM]    = ui_text(UI_CFG_VOL_BGM_GAME);
+	sittings[SITTINGS_VOL_SE]     = ui_text(UI_CFG_VOL_SE_GAME);
+	sittings[SITTINGS_VOL_VOICE]  = ui_text(UI_CFG_VOL_VOICE_GAME);
 	sittings[SITTINGS_BACKUP]  = ui_text(UI_SET_BACKUP);
 	sittings[SITTINGS_RESTORE] = ui_text(UI_SET_RESTORE);
 	sittings[SITTINGS_DEFAULT] = ui_text(UI_SET_RESET);
@@ -111,6 +117,12 @@ static void cycle_sitting(int slot)
 		cmd[slot] = (cmd[slot] + 1) % 3;
 	else if (slot == SITTINGS_TOUCH)
 		cmd[slot] = (cmd[slot] + 1) % 5;
+	else if (slot == SITTINGS_TEXT_SPEED)
+		cmd[slot] = (cmd[slot] + 1) % 4;
+	else if (slot == SITTINGS_VOL_BGM || slot == SITTINGS_VOL_SE ||
+		 slot == SITTINGS_VOL_VOICE)
+		/* 0 follows the launcher, then 0% to 100% in tens. */
+		cmd[slot] = (cmd[slot] + 1) % 12;
 	else
 		cmd[slot] = !cmd[slot];
 }
@@ -701,7 +713,23 @@ void draw_slots(int index_, int slot) {
 			while (tmp.length() < 24)
 				tmp += " ";
 			tmp += "[";
-			if (i == SITTINGS_TOUCH) {
+			if (i == SITTINGS_TEXT_SPEED) {
+				static const UIStringId speed_word[] = {
+					UI_TOUCH_DEFAULT, UI_SPEED_SLOW,
+					UI_SPEED_NORMAL, UI_SPEED_FAST
+				};
+				tmp += ui_text(speed_word[cmd[i] % 4]);
+				tmp += "]";
+			}
+			else if (i == SITTINGS_VOL_BGM || i == SITTINGS_VOL_SE ||
+				 i == SITTINGS_VOL_VOICE) {
+				if (cmd[i] == 0)
+					tmp += ui_text(UI_TOUCH_DEFAULT);
+				else
+					tmp += number_text((cmd[i] - 1) * 10);
+				tmp += "]";
+			}
+			else if (i == SITTINGS_TOUCH) {
 				/* Five states, and the first of them defers to
 				 * the launcher's own setting rather than being
 				 * a value of its own. */
@@ -885,17 +913,29 @@ void draw_help_screen() {
  * The rows come from the shared table in src/common/formats.c, so this
  * screen and the README say the same thing.
  */
+static const int kFormatRow    = 22;   /* one format */
+static const int kFormatHeader = 26;   /* a category heading and its rule */
+static const int kFormatName   = 168;  /* where the extensions start */
+
+/* How tall a category's block is, so the panel can be sized to its contents
+ * rather than to a number that was right when it was written. */
+static int format_block_height(FormatCategory cat)
+{
+	int first = 0, count = 0;
+	if (!formats_category_range(cat, &first, &count)) return 0;
+	return kFormatHeader + count * kFormatRow + 8;
+}
+
 static int draw_format_block(int left, int top, int width, FormatCategory cat)
 {
 	int first = 0, count = 0;
 	if (!formats_category_range(cat, &first, &count)) return 0;
 
-	const int row_h = 24;
 	int y = top;
 
 	th_text(left, y + TH_FONT_S, TH_TEXT, TH_FONT_S,
 		formats_category_name(cat));
-	y += 26;
+	y += kFormatHeader;
 	vita2d_draw_rectangle(left, y - 8, width, 1, TH_LINE);
 
 	for (int i = first; i < first + count; i++) {
@@ -918,29 +958,48 @@ static int draw_format_block(int left, int top, int width, FormatCategory cat)
 			break;
 		}
 
-		th_text(left, y + TH_FONT_S, TH_TEXT, TH_FONT_S, e->name);
-		th_text(left + 132, y + TH_FONT_S, TH_TEXT_FAINT, TH_FONT_S,
-			e->extensions);
-
-		/* The verdict is right-aligned, so the three words line up as a
-		 * column the eye can run down rather than three scattered
-		 * labels. */
+		/* The verdict is right-aligned, so the words line up as a column
+		 * the eye can run down.  The two on the left are trimmed to the
+		 * space they have rather than drawn over each other: a name and
+		 * its extensions running together is worse than either being
+		 * short. */
 		int word_w = vita2d_font_text_width(font, TH_FONT_S, word);
+		int ext_w  = width - kFormatName - word_w - 12;
+
+		th_text(left, y + TH_FONT_S, TH_TEXT, TH_FONT_S,
+			th_fit(e->name, TH_FONT_S, kFormatName - 10));
+		if (ext_w > 20)
+			th_text(left + kFormatName, y + TH_FONT_S, TH_TEXT_FAINT,
+				TH_FONT_S, th_fit(e->extensions, TH_FONT_S, ext_w));
 		th_text(left + width - word_w, y + TH_FONT_S, color, TH_FONT_S, word);
 
-		y += row_h;
+		y += kFormatRow;
 	}
 
 	return y - top + 8;
 }
 
 void draw_formats_screen() {
-	const int padding = 28;
-	const int col_w   = 380;
-	const int width   = padding * 2 + col_w * 2 + 24;
-	const int height  = 500;
-	const int left    = (SCREEN_WIDTH - width) / 2;
-	const int top     = (SCREEN_HEIGHT - height) / 2;
+	const int padding = 24;
+	const int col_gap = 24;
+	const int col_w   = 384;
+	const int width   = padding * 2 + col_w * 2 + col_gap;
+
+	/* Heading, legend, then the tallest of the two columns, then the row
+	 * of hints.  Sized from the table so a format added to it cannot push
+	 * the last row under the footer. */
+	const int head_h   = TH_FONT_M + 46;
+	const int foot_h   = 44;
+	const int left_h   = format_block_height(FORMAT_CATEGORY_VIDEO);
+	const int right_h  = format_block_height(FORMAT_CATEGORY_AUDIO) + 12 +
+			     format_block_height(FORMAT_CATEGORY_IMAGE);
+	const int body_h   = left_h > right_h ? left_h : right_h;
+
+	int height = padding * 2 + head_h + body_h + foot_h;
+	if (height > SCREEN_HEIGHT - 8) height = SCREEN_HEIGHT - 8;
+
+	const int left = (SCREEN_WIDTH - width) / 2;
+	const int top  = (SCREEN_HEIGHT - height) / 2;
 
 	vita2d_draw_rectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, TH_SCRIM);
 	th_shadow(left, top, width, height);
@@ -959,14 +1018,14 @@ void draw_formats_screen() {
 
 	/* Video on the left, the two shorter lists stacked on the right: the
 	 * whole table at once, with nothing to scroll. */
-	const int body = top + padding + TH_FONT_M + 46;
+	const int body = top + padding + head_h;
 	draw_format_block(left + padding, body, col_w, FORMAT_CATEGORY_VIDEO);
 
-	const int right = left + padding + col_w + 24;
+	const int right = left + padding + col_w + col_gap;
 	int used = draw_format_block(right, body, col_w, FORMAT_CATEGORY_AUDIO);
 	draw_format_block(right, body + used + 12, col_w, FORMAT_CATEGORY_IMAGE);
 
-	vita2d_draw_rectangle(left + padding, top + height - 44,
+	vita2d_draw_rectangle(left + padding, top + height - foot_h,
 		width - padding * 2, 1, TH_LINE);
 
 	/* Two ways out, side by side: back to the controls page, or done. */
@@ -974,10 +1033,11 @@ void draw_formats_screen() {
 				    TH_FONT_S);
 	int close_w = th_hint_width(th_glyph_enter, ui_text(UI_PROMPT_CLOSE),
 				    TH_FONT_S);
-	int x = left + (width - (back_w + 20 + close_w)) / 2;
-	x += th_hint(x, top + height - padding + 6, th_glyph_dpad,
+	const int hint_baseline = top + height - foot_h / 2 + 8;
+	int x = left + (width - (back_w + 28 + close_w)) / 2;
+	x += th_hint(x, hint_baseline, th_glyph_dpad,
 		     ui_text(UI_PROMPT_CONTROLS), TH_TEXT_DIM, TH_FONT_S);
-	th_hint(x + 20, top + height - padding + 6, th_glyph_enter,
+	th_hint(x + 28, hint_baseline, th_glyph_enter,
 		ui_text(UI_PROMPT_CLOSE), TH_TEXT_DIM, TH_FONT_S);
 }
 
@@ -2916,13 +2976,44 @@ int main()
 		 * statics because sceAppMgrLoadExec reads the array after this
 		 * function returns. */
 		static char speed_str[8], volumes_str[16];
-		snprintf(speed_str, sizeof(speed_str), "%d", config.text_speed);
+
+		/* Two different things, and the engine is told which is which.
+		 *
+		 * The launcher's own settings are defaults: they seed a game
+		 * that has never been played and leave a played one alone.
+		 * What the player set for this game in particular is a
+		 * decision about this game, made after playing it, so it wins
+		 * over what the game saved -- otherwise the per-game rows
+		 * would appear to do nothing on every game worth setting them
+		 * for.  cmd[] holds 0 for "follow the launcher", the speed as
+		 * 1-3, and a volume as tens plus one. */
+		const bool own_speed   = cmd[SITTINGS_TEXT_SPEED] != 0;
+		const bool own_volumes = cmd[SITTINGS_VOL_BGM] != 0 ||
+					 cmd[SITTINGS_VOL_SE] != 0 ||
+					 cmd[SITTINGS_VOL_VOICE] != 0;
+
+		int speed = own_speed ? cmd[SITTINGS_TEXT_SPEED] - 1
+				      : config.text_speed;
+		int bgm   = cmd[SITTINGS_VOL_BGM]   ? (cmd[SITTINGS_VOL_BGM]   - 1) * 10
+						    : config.vol_bgm;
+		int se    = cmd[SITTINGS_VOL_SE]    ? (cmd[SITTINGS_VOL_SE]    - 1) * 10
+						    : config.vol_se;
+		int voice = cmd[SITTINGS_VOL_VOICE] ? (cmd[SITTINGS_VOL_VOICE] - 1) * 10
+						    : config.vol_voice;
+
+		snprintf(speed_str, sizeof(speed_str), "%d", speed);
 		snprintf(volumes_str, sizeof(volumes_str), "%d,%d,%d",
-			 config.vol_bgm, config.vol_se, config.vol_voice);
-		cmd_str[cmd_num++] = (char*)"--text-speed";
+			 bgm, se, voice);
+		cmd_str[cmd_num++] = (char*)(own_speed ? "--set-text-speed"
+						       : "--text-speed");
 		cmd_str[cmd_num++] = speed_str;
-		cmd_str[cmd_num++] = (char*)"--volumes";
+		cmd_str[cmd_num++] = (char*)(own_volumes ? "--set-volumes"
+							 : "--volumes");
 		cmd_str[cmd_num++] = volumes_str;
+		/* Why the speed setting appeared to do nothing at all: most
+		 * scripts set their own, which used to win for the whole game
+		 * whatever the player chose. */
+		cmd_str[cmd_num++] = (char*)"--force-text-speed";
 
 		if (config.debug_log) {
 			cmd_str[cmd_num++] = (char*)"--log";

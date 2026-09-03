@@ -104,7 +104,7 @@
 
 #define SLOT_BUTTONS_TOP            (SLOT_HEADER_TOP + SLOT_HEADER_HEIGHT)
 #define SLOT_BUTTONS_HEIGHT         (SLOT_PANEL_HEIGHT - SLOT_HEADER_HEIGHT - (SLOT_PANEL_PADDING * 2))
-#define SLOT_BUTTON                 10
+#define SLOT_BUTTON                 14
 #define SLOT_BUTTON_MARGIN          5
 #define SLOT_BUTTON_WIDTH           (int)(SLOT_PANEL_WIDTH - (SLOT_BUTTON_MARGIN * 2))
 #define SLOT_BUTTON_HEIGHT          (int)((SLOT_BUTTONS_HEIGHT - (SLOT_BUTTON_MARGIN * (SLOT_BUTTON + 1))) / SLOT_BUTTON)
@@ -139,13 +139,16 @@
  * array used to hold. There was no room for an eleventh, and a per-game
  * ons_args file is nothing but eleventh arguments. */
 #define CMD_MAX 32
+/* How many per-game options parseOption carries.  Bigger than SITTINGS_NUM
+ * so a row can be added without touching every signature. */
+#define CMD_OPTS 16
 
 #define CONFIG_NUM 14  /* ...the library actions, game defaults and logging */
 
 #define PACKAGE_TEMP "ux0:onsemu/temp/"
 
 #define SITTINGS_FILE "sittings.txt"
-#define SITTINGS_NUM 6
+#define SITTINGS_NUM 10
 /* The settings that are a choice rather than a toggle. */
 #define SITTINGS_ENCODING 4
 /* Touch, per game: 0 follows the launcher's setting, then front, both,
@@ -153,14 +156,22 @@
  * played -- a game with a lot of tapping wants the front panel, one played
  * with the console propped up wants the back panel left alone. */
 #define SITTINGS_TOUCH 5
+/* The same four the launcher carries globally, per game.  0 means "use the
+ * launcher's", so a game that has never been touched follows the global
+ * setting and one that has been set keeps its own.  Volumes are stored in
+ * tens: 1 is 0%, 11 is 100%. */
+#define SITTINGS_TEXT_SPEED 6
+#define SITTINGS_VOL_BGM 7
+#define SITTINGS_VOL_SE 8
+#define SITTINGS_VOL_VOICE 9
 
 /* Not settings but actions, on the same screen because this is the screen
  * that is about one game. */
-#define SITTINGS_BACKUP 6
-#define SITTINGS_RESTORE 7
+#define SITTINGS_BACKUP 10
+#define SITTINGS_RESTORE 11
 
-#define SITTINGS_DEFAULT 8
-#define SITTINGS_RETURN 9
+#define SITTINGS_DEFAULT 12
+#define SITTINGS_RETURN 13
 
 #define SCE_CTRL_HOLD 0x80000000
 #define FONT_SIZE 24

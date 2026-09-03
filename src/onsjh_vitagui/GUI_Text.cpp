@@ -28,6 +28,10 @@ const char *g_strings[UI_STRING_COUNT][UI_LANG_COUNT] = {
     /* UI_SET_TOUCH          */ { "Touch panels",           "触摸操作" },
     /* UI_SET_BACKUP         */ { "Back up saves",           "备份存档" },
     /* UI_SET_RESTORE        */ { "Restore saves",           "恢复存档" },
+    /* UI_CFG_TEXT_SPEED_GAME*/ { "Text speed",             "文字速度" },
+    /* UI_CFG_VOL_BGM_GAME   */ { "BGM volume",             "音乐音量" },
+    /* UI_CFG_VOL_SE_GAME    */ { "SE volume",              "音效音量" },
+    /* UI_CFG_VOL_VOICE_GAME */ { "Voice volume",           "语音音量" },
     /* UI_SET_RESET          */ { "Reset to defaults",      "恢复默认设置" },
     /* UI_SET_RETURN         */ { "Back",                   "返回" },
 

@@ -35,6 +35,12 @@ enum UIStringId {
     UI_SET_TOUCH,
     UI_SET_BACKUP,
     UI_SET_RESTORE,
+    /* The same four as the global ones, on the per-game screen, where
+     * they need no "(new games)" because they apply to this one. */
+    UI_CFG_TEXT_SPEED_GAME,
+    UI_CFG_VOL_BGM_GAME,
+    UI_CFG_VOL_SE_GAME,
+    UI_CFG_VOL_VOICE_GAME,
     UI_SET_RESET,
     UI_SET_RETURN,
 

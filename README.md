@@ -99,8 +99,10 @@ starting with `#` is a note rather than an argument:
     --font-size 22
     --window
 
-They are passed after everything the launcher sets, so a game that insists on
-something has the final word on it.
+They are passed after everything the launcher sets — including anything it
+worked out for itself, such as pointing a game with no `default.ttf` at the
+launcher's own font — so a game that insists on something has the final word
+on it.
 
 The launcher writes two files of its own beside a game: `sittings.txt` holds
 the settings chosen for it, and `lastplayed.txt` is a timestamp, which is
@@ -133,7 +135,7 @@ harmless.
 - [x] **Nested Structure Handler** — Finds game in subdirectories
 - [x] **Config Parser** — Reads `ons_args`, `caption.txt`, config files
 - [ ] **Game Metadata Cache** — Stores game info in `game_manifest.json`
-- [ ] **Auto-Config Generator** — Creates optimal `ons_args` per game
+- [x] **Auto-Config Generator** — Works out per-game arguments at launch
 
 ### Video & Media Handling
 - [ ] **Video Format Detector** — Checks for incompatible video formats

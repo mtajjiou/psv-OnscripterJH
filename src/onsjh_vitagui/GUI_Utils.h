@@ -228,6 +228,8 @@ int read_touch_raw(point *p);
 
 int load_rom_list();
 int parseOption(string &cmdstr, int(&cmd)[10], char *cmd_str[], int flag);
+/* Appends what the launcher works out for a game -- a font, mostly. */
+int appendAutoArgs(const string &game_path, char *cmd_str[], int index, int max);
 /* Appends a game's own ons_args, if it has one.  Returns the new count. */
 int appendGameArgs(const string &game_path, char *cmd_str[], int index, int max);
 void sittings_file(string path, string &str, char mode, int nowrite = 0);

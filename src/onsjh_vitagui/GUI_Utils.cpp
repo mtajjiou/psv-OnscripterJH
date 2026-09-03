@@ -534,6 +534,33 @@ int load_rom_list() {
 	return rom_list.size();
 }
 
+/* Arguments the launcher works out for itself.
+ *
+ * Deliberately short, and shorter than it once needed to be: the engine now
+ * detects the script's code page, decodes the video formats the hardware
+ * refuses, and understands backtick text, so none of those need a flag any
+ * more. What is left is what the engine cannot recover from on its own.
+ *
+ * The font. A game with no default.ttf beside it gets a font path that does
+ * not exist -- ONScripter's fallback to a system font is behind
+ * USE_FONTCONFIG, which is a desktop build option and is not compiled in
+ * here -- so it has nothing to draw text with. The launcher ships a font
+ * for its own interface, and points the engine at it.
+ *
+ * These go on before a game's own ons_args, so anything written by hand
+ * overrides what was guessed.
+ */
+int appendAutoArgs(const string &game_path, char *cmd_str[], int index, int max) {
+	if (!checkFileExist((game_path + "/default.ttf").c_str()) && index + 2 < max) {
+		printf("auto: no default.ttf in %s, using the launcher's font\n",
+		       game_path.c_str());
+		cmd_str[index++] = (char *)"--font";
+		cmd_str[index++] = (char *)"app0:default.ttf";
+	}
+
+	return index;
+}
+
 /* A game's own arguments, from an ons_args file beside it.
  *
  * Some games need a flag the launcher has no setting for -- a font size, a

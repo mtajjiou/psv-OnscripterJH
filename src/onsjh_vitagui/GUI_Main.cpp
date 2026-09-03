@@ -2506,8 +2506,9 @@ int main()
 		cmd_str[cmd_num++] = (char*)(config.use_btouch == 0 ? 
 			"use_not_touch" : (config.use_btouch == 1 
 				? "use_front_only_touch" : "use_front_back_touch"));
-		/* Last, so a game that carries its own arguments has the final
-		 * word on anything the launcher also set. */
+		/* What the launcher worked out, then what the game asked for --
+		 * in that order, so a hand-written ons_args overrides a guess. */
+		cmd_num = appendAutoArgs(rom_path, cmd_str, cmd_num, CMD_MAX);
 		cmd_num = appendGameArgs(rom_path, cmd_str, cmd_num, CMD_MAX);
 		cmd_str[cmd_num] = NULL;
 		for(int i=0; i<cmd_num; i++)

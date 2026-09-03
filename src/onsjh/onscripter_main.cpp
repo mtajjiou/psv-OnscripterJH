@@ -86,10 +86,13 @@ void optionVersion()
 #if defined(PSV)
 int VITA_SuspendCallback(int notifyId, int notifyCount, int powerInfo, void *common)
 {
-	if ((powerInfo >> 4) & SCE_POWER_CB_RESUMING) // FIXME: work but... meh ?
-	{
-
-	}
+	// The resume check that used to live here tested SCE_POWER_CB_RESUMING,
+	// which current vitasdk headers no longer declare (it is now
+	// SCE_POWER_CB_APP_RESUMING). Its body was empty, so the test had no
+	// effect and is dropped rather than rewritten against a constant whose
+	// value may not match. Registering the callback is what matters; if a
+	// resume handler is ever implemented, test SCE_POWER_CB_APP_RESUMING.
+	(void)powerInfo;
 	return 0;
 }
 

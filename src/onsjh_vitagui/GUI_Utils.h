@@ -9,6 +9,7 @@
 #include <iostream>
 #include <vitasdk.h>
 
+#include "GUI_common.h"   /* CMD_OPTS, and the screen geometry */
 #include "ZipHandler.h"   /* isPartialInstall, for a folder mid-install */
 
 using namespace std;

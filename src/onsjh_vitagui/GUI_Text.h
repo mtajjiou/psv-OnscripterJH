@@ -58,6 +58,7 @@ enum UIStringId {
     UI_TOUCH_DEFAULT,
     UI_CFG_LANGUAGE,
     UI_CFG_FETCH_COVERS,
+    UI_CFG_CLEAN,
     UI_CFG_SORT,
     UI_SORT_NAME,
     UI_SORT_RECENT,
@@ -97,6 +98,13 @@ enum UIStringId {
     UI_COVERS_ALL_RUN,
     UI_COVERS_ALL_DONE,
     UI_COVERS_START,
+
+    /* Clearing what nothing needs any more */
+    UI_CLEAN_ASK,
+    UI_CLEAN_RUN,
+    UI_CLEAN_DONE,
+    UI_CLEAN_NOTHING,
+    UI_CLEAN_START,
 
     /* Removing an installed game, and what is left on the card */
     UI_DELETE_ASK,

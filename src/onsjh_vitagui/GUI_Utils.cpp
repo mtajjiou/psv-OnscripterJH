@@ -434,6 +434,73 @@ static string folder_stamp(const string &dir) {
 	return text;
 }
 
+/* How big a file is, or 0 if it is not there. */
+static uint64_t file_size_of(const string &path)
+{
+	SceIoStat st;
+	memset(&st, 0, sizeof(st));
+	if (sceIoGetstat(path.c_str(), &st) < 0) return 0;
+	return (uint64_t)st.st_size;
+}
+
+static uint64_t remove_file_counting(const string &path, int *files)
+{
+	uint64_t size = file_size_of(path);
+	if (size == 0 && !checkFileExist(path.c_str())) return 0;
+	if (sceIoRemove(path.c_str()) < 0) return 0;
+	if (files) (*files)++;
+	return size;
+}
+
+uint64_t clean_temp_files(int *files)
+{
+	uint64_t freed = 0;
+	int removed = 0;
+
+	/* The folder the bubble installer builds in.  It clears this on its
+	 * next run, which is no help to someone who made one bubble a month
+	 * ago and is now out of space. */
+	if (checkFolderExist(PACKAGE_TEMP)) {
+		uint64_t size = 0;
+		uint32_t folders = 0, count = 0;
+		char temp_path[64];
+		snprintf(temp_path, sizeof(temp_path), "%s", PACKAGE_TEMP);
+		getPathInfo(temp_path, &size, &folders, &count);
+		if (removePath(PACKAGE_TEMP) > 0) {
+			freed += size;
+			removed += (int)count;
+		}
+	}
+
+	/* tmp.mus: the engine writes a game's MIDI out to a real file to hand
+	 * it to the mixer, and the copy stays behind when the game exits. */
+	string drives[3] = { "ux0:/onsemu", "ur0:/onsemu", "uma0:/onsemu" };
+	for (int i = 0; i < 3; i++) {
+		SceUID dfd = sceIoDopen(drives[i].c_str());
+		if (dfd < 0) continue;
+		int res = 0;
+		do {
+			SceIoDirent dir;
+			memset(&dir, 0, sizeof(SceIoDirent));
+			res = sceIoDread(dfd, &dir);
+			if (res <= 0) break;
+			if (!SCE_S_ISDIR(dir.d_stat.st_mode)) continue;
+			if (dir.d_name[0] == '.') continue;
+
+			const string game = drives[i] + "/" + dir.d_name;
+			freed += remove_file_counting(game + "/tmp.mus", &removed);
+		} while (res > 0);
+		sceIoClose(dfd);
+	}
+
+	/* The scan cache.  Removing it costs one slower start and is the one
+	 * thing to try when the list shows a game that is no longer there. */
+	freed += remove_file_counting(MANIFEST_FILE, &removed);
+
+	if (files) *files = removed;
+	return freed;
+}
+
 int load_rom_list() {
 
 	/* What was learned last time, and what is true now.  Building a second

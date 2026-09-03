@@ -136,7 +136,7 @@
  * ons_args file is nothing but eleventh arguments. */
 #define CMD_MAX 32
 
-#define CONFIG_NUM 8   /* order, language, then the covers row */
+#define CONFIG_NUM 9   /* order, language, then the two library actions */
 
 #define PACKAGE_TEMP "ux0:onsemu/temp/"
 
@@ -203,6 +203,9 @@ typedef enum {
 	COVER_RUN,
 	COVER_DONE,
 	/* The same thing for the whole library, from the settings screen. */
+	/* Clearing temporary files, also from the settings screen. */
+	CLEAN_CONFIRM,
+	CLEAN_DONE,
 	COVERS_ALL_CONFIRM,
 	COVERS_ALL_RUN,
 	COVERS_ALL_DONE,

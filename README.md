@@ -218,11 +218,11 @@ harmless.
 - [ ] **Button Mapping UI** — Visual controller layout reference
 
 ### Storage & Memory Management
-- [ ] **Storage Monitor** — Shows free space on `ux0:` partition
+- [x] **Storage Monitor** — Shows free space on `ux0:` partition
 - [ ] **Compression Option** — Optional ZIP caching instead of full extraction
-- [ ] **Cleanup Tool** — Remove extracted games from menu, free space
+- [x] **Cleanup Tool** — Remove extracted games from menu, free space
 - [ ] **Save File Manager** — Backup/restore game saves
-- [ ] **Cache Cleaner** — Clear font cache, temp files
+- [x] **Cache Cleaner** — Clear font cache, temp files
 
 ### Settings & Preferences
 - [ ] **Global Settings Menu** — Accessible from launcher

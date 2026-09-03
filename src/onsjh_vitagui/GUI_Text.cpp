@@ -50,6 +50,7 @@ const char *g_strings[UI_STRING_COUNT][UI_LANG_COUNT] = {
     /* UI_CFG_LANGUAGE       */ { "Language",               "界面语言" },
 
     /* UI_CFG_FETCH_COVERS   */ { "Fetch missing covers",   "\xE8\x8E\xB7\xE5\x8F\x96\xE7\xBC\xBA\xE5\xB0\x91\xE7\x9A\x84\xE5\xB0\x81\xE9\x9D\xA2" },
+    /* UI_CFG_CLEAN          */ { "Clear temporary files",   "清理临时文件" },
 
     /* UI_CFG_SORT           */ { "Order",                  "\xE6\x8E\x92\xE5\xBA\x8F" },
     /* UI_SORT_NAME          */ { "name",                   "\xE5\x90\x8D\xE7\xA7\xB0" },
@@ -101,6 +102,14 @@ const char *g_strings[UI_STRING_COUNT][UI_LANG_COUNT] = {
     /* UI_COVERS_ALL_DONE    */ { "%d fetched, %d not found, %d already had one",
                                   "\xE6\x88\x90\xE5\x8A\x9F %d\xEF\xBC\x8C\xE6\x9C\xAA\xE6\x89\xBE\xE5\x88\xB0 %d\xEF\xBC\x8C\xE5\xB7\xB2\xE6\x9C\x89 %d" },
     /* UI_COVERS_START       */ { "start",                  "\xE5\xBC\x80\xE5\xA7\x8B" },
+
+    /* UI_CLEAN_ASK          */ { "Remove temporary files?\n\n  the bubble installer's folder\n  leftover tmp.mus files\n  the launcher's scan cache\n\n  saves and games are not touched",
+                                  "清理临时文件？\n\n  气泡安装临时目录\n  残留的 tmp.mus\n  启动器扫描缓存\n\n  存档与游戏不受影响" },
+    /* UI_CLEAN_RUN          */ { "Clearing...",             "正在清理..." },
+    /* UI_CLEAN_DONE         */ { "%d files removed, %s freed",
+                                  "已删除 %d 个文件，释放 %s" },
+    /* UI_CLEAN_NOTHING      */ { "Nothing to clear.",       "没有需要清理的文件" },
+    /* UI_CLEAN_START        */ { "clear",                   "清理" },
 
     /* UI_DELETE_ASK         */ { "Delete %s?\n\n"
                                   "  %s in %u files\n"

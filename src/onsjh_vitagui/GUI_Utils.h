@@ -212,6 +212,13 @@ extern string rom_search;
 void apply_view();
 /* Walks the folders once to fill in RomInfo::size, for sorting by it. */
 void measure_sizes();
+
+/* Sweeps the files nothing needs any more: the folder the bubble installer
+ * builds in, the engine's tmp.mus in each game folder, and the launcher's
+ * own scan cache, which is rebuilt on the next start.  Returns the bytes
+ * freed and, through *files, how many things were removed.  Saves, scripts
+ * and half-finished installs are never touched. */
+uint64_t clean_temp_files(int *files);
 extern configure config;
 extern vita2d_font* font;
 

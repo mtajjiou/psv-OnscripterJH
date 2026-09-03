@@ -435,7 +435,8 @@ void draw_config() {
 		/* Not a setting but an action, and this is where a player looks for
 		 * something that applies to the whole library rather than to the
 		 * game under the cursor. */
-		{ui_text(UI_CFG_FETCH_COVERS), ui_text(UI_COVERS_START)}
+		{ui_text(UI_CFG_FETCH_COVERS), ui_text(UI_COVERS_START)},
+		{ui_text(UI_CFG_CLEAN), ui_text(UI_CLEAN_START)}
 	};
 
 	/* The settings sit on a card over a dimmed library rather than over a
@@ -939,6 +940,7 @@ void draw_alert(char *msg, int fontsize) {
  */
 /* What the last cover fetch had to say, shown by COVER_DONE. */
 static char cover_result_message[256] = { '\0' };
+static char clean_result_message[128] = { '\0' };
 
 static ZipInstallProgress install_progress;
 static ZipInstallStatus  install_status = ZIP_INSTALL_OK;
@@ -1179,7 +1181,8 @@ void draw_screen(ScreenState state, int curr, int choose, int slot) {
 	 * and these states sit past PRINT_APPINFO in the enum only because they
 	 * were added last. */
 	bool covers_all = (state == COVERS_ALL_CONFIRM || state == COVERS_ALL_RUN ||
-			   state == COVERS_ALL_DONE);
+			   state == COVERS_ALL_DONE ||
+			   state == CLEAN_CONFIRM || state == CLEAN_DONE);
 	if (covers_all) {
 		draw_config();
 	}
@@ -1230,6 +1233,12 @@ void draw_screen(ScreenState state, int curr, int choose, int slot) {
 		break;
 	case COVERS_ALL_CONFIRM:
 		draw_message((char*)ui_text(UI_COVERS_ALL_ASK), choose, FONT_SIZE);
+		break;
+	case CLEAN_CONFIRM:
+		draw_message((char*)ui_text(UI_CLEAN_ASK), choose, FONT_SIZE);
+		break;
+	case CLEAN_DONE:
+		draw_alert(clean_result_message, FONT_SIZE);
 		break;
 	case SHORTCUT_DONE_MODE:
 		draw_alert((char*)ui_text(UI_MAKE_PACKAGE_OK), FONT_SIZE);
@@ -1490,6 +1499,8 @@ static ScreenState activate_config_row(int row) {
 		break;
 	case 7:
 		return COVERS_ALL_CONFIRM;
+	case 8:
+		return CLEAN_CONFIRM;
 	default:
 		break;
 	}
@@ -2024,6 +2035,25 @@ int game_delete(int choose) {
 	return 1;
 }
 
+/* Clears what nothing needs any more and says what that came to.  The
+ * numbers matter more than the act: someone doing this is short of space
+ * and wants to know whether it was worth it. */
+static void run_clean() {
+	int files = 0;
+	uint64_t freed = clean_temp_files(&files);
+
+	if (files == 0) {
+		snprintf(clean_result_message, sizeof(clean_result_message), "%s",
+			 ui_text(UI_CLEAN_NOTHING));
+		return;
+	}
+
+	char freed_str[16];
+	getSizeString(freed_str, freed);
+	snprintf(clean_result_message, sizeof(clean_result_message),
+		 ui_text(UI_CLEAN_DONE), files, freed_str);
+}
+
 /* Fetching blocks for as long as the request takes; COVER_RUN is drawn
  * before this is called, so the screen says what is happening.  The list is
  * not rebuilt here -- the caller reloads it, which is what picks up the new
@@ -2511,6 +2541,19 @@ int mainloop() {
 				new_state = on_message_event(choose, NULL, COVERS_ALL_RUN,
 							    CONFIG_SCREEN, CONFIG_SCREEN, 1);
 				break;
+			case CLEAN_CONFIRM:
+				new_state = on_message_event(choose, NULL, CLEAN_DONE,
+							    CONFIG_SCREEN, CONFIG_SCREEN, 1);
+				/* The sweep is quick -- a handful of small files and
+				 * one folder -- so it runs on the way to the report
+				 * rather than through a screen of its own. */
+				if (new_state == CLEAN_DONE) run_clean();
+				break;
+			case CLEAN_DONE:
+				on_alert_event(CONFIG_SCREEN);
+				/* The scan cache is gone, so the list is rebuilt from
+				 * the card. */
+				return 1;
 			case COVERS_ALL_RUN:
 				fetch_all_covers();
 				new_state = COVERS_ALL_DONE;

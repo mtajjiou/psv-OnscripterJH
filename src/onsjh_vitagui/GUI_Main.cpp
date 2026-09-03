@@ -370,7 +370,10 @@ void draw_help() {
 
 /* Flat, with the accent as the pressed state rather than an inverted box. */
 void draw_button(int left, int top, int width, int height, string text, int zoom, int pressed) {
-	const char *label = RomInfo::to_char(text);
+	/* The string is already here; copying it onto the heap to get a
+	 * const char * leaked one allocation per button per frame, and the
+	 * launcher draws fifteen of them. */
+	const char *label = text.c_str();
 
 	th_card(left, top, width, height,
 		pressed ? TH_ACCENT : TH_SURFACE_HI, TH_SURFACE);
@@ -386,6 +389,22 @@ struct config_item {
 	const char *name;
 	const char *value;
 };
+
+/* A number as text, for a settings row.
+ *
+ * draw_config runs every frame, so this must not allocate: RomInfo::to_char
+ * returns a new[] that nobody frees, which on this screen was a steady leak
+ * of the launcher's heap for as long as it was open.  A handful of buffers
+ * used in turn is enough -- the caller draws them and does not keep them. */
+static const char *number_text(int value) {
+	static char buffers[8][12];
+	static int next = 0;
+
+	char *out = buffers[next];
+	next = (next + 1) % 8;
+	snprintf(out, sizeof(buffers[0]), "%d", value);
+	return out;
+}
 
 /* How far the layer over the library has arrived: 0 when it has just been
  * opened, 1 once it has settled.  A panel that appears fully formed reads as
@@ -424,9 +443,9 @@ void draw_config() {
 	struct config_item items[] = {
 		{ui_text(UI_CFG_GRAPHIC_MODE),
 			strcmp(config.list_mode, "icon") ? ui_text(UI_CFG_LIST) : ui_text(UI_CFG_ICON)},
-		{ui_text(UI_CFG_ICON_ROW),   RomInfo::to_char(config.icon_row)},
-		{ui_text(UI_CFG_ICON_COL),   RomInfo::to_char(config.icon_col)},
-		{ui_text(UI_CFG_LIST_ROW),   RomInfo::to_char(config.list_row)},
+		{ui_text(UI_CFG_ICON_ROW),   number_text(config.icon_row)},
+		{ui_text(UI_CFG_ICON_COL),   number_text(config.icon_col)},
+		{ui_text(UI_CFG_LIST_ROW),   number_text(config.list_row)},
 		{ui_text(UI_CFG_TOUCH_MODE),
 			config.use_btouch == 0 ? ui_text(UI_TOUCH_OFF)
 				: (config.use_btouch == 1 ? ui_text(UI_TOUCH_FRONT)
@@ -450,9 +469,9 @@ void draw_config() {
 			config.text_speed == 0 ? ui_text(UI_SPEED_SLOW)
 				: (config.text_speed == 2 ? ui_text(UI_SPEED_FAST)
 							  : ui_text(UI_SPEED_NORMAL))},
-		{ui_text(UI_CFG_VOL_BGM),   RomInfo::to_char(config.vol_bgm)},
-		{ui_text(UI_CFG_VOL_SE),    RomInfo::to_char(config.vol_se)},
-		{ui_text(UI_CFG_VOL_VOICE), RomInfo::to_char(config.vol_voice)},
+		{ui_text(UI_CFG_VOL_BGM),   number_text(config.vol_bgm)},
+		{ui_text(UI_CFG_VOL_SE),    number_text(config.vol_se)},
+		{ui_text(UI_CFG_VOL_VOICE), number_text(config.vol_voice)},
 		{ui_text(UI_CFG_DEBUG_LOG),
 			config.debug_log ? ui_text(UI_ON) : ui_text(UI_OFF)}
 	};
@@ -567,27 +586,27 @@ void draw_appinfo(ScreenState state, int choose) {
 
 	draw_button(APPINFO_BUTTON_LEFT, APPINFO_BUTTON_TOP(0),
 		APPINFO_BUTTON_WIDTH, APPINFO_BUTTON_HEIGHT,
-		RomInfo::to_char(ui_text(UI_BTN_START)), TH_FONT_S,
+		ui_text(UI_BTN_START), TH_FONT_S,
 		(state == START_MODE) ||
 		(state == PRINT_APPINFO && select_appinfo_button == 0));
 	draw_button(APPINFO_BUTTON_LEFT, APPINFO_BUTTON_TOP(1),
 		APPINFO_BUTTON_WIDTH, APPINFO_BUTTON_HEIGHT,
-		RomInfo::to_char(ui_text(UI_BTN_CONFIG)), TH_FONT_S,
+		ui_text(UI_BTN_CONFIG), TH_FONT_S,
 		(state == SETTING_MODE) ||
 		(state == PRINT_APPINFO && select_appinfo_button == 1));
 	draw_button(APPINFO_BUTTON_LEFT, APPINFO_BUTTON_TOP(2),
 		APPINFO_BUTTON_WIDTH, APPINFO_BUTTON_HEIGHT,
-		RomInfo::to_char(ui_text(UI_BTN_INSTALL)), TH_FONT_S,
+		ui_text(UI_BTN_INSTALL), TH_FONT_S,
 		(state == SHORTCUT_MODE) ||
 		(state == PRINT_APPINFO && select_appinfo_button == 2));
 	draw_button(APPINFO_BUTTON_LEFT, APPINFO_BUTTON_TOP(3),
 		APPINFO_BUTTON_WIDTH, APPINFO_BUTTON_HEIGHT,
-		RomInfo::to_char(ui_text(UI_BTN_DELETE)), TH_FONT_S,
+		ui_text(UI_BTN_DELETE), TH_FONT_S,
 		(state == DELETE_MODE) ||
 		(state == PRINT_APPINFO && select_appinfo_button == 3));
 	draw_button(APPINFO_BUTTON_LEFT, APPINFO_BUTTON_TOP(4),
 		APPINFO_BUTTON_WIDTH, APPINFO_BUTTON_HEIGHT,
-		RomInfo::to_char(ui_text(UI_BTN_COVER)), TH_FONT_S,
+		ui_text(UI_BTN_COVER), TH_FONT_S,
 		(state == COVER_CONFIRM) ||
 		(state == PRINT_APPINFO && select_appinfo_button == 4));
 
@@ -846,12 +865,12 @@ void draw_help_screen() {
 		width - padding * 2, 1, TH_LINE);
 
 	/* The second page is only findable if this says it is there. */
-	int formats_w = th_hint_width(th_glyph_square, ui_text(UI_PROMPT_FORMATS),
+	int formats_w = th_hint_width(th_glyph_dpad, ui_text(UI_PROMPT_FORMATS),
 				      TH_FONT_S);
 	int close_w = th_hint_width(th_glyph_enter, ui_text(UI_PROMPT_CLOSE),
 				    TH_FONT_S);
 	int hx = left + (width - (formats_w + 20 + close_w)) / 2;
-	hx += th_hint(hx, top + height - padding + 6, th_glyph_square,
+	hx += th_hint(hx, top + height - padding + 6, th_glyph_dpad,
 		      ui_text(UI_PROMPT_FORMATS), TH_TEXT_DIM, TH_FONT_S);
 	th_hint(hx + 20, top + height - padding + 6, th_glyph_enter,
 		ui_text(UI_PROMPT_CLOSE), TH_TEXT_DIM, TH_FONT_S);
@@ -951,12 +970,12 @@ void draw_formats_screen() {
 		width - padding * 2, 1, TH_LINE);
 
 	/* Two ways out, side by side: back to the controls page, or done. */
-	int back_w  = th_hint_width(th_glyph_square, ui_text(UI_PROMPT_CONTROLS),
+	int back_w  = th_hint_width(th_glyph_dpad, ui_text(UI_PROMPT_CONTROLS),
 				    TH_FONT_S);
 	int close_w = th_hint_width(th_glyph_enter, ui_text(UI_PROMPT_CLOSE),
 				    TH_FONT_S);
 	int x = left + (width - (back_w + 20 + close_w)) / 2;
-	x += th_hint(x, top + height - padding + 6, th_glyph_square,
+	x += th_hint(x, top + height - padding + 6, th_glyph_dpad,
 		     ui_text(UI_PROMPT_CONTROLS), TH_TEXT_DIM, TH_FONT_S);
 	th_hint(x + 20, top + height - padding + 6, th_glyph_enter,
 		ui_text(UI_PROMPT_CLOSE), TH_TEXT_DIM, TH_FONT_S);
@@ -2095,7 +2114,12 @@ ScreenState on_help_event(ScreenState other_page) {
 		if (btn & SCE_CTRL_HOLD) {
 			continue;
 		}
-		if (btn & SCE_CTRL_SQUARE) {
+		/* Left and right turn the page, which is what a two-page screen
+		 * reads as, with the shoulders and square accepted as well:
+		 * this is one screen with nothing else to move between, so every
+		 * key that is not "close" may as well turn it. */
+		if (btn & (SCE_CTRL_LEFT | SCE_CTRL_RIGHT | SCE_CTRL_SQUARE |
+			   SCE_CTRL_LTRIGGER | SCE_CTRL_RTRIGGER)) {
 			return other_page;
 		}
 		if (btn & SCE_CTRL_ENTER || btn & SCE_CTRL_CANCEL) {

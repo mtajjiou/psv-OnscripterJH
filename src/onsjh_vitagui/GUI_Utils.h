@@ -63,7 +63,6 @@ enum SortMode {
 
 class RomInfo {
 private:
-	char* temp;
 public:
 	string path;
 	string name;
@@ -187,26 +186,20 @@ public:
 		sprintf(temp1, "%d", num);
 		return temp1;
 	}
-	char *char_path() {
-		temp = new char[path.length() + 1];
-		strcpy(temp, path.c_str());
-		return temp;
-	}
-	char *char_name() {
-		temp = new char[name.length() + 1];
-		strcpy(temp, name.c_str());
-		return temp;
-	}
-	char *char_last_date() {
-		temp = new char[last_date.length() + 1];
-		strcpy(temp, last_date.c_str());
-		return temp;
-	}
-	char *char_icon_path() {
-		temp = new char[icon_path.length() + 1];
-		strcpy(temp, icon_path.c_str());
-		return temp;
-	}
+	/* The string this row already holds, as a char *.
+	 *
+	 * These are called from the drawing code, which runs every frame, and
+	 * they used to hand back a fresh new[] that nobody freed -- a leak of
+	 * a path per row per frame for as long as the launcher was open, which
+	 * is enough to run it out of heap while someone reads a game's panel.
+	 *
+	 * The pointer is into the row's own string and stays valid until the
+	 * list is rebuilt.  Nothing writes through it: the callers draw it, or
+	 * pass it to getPathInfo, which only reads. */
+	char *char_path()      { return (char *)path.c_str(); }
+	char *char_name()      { return (char *)name.c_str(); }
+	char *char_last_date() { return (char *)last_date.c_str(); }
+	char *char_icon_path() { return (char *)icon_path.c_str(); }
 };
 
 /* Every row found on the card.  rom_list is what is on screen: the same

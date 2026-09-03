@@ -1098,27 +1098,78 @@ void draw_screen(ScreenState state, int curr, int choose, int slot) {
 #define IS_TOUCHED(rect, pt) \
     (IN_RANGE(rect.left, rect.right, pt.x) && IN_RANGE(rect.top, rect.bottom, pt.y))
 
-/* The touch half of the main screen.  It reads no buttons: the dispatcher
- * below has already done that, and read_buttons only reports a press once. */
+/* Which row is under a point, or -1.  Only the rows on screen: a row that
+ * has scrolled away still carries the touch area it last had, and would
+ * otherwise answer for a tap somewhere it is no longer drawn. */
+static int row_at(const point &p, int curr) {
+	int visible = (mainscreen_list_mode == USE_LIST) ? LIST_ROW
+						        : (ICONS_ROW * ICONS_COL);
+	for (int i = curr; i < (int)rom_list.size() && i < curr + visible; i++)
+		if (IS_TOUCHED(rom_list[i].touch_area, p))
+			return i;
+	return -1;
+}
+
+/* The touch half of the main screen: a tap opens the game, holding it opens
+ * that game's settings.
+ *
+ * Both gestures start the same way, so neither can be decided on the way
+ * down -- the hold fires at half a second, and the tap on release before
+ * then.  A finger that wanders more than a thumb's width is neither, and is
+ * dropped: on a screen this size, sliding off the row you meant is the
+ * ordinary case, not a rare one.
+ *
+ * It reads no buttons: the dispatcher below has already done that, and
+ * read_buttons only reports a press once. */
 ScreenState mainscreen_touch(int curr, int &touched) {
+	const uint64_t HOLD_US = 500 * 1000;
+	const int      SLIP    = 24;          /* pixels before it is a drag */
+
+	static bool     down = false;
+	static bool     spent = false;        /* the hold already fired */
+	static uint64_t began_us = 0;
+	static point    began_at = { 0, 0 };
+	static int      began_row = -1;
+
 	point p;
-	if (!read_touchscreen(&p)) {
+	const bool touching = read_touch_raw(&p) != 0;
+
+	if (touching && !down) {
+		down = true;
+		spent = false;
+		began_us = sceKernelGetProcessTimeWide();
+		began_at = p;
+		began_row = row_at(p, curr);
 		return UNKNOWN;
 	}
 
-	/* Only the rows on screen: a row that has scrolled away still carries
-	 * the touch area it last had, and would otherwise answer for a tap
-	 * somewhere it is no longer drawn. */
-	int visible = (mainscreen_list_mode == USE_LIST) ? LIST_ROW : (ICONS_ROW * ICONS_COL);
+	if (touching && down) {
+		if (spent) return UNKNOWN;
 
-	for (int i = curr; i < rom_list.size() && i < curr + visible; i++) {
-		if (IS_TOUCHED(rom_list[i].touch_area, p)) {
-			touched = i;
-			select_appinfo_button = 0;
-			return PRINT_APPINFO;
+		const int dx = p.x - began_at.x, dy = p.y - began_at.y;
+		if (dx * dx + dy * dy > SLIP * SLIP) {
+			spent = true;              /* a drag, not a press */
+			return UNKNOWN;
 		}
+
+		if (began_row >= 0 && !rom_list[began_row].is_zip &&
+		    sceKernelGetProcessTimeWide() - began_us >= HOLD_US) {
+			spent = true;
+			touched = began_row;
+			select_appinfo_button = 0;
+			return SETTING_MODE;       /* the options for that game */
+		}
+		return UNKNOWN;
 	}
-	return UNKNOWN;
+
+	/* Released. */
+	down = false;
+	if (spent || began_row < 0) return UNKNOWN;
+
+	touched = began_row;
+	select_appinfo_button = 0;
+	began_row = -1;
+	return PRINT_APPINFO;
 }
 
 int selectable_count(int curr, int row, int col) {
@@ -2162,6 +2213,16 @@ int mainloop() {
 				/* Both change which rows are on screen, so the list is
 				 * rebuilt from what is already in memory -- 2 rather than
 				 * 1, which would rescan the card and reload every icon. */
+				/* A hold opens that game's settings without passing
+				 * through its panel, which is where they are normally
+				 * read -- so read them here, or the screen would show
+				 * whichever game was opened last. */
+				if (new_state == SETTING_MODE &&
+				    choose >= 0 && choose < (int)rom_list.size()) {
+					sittings_file(rom_list[choose].path, startup_cmd, 'r');
+					parseOption(startup_cmd, cmd, NULL, 0);
+					need_load = 0;
+				}
 				if (new_state == SEARCH_OPEN) {
 					run_search(MAIN_SCREEN, curr, choose, slot);
 					return 2;

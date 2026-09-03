@@ -125,6 +125,22 @@ int read_buttons() {
 #define lerp(value, from_max, to_max) \
     ((((value * 10) * (to_max * 10)) / (from_max * 10)) / 10)
 
+/* Where the finger is right now, or 0 if there is none.
+ *
+ * read_touchscreen() below reports a touch once, which is what a button-like
+ * tap wants.  Telling a tap from a hold needs the opposite: the state as it
+ * is, every frame, for as long as it lasts. */
+int read_touch_raw(point *p) {
+	SceTouchData touch = { 0 };
+	sceTouchPeek(SCE_TOUCH_PORT_FRONT, &touch, 1);
+
+	if (!touch.reportNum) return 0;
+
+	p->x = lerp(touch.report[0].x, 1919, SCREEN_WIDTH);
+	p->y = lerp(touch.report[0].y, 1087, SCREEN_HEIGHT);
+	return 1;
+}
+
 int read_touchscreen(point *p) {
 	SceTouchData touch = { 0 };
 	static int old_report_num = 0;

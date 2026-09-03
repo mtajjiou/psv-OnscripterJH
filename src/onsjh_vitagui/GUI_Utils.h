@@ -201,6 +201,8 @@ void lock_psbutton();
 void unlock_psbutton();
 int read_buttons();
 int read_touchscreen(point *p);
+/* The live state, for telling a tap from a hold. */
+int read_touch_raw(point *p);
 
 int load_rom_list();
 int parseOption(string &cmdstr, int(&cmd)[10], char *cmd_str[10], int flag);

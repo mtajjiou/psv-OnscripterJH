@@ -469,14 +469,29 @@ int ONScripter::reportTextSpeed()
 {
 	const int wait = textDisplaySpeed();
 	static bool said = false;
+	static int  counted = 0;
+	static Uint32 started = 0;
 
 	if (!said) {
 		said = true;
+		started = SDL_GetTicks();
 		utils::printInfo("text: first character waits %dms "
 		                 "(speed %d, script asked %d, force %d)\n",
 		                 wait, text_speed_no, sentence_font.wait_time,
 		                 force_text_speed ? 1 : 0);
 	}
+
+	/* What the characters actually took, rather than what they were asked
+	 * to take.  A wait that is set correctly and then not spent is the one
+	 * remaining way for the setting to be honoured and still change
+	 * nothing, and the only way to tell is to measure it. */
+	if (counted >= 0 && ++counted == 100) {
+		const Uint32 elapsed = SDL_GetTicks() - started;
+		utils::printInfo("text: 100 characters took %ums, %ums each "
+		                 "(asked %dms)\n", elapsed, elapsed / 100, wait);
+		counted = -1;
+	}
+
 	return wait;
 }
 

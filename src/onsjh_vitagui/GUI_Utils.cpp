@@ -460,6 +460,99 @@ static string folder_stamp(const string &dir) {
 	return text;
 }
 
+/* --- the cover cache -------------------------------------------------
+ *
+ * Bounded on purpose.  Covers are large once decoded -- a 512x724 jpeg is
+ * about a megabyte and a half in memory -- and a library can hold hundreds
+ * of games, so keeping one per game is how a big library runs the launcher
+ * out of memory.  A screenful is what is actually being looked at, and the
+ * cache holds a little more than that.
+ */
+#define ROM_ICON_CACHE 32
+
+namespace {
+
+struct IconEntry {
+	string          path;
+	vita2d_texture *tex;
+	int             w, h;
+	unsigned        used;   /* when it was last drawn */
+};
+
+IconEntry icon_cache[ROM_ICON_CACHE];
+int       icon_cache_count = 0;
+unsigned  icon_clock = 0;
+
+vita2d_texture *decode_icon(const string &path)
+{
+	if (path.length() > 4 &&
+	    strcasecmp(path.c_str() + path.length() - 4, ".jpg") == 0)
+		return vita2d_load_JPEG_file(path.c_str());
+	return vita2d_load_PNG_file(path.c_str());
+}
+
+/* The slot to load into: a free one, or the one drawn longest ago. */
+int icon_slot_for_use()
+{
+	if (icon_cache_count < ROM_ICON_CACHE) return icon_cache_count++;
+
+	int oldest = 0;
+	for (int i = 1; i < icon_cache_count; i++)
+		if (icon_cache[i].used < icon_cache[oldest].used) oldest = i;
+
+	if (icon_cache[oldest].tex) vita2d_free_texture(icon_cache[oldest].tex);
+	icon_cache[oldest].tex = NULL;
+	icon_cache[oldest].path.clear();
+	return oldest;
+}
+
+}  /* namespace */
+
+RomIcon rom_icon(const RomInfo &rom)
+{
+	RomIcon out = { NULL, 0, 0 };
+	const string path = rom.icon_path.empty() ? string(LAUNCHER_ICON_FILE)
+						 : rom.icon_path;
+
+	for (int i = 0; i < icon_cache_count; i++) {
+		if (icon_cache[i].tex == NULL || icon_cache[i].path != path) continue;
+		icon_cache[i].used = ++icon_clock;
+		out.tex = icon_cache[i].tex;
+		out.w = icon_cache[i].w;
+		out.h = icon_cache[i].h;
+		return out;
+	}
+
+	vita2d_texture *tex = decode_icon(path);
+	/* A cover that will not decode -- a truncated download, a file that is
+	 * not really an image -- falls back to the launcher's icon rather than
+	 * leaving a hole in the grid, and is not retried every frame. */
+	if (tex == NULL) tex = vita2d_load_PNG_file(LAUNCHER_ICON_FILE);
+	if (tex == NULL) return out;
+
+	const int slot = icon_slot_for_use();
+	icon_cache[slot].path = path;
+	icon_cache[slot].tex  = tex;
+	icon_cache[slot].w    = sceGxmTextureGetWidth(&tex->gxm_tex);
+	icon_cache[slot].h    = sceGxmTextureGetHeight(&tex->gxm_tex);
+	icon_cache[slot].used = ++icon_clock;
+
+	out.tex = tex;
+	out.w = icon_cache[slot].w;
+	out.h = icon_cache[slot].h;
+	return out;
+}
+
+void rom_icons_clear()
+{
+	for (int i = 0; i < icon_cache_count; i++) {
+		if (icon_cache[i].tex) vita2d_free_texture(icon_cache[i].tex);
+		icon_cache[i].tex = NULL;
+		icon_cache[i].path.clear();
+	}
+	icon_cache_count = 0;
+}
+
 /* How big a file is, or 0 if it is not there. */
 static uint64_t file_size_of(const string &path)
 {
@@ -620,12 +713,10 @@ int load_rom_list() {
 	string temp;
 	SceUID dfd;
 
-	/* Rebuilding means every row loads its image again, so let go of the
-	 * ones already held -- the list is rebuilt after every install and every
-	 * cover fetch, and a texture per row per reload adds up.  Only the
-	 * master frees: the rows on screen are copies sharing its textures. */
-	for (size_t i = 0; i < rom_list_all.size(); i++)
-		if (rom_list_all[i].icon) vita2d_free_texture(rom_list_all[i].icon);
+	/* The rows these covers belonged to are about to be replaced, and a
+	 * cover fetched since the last build would otherwise keep showing the
+	 * old picture. */
+	rom_icons_clear();
 	rom_list_all.clear();
 	rom_list.clear();
 	for (int i = 0; i < 3; i++) {

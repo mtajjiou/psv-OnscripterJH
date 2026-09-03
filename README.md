@@ -240,8 +240,8 @@ harmless.
 - [x] **Crash Reporter** — Saves error logs for debugging
 
 ### Performance & Optimization
-- [ ] **Lazy Loading** — Loads game list asynchronously
-- [ ] **Icon Caching** — Pre-cache game icons for faster UI
+- [x] **Lazy Loading** — Loads game list asynchronously
+- [x] **Icon Caching** — Pre-cache game icons for faster UI
 - [ ] **Background Tasks** — Extraction happens without blocking UI
 - [ ] **Memory Pooling** — Pre-allocate buffers for ZIP operations
 - [ ] **Parallel Extraction** — Multi-threaded ZIP if PSVita allows

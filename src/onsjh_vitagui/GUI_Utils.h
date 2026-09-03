@@ -19,6 +19,9 @@ typedef struct point {
 	int y;
 } point;
 
+/* The launcher's own icon, used for a game that has no cover of its own. */
+#define LAUNCHER_ICON_FILE "app0:/sce_sys/icon1.png"
+
 typedef struct rectangle {
 	int left;
 	int top;
@@ -69,13 +72,12 @@ public:
 	string path;
 	string name;
 	string last_date;
+	/* Where this game's cover is, not the cover itself: the picture is
+	 * decoded when it is drawn.  See rom_icon(). */
 	string icon_path;
-	vita2d_texture *icon;
 	point pos;
 	rectangle touch_area;
 	uint64_t size;
-	int w;
-	int h;
 	/* A row can be either an installed game folder or a .zip waiting to be
 	 * installed, so both show up in one list.  For an archive, path holds
 	 * the .zip and is_zip is 1. */
@@ -89,8 +91,6 @@ public:
 		is_zip = 0;
 		is_partial = 0;
 		size = 0;
-		icon = NULL;
-		w = h = 0;
 	}
 	/* An archive found in ux0:data/game_zips. */
 	RomInfo(string zip_path, uint64_t zip_size, int) {
@@ -99,11 +99,9 @@ public:
 		is_partial = 0;
 		size = zip_size;
 		path = zip_path;
-		icon = vita2d_load_PNG_file("app0:/sce_sys/icon1.png");
+		icon_path = LAUNCHER_ICON_FILE;
 		name = zip_path.substr(zip_path.find_last_of("/\\") + 1);
 		if (name.length() > 4) name.erase(name.length() - 4);  /* ".zip" */
-		w = icon ? sceGxmTextureGetWidth(&icon->gxm_tex) : 0;
-		h = icon ? sceGxmTextureGetHeight(&icon->gxm_tex) : 0;
 	}
 	RomInfo(string path_) {
 		touch_area = { 0,0,0,0 };
@@ -114,25 +112,20 @@ public:
 		/* A cover fetched from vndb comes first, then a hand-placed
 		 * icon.png, then the launcher's own icon.  vndb serves jpeg for
 		 * most covers and png for a few, so both are tried. */
-		icon = NULL;
+		/* Which file the cover comes from, without opening it: decoding
+		 * every game's cover while building the list is the startup
+		 * stall, and most of them are off screen.  rom_icon() decodes
+		 * one when it is first drawn. */
+		icon_path.clear();
 		const char *candidates[3] = { "/cover.png", "/cover.jpg", "/icon.png" };
-		for (int c = 0; c < 3 && !icon; c++){
+		for (int c = 0; c < 3 && icon_path.empty(); c++){
 			string candidate = path_ + candidates[c];
 			SceUID fd = sceIoOpen(candidate.c_str(), SCE_O_RDONLY, 0777);
 			if (fd < 0) continue;
 			sceIoClose(fd);
-
 			icon_path = candidate;
-			if (candidate.length() > 4 &&
-			    candidate.compare(candidate.length() - 4, 4, ".jpg") == 0)
-				icon = vita2d_load_JPEG_file(candidate.c_str());
-			else
-				icon = vita2d_load_PNG_file(candidate.c_str());
 		}
-		if (!icon){
-			icon_path = path_ + "/icon.png";
-			icon = vita2d_load_PNG_file("app0:/sce_sys/icon1.png");
-		}
+		if (icon_path.empty()) icon_path = LAUNCHER_ICON_FILE;
 			
 		/* Written by the launcher when the game is started; absent until
 		 * it has been. */
@@ -175,8 +168,6 @@ public:
 		if (name.empty())
 			name = path_.substr(path_.find_last_of("/\\") + 1);
 			
-		w = sceGxmTextureGetWidth(&icon->gxm_tex);
-		h = sceGxmTextureGetHeight(&icon->gxm_tex);
 	}
 	static char *to_char(string str) {
 		char* temp1 = new char[str.length() + 1];
@@ -225,6 +216,31 @@ void measure_sizes();
  * freed and, through *files, how many things were removed.  Saves, scripts
  * and half-finished installs are never touched. */
 uint64_t clean_temp_files(int *files);
+
+
+/* A cover, decoded the first time it is drawn and kept for a while.
+ *
+ * The list used to decode every game's cover while it was being built,
+ * which is a stall on startup and after every install, and holds a texture
+ * per game whether or not it is on screen.  Now a row carries only the path
+ * to its cover and this hands back the texture, loading it on the way if it
+ * is not already loaded.
+ *
+ * What is kept is bounded: the least recently drawn cover is dropped once
+ * the cache is full, so a library of two hundred games costs the same as a
+ * screenful.  The pointer is owned by the cache and is valid until covers
+ * are dropped or the list is rebuilt -- draw with it, do not keep it. */
+struct RomIcon {
+	vita2d_texture *tex;
+	int w;
+	int h;
+};
+
+RomIcon rom_icon(const RomInfo &rom);
+
+/* Frees every decoded cover.  Called when the list is rebuilt, since the
+ * rows the textures belonged to are gone. */
+void rom_icons_clear();
 
 /* Where a game's saves are copied to, one folder per game. */
 #define SAVE_BACKUP_FOLDER "ux0:data/onsemu/saves"

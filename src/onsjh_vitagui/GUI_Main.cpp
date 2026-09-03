@@ -185,7 +185,10 @@ void draw_icon(int curr, int row, int col) {
 	th_shadow(x, y, w, h);
 	th_card(x, y, w, h, TH_SURFACE, TH_BG);
 
-	th_cover(rom_list[curr].icon, rom_list[curr].w, rom_list[curr].h,
+	/* Decoded here, the first time this game is drawn, rather than while
+	 * the list was being built. */
+	const RomIcon cover = rom_icon(rom_list[curr]);
+	th_cover(cover.tex, cover.w, cover.h,
 		 x, y, w, h);
 
 	/* A band the name can be read on whatever the cover is doing behind
@@ -247,7 +250,8 @@ void draw_list_row(int curr, int row) {
 
 	/* A square of cover at the left, cropped to fill it. */
 	const int thumb = h - 8;
-	th_cover(rom_list[curr].icon, rom_list[curr].w, rom_list[curr].h,
+	const RomIcon cover = rom_icon(rom_list[curr]);
+	th_cover(cover.tex, cover.w, cover.h,
 		 x + 8, y + 4, thumb, thumb);
 
 	const int text_left = x + 8 + thumb + TH_PAD;
@@ -581,7 +585,8 @@ void draw_appinfo_icon(int curr) {
 		APPINFO_ICON_WIDTH, APPINFO_ICON_HEIGHT);
 	th_card(APPINFO_ICON_LEFT, APPINFO_ICON_TOP,
 		APPINFO_ICON_WIDTH, APPINFO_ICON_HEIGHT, TH_SURFACE_HI, TH_SURFACE);
-	th_cover(rom_list[curr].icon, rom_list[curr].w, rom_list[curr].h,
+	const RomIcon cover = rom_icon(rom_list[curr]);
+	th_cover(cover.tex, cover.w, cover.h,
 		APPINFO_ICON_LEFT, APPINFO_ICON_TOP,
 		APPINFO_ICON_WIDTH, APPINFO_ICON_HEIGHT);
 }

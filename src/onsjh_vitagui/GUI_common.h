@@ -140,7 +140,7 @@
 #define SCE_CTRL_HOLD 0x80000000
 #define FONT_SIZE 24
 
-#define GUI_VERSION 101
+#define GUI_VERSION 102
 #define GUI_VERSION_DATE ""
 
 extern int ICONS_ROW;

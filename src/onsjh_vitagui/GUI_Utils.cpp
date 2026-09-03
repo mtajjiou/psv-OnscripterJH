@@ -152,7 +152,7 @@ DEFAULT:
 			"[GUI]\n"
 			"version = %d\n"
 			"list_mode = list\n"
-			"use_dpad = true\n"
+			"use_dpad = false\n"   /* touch on by default; the buttons work either way */
 			"language = en\n"
 			"[GUI_icon]\n"
 			"row = 4\n"

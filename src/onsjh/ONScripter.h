@@ -582,6 +582,9 @@ private:
     void timerEvent(bool init_flag);
 #if (defined(IOS) || defined(ANDROID) || defined(WINRT) || defined(PSV) )
     bool convTouchKey(SDL_TouchFingerEvent &finger);
+    /* A touch, in the coordinates the mouse handlers expect; accounts for
+     * where the image is actually drawn. */
+    void touchToScreen(const SDL_TouchFingerEvent &finger, int &x, int &y);
 #endif
     void runEventLoop();
 

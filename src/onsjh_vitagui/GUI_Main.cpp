@@ -481,6 +481,11 @@ void draw_slots(int index_, int slot) {
 	}*/
 }
 
+/* Where the last message or alert box was drawn, so a tap can be tested
+ * against it.  The box is sized from its text every frame, so recording it
+ * here keeps the touch areas and the drawing from drifting apart. */
+static rectangle last_dialog_area = { 0, 0, 0, 0 };
+
 void draw_message(char *msg, int choose,int fontsize) {
 
 
@@ -495,6 +500,10 @@ void draw_message(char *msg, int choose,int fontsize) {
 	int top = (SCREEN_HEIGHT - height) / 2;
 
 	vita2d_draw_rectangle(left, top, width, height, LIGHT_GRAY);
+	last_dialog_area.left = left;
+	last_dialog_area.top = top;
+	last_dialog_area.right = left + width;
+	last_dialog_area.bottom = top + height;
 
 	vita2d_font_draw_text(font, left + padding, top + padding, BLACK, fontsize, msg);
 	vita2d_font_draw_text(font,
@@ -516,6 +525,10 @@ void draw_alert(char *msg, int fontsize) {
 	int top = (SCREEN_HEIGHT - height) / 2;
 
 	vita2d_draw_rectangle(left, top, width, height, LIGHT_GRAY);
+	last_dialog_area.left = left;
+	last_dialog_area.top = top;
+	last_dialog_area.right = left + width;
+	last_dialog_area.bottom = top + height;
 
 	vita2d_font_draw_text(font, left + padding, top + padding, BLACK, fontsize, msg);
 	vita2d_font_draw_text(font,
@@ -723,60 +736,23 @@ void draw_screen(ScreenState state, int curr, int choose, int slot) {
 #define IS_TOUCHED(rect, pt) \
     (IN_RANGE(rect.left, rect.right, pt.x) && IN_RANGE(rect.top, rect.bottom, pt.y))
 
-ScreenState on_mainscreen_event_with_touch(int steps, int &step, int &curr, int &touched) {
-	// FIXME: cleanup
-	int move_row = 0;
-	int move_col = 0;
-	switch (mainscreen_list_mode) {
-	case USE_LIST:
-		move_row = LIST_ROW;
-		move_col = 1;
-		break;
-	case USE_ICON:
-	default:
-		move_row = 1;
-		move_col = ICONS_COL;
-		break;
-	}
-	int btn = read_buttons();
-
-	if (btn & SCE_CTRL_HOLD) {
-		return UNKNOWN;
-	}
-	if (btn & SCE_CTRL_R2) {
-		return HELP_MSG;
-	}
-	if (btn & SCE_CTRL_L2) {
-		return CONFIG_SCREEN;
-	}
-	if (btn & SCE_CTRL_SELECT) {
-		return ABOUT_MSG;
-	}
-	if (btn & SCE_CTRL_UP) {
-		if (step <= 0) {
-			return UNKNOWN;
-		}
-		step -= move_row;
-		curr -= move_row * move_col;
-		return MAIN_SCREEN;
-	}
-	if (btn & SCE_CTRL_DOWN) {
-		if (step >= steps) {
-			return UNKNOWN;
-		}
-		step += move_row;
-		curr += move_row * move_col;
-		return MAIN_SCREEN;
-	}
-
+/* The touch half of the main screen.  It reads no buttons: the dispatcher
+ * below has already done that, and read_buttons only reports a press once. */
+ScreenState mainscreen_touch(int curr, int &touched) {
 	point p;
 	if (!read_touchscreen(&p)) {
 		return UNKNOWN;
 	}
 
-	for (int i = curr; i < rom_list.size() && i < (ICONS_COL * ICONS_ROW); i++) {
+	/* Only the rows on screen: a row that has scrolled away still carries
+	 * the touch area it last had, and would otherwise answer for a tap
+	 * somewhere it is no longer drawn. */
+	int visible = (mainscreen_list_mode == USE_LIST) ? LIST_ROW : (ICONS_ROW * ICONS_COL);
+
+	for (int i = curr; i < rom_list.size() && i < curr + visible; i++) {
 		if (IS_TOUCHED(rom_list[i].touch_area, p)) {
 			touched = i;
+			select_appinfo_button = 0;
 			return PRINT_APPINFO;
 		}
 	}
@@ -887,11 +863,66 @@ ScreenState on_mainscreen_event_with_dpad(int steps, int &step, int &curr, int &
 }
 #undef IS_OVERFLOW
 
+/* Buttons and touch both work, always.  They used to be alternatives, so
+ * with the default configuration -- use_dpad true -- touching the screen did
+ * nothing anywhere in the launcher, and turning it off to get touch took the
+ * d-pad away.  Nothing about the hardware requires that choice.
+ *
+ * "Buttons only" now means what it says: touch is ignored, for anyone who
+ * holds the console in a way that brushes the screen. */
 ScreenState on_mainscreen_event(int steps, int &step, int &curr, int &touched) {
-	if (config.use_dpad) {
-		return on_mainscreen_event_with_dpad(steps, step, curr, touched);
+	ScreenState state = on_mainscreen_event_with_dpad(steps, step, curr, touched);
+	if (state != UNKNOWN) return state;
+	if (config.use_dpad) return UNKNOWN;
+	return mainscreen_touch(curr, touched);
+}
+
+/* What a row does when it is chosen, by button or by tap. */
+static void activate_config_row(int row) {
+	switch (row) {
+	case 0:
+		if (strncmp(config.list_mode, "icon", 4) == 0) {
+			strncpy(config.list_mode, "list", 4);
+			mainscreen_list_mode = USE_LIST;
+		}
+		else {
+			strncpy(config.list_mode, "icon", 4);
+			mainscreen_list_mode = USE_ICON;
+		}
+		break;
+	case 1:
+		config.use_dpad = !config.use_dpad;
+		break;
+	case 5:
+		config.use_btouch++;
+		if (config.use_btouch > 2)
+			config.use_btouch = 0;
+		break;
+	case 6:
+		/* Cycling the language rewrites every label, so the settings menu
+		 * strings are rebuilt here too rather than only at startup. */
+		config.language = (config.language + 1) % UI_LANG_COUNT;
+		ui_set_language((UILanguage)config.language);
+		init_sittings_text();
+		break;
+	default:
+		break;
 	}
-	return on_mainscreen_event_with_touch(steps, step, curr, touched);
+}
+
+/* Which row a tap landed on, or -1.  The rows are drawn at
+ * ITEMS_PANEL_TOP + i * 30 + 30 with the text baseline there, so the band
+ * that belongs to a row runs from 10 above that baseline to 20 below. */
+static int config_row_at(const point &p) {
+	if (p.x < ITEMS_PANEL_LEFT || p.x > ITEMS_PANEL_LEFT + ITEMS_PANEL_WIDTH)
+		return -1;
+
+	for (int i = 0; i < CONFIG_NUM; i++) {
+		int baseline = ITEMS_PANEL_TOP + i * 30 + 30;
+		if (p.y >= baseline - 22 && p.y <= baseline + 8)
+			return i;
+	}
+	return -1;
 }
 
 ScreenState on_config_event() {
@@ -943,36 +974,7 @@ ScreenState on_config_event() {
 	}
 
 	if (btn & SCE_CTRL_ENTER) {
-		switch (select_config) {
-		case 0:
-			if (strncmp(config.list_mode, "icon", 4) == 0) {
-				strncpy(config.list_mode, "list", 4);
-				mainscreen_list_mode = USE_LIST;
-			}
-			else {
-				strncpy(config.list_mode, "icon", 4);
-				mainscreen_list_mode = USE_ICON;
-			}
-			break;
-		case 1:
-			config.use_dpad = !config.use_dpad;
-			break;
-		case 5:
-			config.use_btouch++;
-			if (config.use_btouch > 2)
-				config.use_btouch = 0;
-			break;
-		case 6:
-			/* Cycling the language rewrites every label, so the settings
-			 * menu strings are rebuilt here too rather than only at
-			 * startup. */
-			config.language = (config.language + 1) % UI_LANG_COUNT;
-			ui_set_language((UILanguage)config.language);
-			init_sittings_text();
-			break;
-		default:
-			break;
-		}
+		activate_config_row(select_config);
 		need_refresh = 1;
 		need_save = 1;
 
@@ -1071,6 +1073,33 @@ ScreenState on_config_event() {
 		need_refresh = 1;
 		need_save = 1;
 	}
+
+	/* A tap picks the row and applies it, the same as moving to it and
+	 * pressing the enter button. */
+	if (!config.use_dpad) {
+		point p;
+		if (read_touchscreen(&p)) {
+			if (p.x < ITEMS_PANEL_LEFT || p.x > ITEMS_PANEL_LEFT + ITEMS_PANEL_WIDTH ||
+			    p.y < ITEMS_PANEL_TOP  || p.y > ITEMS_PANEL_TOP + ITEMS_PANEL_HEIGHT){
+				/* Outside the panel is the way back, as cancel is. */
+				if (need_save) save_config();
+				if (need_refresh){
+					need_refresh = 0;
+					return RELOAD_MAINSCREEN;
+				}
+				return MAIN_SCREEN;
+			}
+
+			int row = config_row_at(p);
+			if (row >= 0) {
+				select_config = row;
+				activate_config_row(row);
+				need_refresh = 1;
+				need_save = 1;
+			}
+		}
+	}
+
 	return UNKNOWN;
 }
 
@@ -1108,20 +1137,15 @@ ScreenState on_appinfo_button_event(point p) {
 
 #undef APPINFO_BUTTON_AREA
 
-ScreenState on_appinfo_event_with_touch() {
+/* The touch half of the game panel: a tap on one of its buttons, or a tap
+ * outside it to go back. */
+ScreenState appinfo_touch() {
 	static rectangle appinfo_area = {
 		APPINFO_PANEL_LEFT,
 		APPINFO_PANEL_TOP,
 		APPINFO_PANEL_LEFT + APPINFO_PANEL_WIDTH,
 		APPINFO_PANEL_TOP + APPINFO_PANEL_HEIGHT,
 	};
-
-	int btn = read_buttons();
-
-	if (!(btn & SCE_CTRL_HOLD) && btn & SCE_CTRL_CANCEL) {
-		return MAIN_SCREEN;
-	}
-	// TODO
 
 	point p;
 	if (!read_touchscreen(&p)) {
@@ -1175,19 +1199,15 @@ ScreenState on_appinfo_event_with_dpad() {
 }
 
 ScreenState on_appinfo_event() {
-	if (config.use_dpad) {
-		return on_appinfo_event_with_dpad();
-	}
-	return on_appinfo_event_with_touch();
+	ScreenState state = on_appinfo_event_with_dpad();
+	if (state != UNKNOWN) return state;
+	if (config.use_dpad) return UNKNOWN;
+	return appinfo_touch();
 }
 
-ScreenState on_slot_event_with_touch(int &slot) {
+/* The touch half of the per-game settings list. */
+ScreenState slot_touch(int &slot) {
 	slot = -1;
-	int btn = read_buttons();
-
-	if (!(btn & SCE_CTRL_HOLD) && btn & SCE_CTRL_CANCEL) {
-		return PRINT_APPINFO;
-	}
 
 	point p;
 	if (!read_touchscreen(&p)) {
@@ -1261,10 +1281,12 @@ ScreenState on_slot_event_with_dpad(int &slot) {
 }
 
 ScreenState on_slot_event(int &slot) {
-	if (config.use_dpad) {
-		return on_slot_event_with_dpad(slot);
-	}
-	return on_slot_event_with_touch(slot);
+	ScreenState state = on_slot_event_with_dpad(slot);
+	/* slot >= 0 means the buttons just acted on a row and returned UNKNOWN
+	 * to stay on this screen; going on to the touch half would reset it. */
+	if (state != UNKNOWN || slot >= 0) return state;
+	if (config.use_dpad) return UNKNOWN;
+	return slot_touch(slot);
 }
 
 ScreenState on_message_event(int curr, int(*progress_func)(int), ScreenState state_done, ScreenState state_fail, ScreenState state_cancel,int norun_fun = 0) {
@@ -1287,6 +1309,23 @@ ScreenState on_message_event(int curr, int(*progress_func)(int), ScreenState sta
 		if (btn & SCE_CTRL_CANCEL) {
 			return state_cancel;
 		}
+
+		/* The footer reads "cancel no    confirm yes", so the box splits
+		 * down the middle the way it is written: left is no, right is
+		 * yes.  A tap outside the box cancels, like the cancel button. */
+		if (!config.use_dpad) {
+			point p;
+			if (read_touchscreen(&p)) {
+				if (!IS_TOUCHED(last_dialog_area, p))
+					return state_cancel;
+				int middle = (last_dialog_area.left + last_dialog_area.right) / 2;
+				if (p.x < middle)
+					return state_cancel;
+				if (norun_fun)
+					return state_done;
+				return progress_func(curr) ? state_done : state_fail;
+			}
+		}
 	}
 	return state_cancel;
 }
@@ -1299,6 +1338,11 @@ ScreenState on_alert_event(ScreenState state) {
 		}
 		if (btn & SCE_CTRL_ENTER) {
 			break;
+		}
+		/* Anywhere closes it; there is only the one thing to do. */
+		if (!config.use_dpad) {
+			point p;
+			if (read_touchscreen(&p)) break;
 		}
 	}
 	return state;

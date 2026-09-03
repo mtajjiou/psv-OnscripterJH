@@ -1224,6 +1224,47 @@ bool ONScripter::convTouchKey(SDL_TouchFingerEvent &finger) {
     if (mw.y != 0) return mouseWheelEvent(&mw);
     return false;
 }
+
+/* Where a touch landed, in the coordinates the mouse handlers expect.
+ *
+ * Those handlers scale what they are given by screen_scale_ratio, which is
+ * screen_width / screen_device_width -- so this has to hand back a position
+ * within a screen_device_width-wide image, whatever size that image is
+ * actually being drawn at.
+ *
+ * The image is not always in the same place.  flushDirect letterboxes it
+ * into the device rectangle, except in full screen, where it fills the
+ * window.  The old code subtracted half the letterbox unconditionally, so
+ * with full screen on every tap was offset by the shift and scaled as if the
+ * picture were still 724 wide when it was 960 -- taps landing left of, and
+ * short of, whatever the player meant to touch.
+ */
+void ONScripter::touchToScreen(const SDL_TouchFingerEvent &finger, int &x, int &y)
+{
+    SDL_Rect r = { 0, 0, device_width, device_height };
+    if (!fullscreen_mode){
+        r.x = screen_device_shiftx;
+        r.y = screen_device_shifty;
+        r.w = screen_device_width;
+        r.h = screen_device_height;
+    }
+    if (r.w <= 0) r.w = 1;
+    if (r.h <= 0) r.h = 1;
+
+    float px = device_width  * finger.x;
+    float py = device_height * finger.y;
+
+    x = (int)((px - r.x) * (float)screen_device_width  / (float)r.w);
+    y = (int)((py - r.y) * (float)screen_device_height / (float)r.h);
+}
+
+/* The back panel reports as a second touch device.  Reading the low half of
+ * touchId through the controller-touchpad member of the union happened to
+ * give the same answer, but only because of how the two structures overlap. */
+static inline bool touchIsBackPanel(const SDL_TouchFingerEvent &finger)
+{
+    return finger.touchId != 0;
+}
 #endif
 
 void ONScripter::runEventLoop()
@@ -1253,12 +1294,11 @@ void ONScripter::runEventLoop()
 #if defined(PSV)
             if(strcmp(touchMode, "use_front_only_touch")==0)
             {
-                if(event.ctouchpad.which!=0) break;  // 0 front, 1 back
+                if (touchIsBackPanel(event.tfinger)) break;
             }
 #endif
             if (!btndown_flag && convTouchKey(event.tfinger)) return;
-            tmp_event.motion.x = device_width * event.tfinger.x - (device_width - screen_device_width) / 2;
-            tmp_event.motion.y = device_height * event.tfinger.y - (device_height - screen_device_height) / 2;
+            touchToScreen(event.tfinger, tmp_event.motion.x, tmp_event.motion.y);
             // SDL_Log("## SDL_FINGERDOWN event.tfinger(%f, %f), tmp_event.button(%d, %d)\n", 
             //     event.tfinger.x, event.tfinger.y, tmp_event.motion.x, tmp_event.motion.y);
             if (mouseMoveEvent( &tmp_event.motion )) return;
@@ -1279,20 +1319,18 @@ void ONScripter::runEventLoop()
 #if defined(PSV)
             if(strcmp(touchMode, "use_front_only_touch")==0)
             {
-                if(event.ctouchpad.which!=0) break; 
+                if (touchIsBackPanel(event.tfinger)) break;
             }
 #endif
             convTouchKey(event.tfinger);
-            tmp_event.motion.x = device_width * event.tfinger.x - (device_width - screen_device_width) / 2;
-            tmp_event.motion.y = device_height * event.tfinger.y - (device_height - screen_device_height) / 2;
+            touchToScreen(event.tfinger, tmp_event.motion.x, tmp_event.motion.y);
             if (mouseMoveEvent( &tmp_event.motion )) return;       
             if ( btndown_flag ){
                 tmp_event.button.type = SDL_MOUSEBUTTONDOWN;
                 tmp_event.button.button = SDL_BUTTON_LEFT;
                 if (SDL_GetNumTouchFingers(event.tfinger.touchId) >= 2)
                     tmp_event.button.button = SDL_BUTTON_RIGHT;
-                tmp_event.button.x = device_width * event.tfinger.x - (device_width - screen_device_width) / 2;
-                tmp_event.button.y = device_height * event.tfinger.y - (device_height - screen_device_height) / 2;
+                touchToScreen(event.tfinger, tmp_event.button.x, tmp_event.button.y);
                 ret = mousePressEvent( &tmp_event.button );
             }
             {
@@ -1310,7 +1348,7 @@ void ONScripter::runEventLoop()
 #if defined(PSV)
             if(strcmp(touchMode, "use_front_only_touch")==0)
             {
-                if(event.ctouchpad.which!=0) break; 
+                if (touchIsBackPanel(event.tfinger)) break;
             }
 #endif
             if (num_fingers == 0) break;
@@ -1319,8 +1357,7 @@ void ONScripter::runEventLoop()
                 tmp_event.button.button = SDL_BUTTON_LEFT;
                 if (num_fingers == 2)
                     tmp_event.button.button = SDL_BUTTON_RIGHT;
-                tmp_event.button.x = device_width * event.tfinger.x - (device_width - screen_device_width) / 2;
-                tmp_event.button.y = device_height * event.tfinger.y - (device_height - screen_device_height) / 2;
+                touchToScreen(event.tfinger, tmp_event.button.x, tmp_event.button.y);
                 ret = mousePressEvent( &tmp_event.button );
             }
             tmp_event.key.keysym.sym = SDLK_LCTRL;

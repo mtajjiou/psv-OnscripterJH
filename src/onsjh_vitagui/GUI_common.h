@@ -163,6 +163,13 @@ typedef enum {
 	RELOAD_MAINSCREEN,
 	HELP_MSG,
 	ABOUT_MSG,
+	/* Installing a game from a .zip.  These sit before PRINT_APPINFO so the
+	 * game list still draws behind them but the per-game info panel, which
+	 * has no meaning for an archive, does not. */
+	INSTALL_CONFIRM,
+	INSTALL_RUN,
+	INSTALL_DONE,
+	INSTALL_FAIL,
 	PRINT_APPINFO,
 	START_MODE,
 	SETTING_MODE,

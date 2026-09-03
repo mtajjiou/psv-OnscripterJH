@@ -25,6 +25,8 @@
 #include <psp2/io/stat.h> 
 #include <psp2/ctrl.h>
 #include <psp2/kernel/processmgr.h>
+#include <stdio.h>
+#include <string.h>
 #include <vita2d.h>
 #include <string>
 #include <vector>
@@ -32,6 +34,7 @@
 
 #include "vitaPackage.h"
 #include "filesystem.h"
+#include "ZipHandler.h"
 
 #include "GUI_common.h"
 #include "GUI_Utils.h"
@@ -502,6 +505,127 @@ void draw_alert(char *msg, int fontsize) {
 
 }
 
+/*
+ * Installing a game from a .zip.
+ *
+ * The extraction runs on this thread and repaints from its progress
+ * callback, so the bar moves and CIRCLE stays responsive without the
+ * launcher needing a worker thread.
+ */
+static ZipInstallProgress install_progress;
+static ZipInstallStatus  install_status = ZIP_INSTALL_OK;
+static char install_message[512];
+static char install_confirm_message[512];
+
+void draw_install_progress(const ZipInstallProgress &progress) {
+	const int width  = 700;
+	const int height = 200;
+	const int left   = (SCREEN_WIDTH - width) / 2;
+	const int top    = (SCREEN_HEIGHT - height) / 2;
+	const int padding = 25;
+
+	vita2d_draw_rectangle(left, top, width, height, LIGHT_GRAY);
+	vita2d_font_draw_text(font, left + padding, top + padding + FONT_SIZE,
+		BLACK, FONT_SIZE, (char *)"安装中... (installing)");
+
+	/* The file currently being written, trimmed to fit the box. */
+	char line[96];
+	snprintf(line, sizeof(line), "%s", progress.current_file.c_str());
+	if (strlen(line) > 60) {
+		memmove(line, line + strlen(line) - 60, 61);
+		line[0] = line[1] = line[2] = '.';
+	}
+	vita2d_font_draw_text(font, left + padding, top + padding + FONT_SIZE * 3,
+		BLACK, FONT_SIZE - 4, line);
+
+	/* Progress bar. */
+	const int bar_left   = left + padding;
+	const int bar_top    = top + height - padding - 60;
+	const int bar_width  = width - (padding * 2);
+	const int bar_height = 24;
+	vita2d_draw_rectangle(bar_left, bar_top, bar_width, bar_height, BLACK);
+	vita2d_draw_rectangle(bar_left + 2, bar_top + 2,
+		((bar_width - 4) * progress.percent) / 100, bar_height - 4, GREEN);
+
+	char done_size[16], total_size[16];
+	getSizeString(done_size, progress.bytes_done);
+	getSizeString(total_size, progress.bytes_total);
+	snprintf(line, sizeof(line), "%d%%  (%s / %s)   %s cancel",
+		progress.percent, done_size, total_size, ICON_CANCEL);
+	vita2d_font_draw_text(font, bar_left, bar_top + bar_height + FONT_SIZE + 4,
+		BLACK, FONT_SIZE, line);
+}
+
+/* True to keep going, false to cancel.  Repaints and polls CIRCLE. */
+static bool install_progress_callback(const ZipInstallProgress &progress, void *user) {
+	static uint64_t last_drawn = 0;
+
+	/* Repainting on every 64KB chunk would spend more time drawing than
+	 * extracting; a frame every 512KB keeps the bar lively and cheap. */
+	if (progress.bytes_done - last_drawn < 512 * 1024 &&
+		progress.bytes_done < progress.bytes_total) {
+		return true;
+	}
+	last_drawn = progress.bytes_done;
+
+	vita2d_start_drawing();
+	vita2d_clear_screen();
+	draw_title();
+	draw_help();
+	draw_install_progress(progress);
+	vita2d_end_drawing();
+	vita2d_wait_rendering_done();
+	vita2d_swap_buffers();
+
+	SceCtrlData pad = { 0 };
+	sceCtrlPeekBufferPositive(0, &pad, 1);
+	if (pad.buttons & SCE_CTRL_CANCEL) return false;
+	return true;
+}
+
+/* Text for the confirmation shown before an install starts. */
+void prepare_install_confirm(int choose) {
+	const std::string &zip_path = rom_list[choose].path;
+	uint64_t needed = ZipHandler::installedSize(zip_path);
+	uint64_t available = ZipHandler::freeSpace();
+	char needed_str[16], free_str[16];
+
+	getSizeString(needed_str, needed);
+	getSizeString(free_str, available);
+	snprintf(install_confirm_message, sizeof(install_confirm_message),
+		"Install this game?\n\n"
+		"  %s\n"
+		"  to ux0:onsemu/%s\n\n"
+		"  needs %s, %s free",
+		rom_list[choose].char_name(),
+		ZipHandler::destinationName(zip_path).c_str(),
+		needed_str, free_str);
+}
+
+/* Runs the install; returns the screen to show next. */
+ScreenState run_install(int choose) {
+	std::string installed_path;
+
+	install_progress.bytes_done  = 0;
+	install_progress.bytes_total = 0;
+	install_progress.percent     = 0;
+	install_progress.current_file.clear();
+
+	install_status = ZipHandler::install(rom_list[choose].path, installed_path,
+		install_progress_callback, NULL);
+
+	if (install_status == ZIP_INSTALL_OK) {
+		snprintf(install_message, sizeof(install_message),
+			"Installed to\n%s\n\nThe archive was kept in\n" GAME_ZIP_FOLDER,
+			installed_path.c_str());
+		return INSTALL_DONE;
+	}
+
+	snprintf(install_message, sizeof(install_message), "%s",
+		ZipHandler::statusMessage(install_status));
+	return INSTALL_FAIL;
+}
+
 void draw_screen(ScreenState state, int curr, int choose, int slot) {
 
 	vita2d_start_drawing();
@@ -538,6 +662,16 @@ void draw_screen(ScreenState state, int curr, int choose, int slot) {
 
 	switch (state) {
 	case START_MODE:
+		break;
+	case INSTALL_CONFIRM:
+		draw_message(install_confirm_message, choose, FONT_SIZE);
+		break;
+	case INSTALL_RUN:
+		draw_install_progress(install_progress);
+		break;
+	case INSTALL_DONE:
+	case INSTALL_FAIL:
+		draw_alert(install_message, FONT_SIZE);
 		break;
 	case SETTING_MODE:
 		draw_slots(choose, -1);
@@ -1250,8 +1384,31 @@ int mainloop() {
 			case MAIN_SCREEN:
 				if (!need_load) need_load = 1;
 				new_state = on_mainscreen_event(steps, step, curr, choose);
+				/* A .zip row has no game to configure yet -- offer to
+				 * install it instead of opening the game info panel. */
+				if (new_state == PRINT_APPINFO &&
+					choose >= 0 && choose < (int)rom_list.size() &&
+					rom_list[choose].is_zip) {
+					prepare_install_confirm(choose);
+					new_state = INSTALL_CONFIRM;
+				}
 				//printf("%d \n", curr);
 				break;
+			case INSTALL_CONFIRM:
+				new_state = on_message_event(choose, NULL, INSTALL_RUN,
+					MAIN_SCREEN, MAIN_SCREEN, 1);
+				break;
+			case INSTALL_RUN:
+				new_state = run_install(choose);
+				break;
+			case INSTALL_DONE:
+				on_alert_event(MAIN_SCREEN);
+				/* Reload so the freshly installed game appears and the
+				 * archive row is re-evaluated. */
+				return 1;
+			case INSTALL_FAIL:
+				on_alert_event(MAIN_SCREEN);
+				return 1;
 			case CONFIG_SCREEN:
 				new_state = on_config_event();
 				break;

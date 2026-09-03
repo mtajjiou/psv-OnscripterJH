@@ -50,11 +50,33 @@ public:
 	uint64_t size;
 	int w;
 	int h;
+	/* A row can be either an installed game folder or a .zip waiting to be
+	 * installed, so both show up in one list.  For an archive, path holds
+	 * the .zip and is_zip is 1. */
+	int is_zip;
 	RomInfo() {
 		touch_area = { 0,0,0,0 };
+		is_zip = 0;
+		size = 0;
+		icon = NULL;
+		w = h = 0;
+	}
+	/* An archive found in ux0:data/game_zips. */
+	RomInfo(string zip_path, uint64_t zip_size, int) {
+		touch_area = { 0,0,0,0 };
+		is_zip = 1;
+		size = zip_size;
+		path = zip_path;
+		icon = vita2d_load_PNG_file("app0:/sce_sys/icon1.png");
+		name = zip_path.substr(zip_path.find_last_of("/\\") + 1);
+		if (name.length() > 4) name.erase(name.length() - 4);  /* ".zip" */
+		w = icon ? sceGxmTextureGetWidth(&icon->gxm_tex) : 0;
+		h = icon ? sceGxmTextureGetHeight(&icon->gxm_tex) : 0;
 	}
 	RomInfo(string path_) {
-		RomInfo();
+		touch_area = { 0,0,0,0 };
+		is_zip = 0;
+		size = 0;
 		path = path_;
 		icon_path = path_ + "/icon.png";
 		SceUID fd = sceIoOpen(char_icon_path(), SCE_O_RDONLY, 0777);

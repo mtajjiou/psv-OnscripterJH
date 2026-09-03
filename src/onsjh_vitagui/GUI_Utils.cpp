@@ -13,6 +13,7 @@
 #include "iniparser.h"
 #include "GUI_Utils.h"
 #include "GUI_common.h"
+#include "ZipHandler.h"
 
 int SCE_CTRL_ENTER;
 int SCE_CTRL_CANCEL;
@@ -243,6 +244,12 @@ int load_rom_list() {
 			} while (res > 0);
 		}
 	}
+
+	/* Archives waiting in ux0:data/game_zips are listed after the installed
+	 * games, so dropping a .zip on the card is enough to see it here. */
+	std::vector<ZipEntryInfo> zips = ZipHandler::scanZipFolder();
+	for (size_t i = 0; i < zips.size(); i++)
+		rom_list.push_back(RomInfo(zips[i].path, zips[i].file_size, 1));
 
 	return rom_list.size();
 }

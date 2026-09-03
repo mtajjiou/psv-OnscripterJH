@@ -1,0 +1,96 @@
+/* -*- C++ -*-
+ *
+ *  ZipHandler.h -- installs a game from a .zip into ux0:onsemu/
+ *
+ *  Wraps the portable reader in src/common/zipreader.c with the Vita side
+ *  of the job: free space checks, directory creation, progress reporting
+ *  and cleaning up after a failed or canceled install.
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
+ */
+#ifndef __ZIPHANDLER_H__
+#define __ZIPHANDLER_H__
+
+#include <string>
+#include <vector>
+#include <stdint.h>
+
+/* Where the launcher looks for archives waiting to be installed. */
+#define GAME_ZIP_FOLDER "ux0:data/game_zips"
+/* Where games live once installed. */
+#define GAME_INSTALL_FOLDER "ux0:onsemu"
+
+/* Keep this much of ux0: free after an install rather than filling the
+ * card completely -- saves and the font cache still need room. */
+#define INSTALL_SPACE_MARGIN (16 * 1024 * 1024)
+
+enum ZipInstallStatus {
+    ZIP_INSTALL_OK = 0,
+    ZIP_INSTALL_BAD_ARCHIVE,    /* unreadable, corrupt, zip64, encrypted */
+    ZIP_INSTALL_NO_SCRIPT,      /* no ONScripter script inside */
+    ZIP_INSTALL_NO_SPACE,
+    ZIP_INSTALL_EXISTS,         /* destination folder already there */
+    ZIP_INSTALL_WRITE_FAILED,
+    ZIP_INSTALL_CANCELED
+};
+
+/* One archive found in GAME_ZIP_FOLDER. */
+struct ZipEntryInfo {
+    std::string path;           /* full path to the .zip */
+    std::string display_name;   /* file name without the .zip suffix */
+    uint64_t    file_size;      /* size of the archive on disk */
+};
+
+/* Progress of an install in flight, polled by the UI while it draws. */
+struct ZipInstallProgress {
+    uint64_t    bytes_done;
+    uint64_t    bytes_total;
+    std::string current_file;
+    int         percent;        /* 0..100 */
+};
+
+/* Called after each chunk.  Return false to cancel the install. */
+typedef bool (*ZipProgressCallback)(const ZipInstallProgress &progress,
+                                    void *user);
+
+class ZipHandler {
+public:
+    /* List the .zip files sitting in GAME_ZIP_FOLDER, newest listing order
+     * following the filesystem.  Creates the folder if it is missing so
+     * users have somewhere obvious to drop archives. */
+    static std::vector<ZipEntryInfo> scanZipFolder();
+
+    /* Folder name this archive would install to, under GAME_INSTALL_FOLDER.
+     * Derived from the archive's own game folder when it has one, else from
+     * the file name; always reduced to characters the engine can open. */
+    static std::string destinationName(const std::string &zip_path);
+
+    /* Install zip_path into GAME_INSTALL_FOLDER.  On success installed_path
+     * receives the folder that was created.  A failed or canceled install
+     * removes whatever it had written, so nothing half-extracted is left in
+     * the game list. */
+    static ZipInstallStatus install(const std::string &zip_path,
+                                    std::string &installed_path,
+                                    ZipProgressCallback callback = NULL,
+                                    void *user = NULL);
+
+    /* Uncompressed size of the archive's contents, for the space warning
+     * shown before an install starts.  0 if the archive cannot be read. */
+    static uint64_t installedSize(const std::string &zip_path);
+
+    /* Free bytes on the partition holding GAME_INSTALL_FOLDER. */
+    static uint64_t freeSpace();
+
+    /* Message to show the user for a failed install. */
+    static const char *statusMessage(ZipInstallStatus status);
+
+private:
+    static bool ensureDirectory(const std::string &path);
+    static bool ensureParents(const std::string &base,
+                              const std::string &relative);
+};
+
+#endif /* __ZIPHANDLER_H__ */

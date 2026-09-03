@@ -13,6 +13,7 @@
 #include <algorithm>    /* std::sort */
 
 #include "iniparser.h"
+#include "filesystem.h"   /* checkFileExist, getPathInfo */
 #include "GUI_Utils.h"
 #include "GUI_Text.h"
 #include "GUI_common.h"
@@ -656,6 +657,22 @@ int parseOption(string &cmdstr,int (&cmd)[10],char *cmd_str[],int flag = 0) {
 					else if (tmp == "enc:auto") {
 						cmd[4] = 0;
 					}
+					/* Touch, per game.  Absent means the
+					 * launcher's own setting still decides,
+					 * which is what every settings file
+					 * written before this option says. */
+					else if (tmp == "touch:front") {
+						cmd[SITTINGS_TOUCH] = 1;
+					}
+					else if (tmp == "touch:both") {
+						cmd[SITTINGS_TOUCH] = 2;
+					}
+					else if (tmp == "touch:back") {
+						cmd[SITTINGS_TOUCH] = 3;
+					}
+					else if (tmp == "touch:off") {
+						cmd[SITTINGS_TOUCH] = 4;
+					}
 					else {
 						printf(" unknown option %s\n", tmp.c_str());
 					}
@@ -704,6 +721,18 @@ int parseOption(string &cmdstr,int (&cmd)[10],char *cmd_str[],int flag = 0) {
 			cmdstr += " ";
 			cmdstr += cmd_str[index_];
 			index_++;
+		}
+		if (cmd[SITTINGS_TOUCH]) {
+			static const char *touch_opt[] = {
+				"", "--touch:front", "--touch:both",
+				"--touch:back", "--touch:off"
+			};
+			/* Written into the settings file so the choice comes
+			 * back next time, but not handed to the engine: the
+			 * engine takes it as --touch-mode, which the launcher
+			 * appends once, after this. */
+			cmdstr += " ";
+			cmdstr += touch_opt[cmd[SITTINGS_TOUCH]];
 		}
 			
 		return index_;

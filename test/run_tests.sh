@@ -38,6 +38,14 @@ ${CC:-cc} -std=c99 -Wall -Wextra -g \
 
 "$work/test_videofmt"
 
+# --- game metadata cache --------------------------------------------------
+${CC:-cc} -std=c99 -Wall -Wextra -g \
+  -I"$root/src/common" \
+  "$root/test/test_manifest.c" "$root/src/common/manifest.c" \
+  -o "$work/test_manifest"
+
+"$work/test_manifest" "$work"
+
 # --- launcher interface text ---------------------------------------------
 ${CXX:-c++} -std=c++11 -Wall -Wextra -g \
   -I"$root/src/onsjh_vitagui" \

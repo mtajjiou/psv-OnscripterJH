@@ -125,6 +125,9 @@
 #define GREEN               RGBA8(0x00, 0x80, 0x00, 0xFF)
 
 #define CONFIG_FILE "ux0:data/onsemu/ONSConfig.ini"
+/* What the launcher already worked out about the games on the card, so it
+ * does not work it out again on every start.  Safe to delete. */
+#define MANIFEST_FILE "ux0:data/onsemu/game_manifest.json"
 /* Arguments handed to the engine.
  *
  * The five the settings can produce, --root and its path, --touch-mode and

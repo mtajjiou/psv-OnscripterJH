@@ -17,7 +17,8 @@
 #include "GUI_Text.h"
 #include "GUI_common.h"
 #include "ZipHandler.h"
-#include "zipreader.h"   /* zip_is_script_name: one definition of "this is a game" */
+#include "zipreader.h"
+#include "manifest.h"   /* zip_is_script_name: one definition of "this is a game" */
 
 int SCE_CTRL_ENTER;
 int SCE_CTRL_CANCEL;
@@ -362,6 +363,11 @@ void measure_sizes() {
 	 * asked for rather than at every startup: on a card full of games it
 	 * is the slowest thing the launcher can do, and most of the time
 	 * nobody wants it. */
+	manifest cache;
+	manifest_init(&cache);
+	manifest_load(&cache, MANIFEST_FILE);
+
+	bool learned = false;
 	for (size_t i = 0; i < rom_list_all.size(); i++) {
 		if (rom_list_all[i].is_zip || rom_list_all[i].size > 0) continue;
 
@@ -369,7 +375,22 @@ void measure_sizes() {
 		uint32_t folders = 0, files = 0;
 		getPathInfo(rom_list_all[i].char_path(), &size, &folders, &files);
 		rom_list_all[i].size = size;
+
+		/* Written down against the folder it was measured from, so the
+		 * walk is paid for once rather than every time the list is
+		 * ordered by size. */
+		for (int j = 0; j < cache.count; j++) {
+			if (rom_list_all[i].path.compare(0, strlen(cache.entries[j].folder),
+							 cache.entries[j].folder) != 0)
+				continue;
+			cache.entries[j].size = size;
+			learned = true;
+			break;
+		}
 	}
+
+	if (learned) manifest_save(&cache, MANIFEST_FILE);
+	manifest_free(&cache);
 }
 
 void apply_view() {
@@ -394,7 +415,33 @@ void apply_view() {
 	}
 }
 
+/* What says a folder has not changed since it was written down.
+ *
+ * The modification time of the folder itself: adding, removing or renaming
+ * anything directly inside it moves that time, which is exactly the set of
+ * changes that would make a cached name or root wrong.  A file edited
+ * deeper inside does not, and does not need to. */
+static string folder_stamp(const string &dir) {
+	SceIoStat stat;
+	memset(&stat, 0, sizeof(stat));
+	if (sceIoGetstat(dir.c_str(), &stat) < 0) return string();
+
+	char text[MANIFEST_STAMP_MAX];
+	snprintf(text, sizeof(text), "%04d%02d%02d%02d%02d%02d",
+		 stat.st_mtime.year, stat.st_mtime.month, stat.st_mtime.day,
+		 stat.st_mtime.hour, stat.st_mtime.minute, stat.st_mtime.second);
+	return text;
+}
+
 int load_rom_list() {
+
+	/* What was learned last time, and what is true now.  Building a second
+	 * one rather than editing the first is what drops games that are no
+	 * longer on the card. */
+	manifest cache, fresh;
+	manifest_init(&cache);
+	manifest_init(&fresh);
+	manifest_load(&cache, MANIFEST_FILE);
 
 	string drives[3] = { "ux0:/onsemu" ,"ur0:/onsemu" ,"uma0:/onsemu" };
 	string file_name;
@@ -428,12 +475,17 @@ int load_rom_list() {
 						file_name[0] == '.' ||
 						file_name.compare(0, 9, "__MACOSX") == 0;
 					if (SCE_S_ISDIR(dir.d_stat.st_mode) && !junk) {
+						const string stamp = folder_stamp(temp);
+						const manifest_entry *known =
+							manifest_find(&cache, temp.c_str(),
+								      stamp.empty() ? NULL : stamp.c_str());
+
 						/* The game may be wrapped in a folder or two.
-						 * A folder with no script anywhere below is
-						 * still listed, as it always was: it may be a
-						 * layout none of this knows about, and hiding
-						 * it would be worse than showing it. */
-						string root = resolve_game_root(temp, 2);
+						 * Finding that out means walking directories, so
+						 * it is remembered: the answer only changes when
+						 * the folder itself does. */
+						string root = known ? known->root
+								    : resolve_game_root(temp, 2);
 						if (root.empty()) root = temp;
 
 						RomInfo rom(root);
@@ -443,6 +495,20 @@ int load_rom_list() {
 						if (root != temp &&
 						    !checkFileExist((root + "/caption.txt").c_str()))
 							rom.name = file_name;
+						if (known && known->size > 0) rom.size = known->size;
+
+						manifest_entry entry;
+						memset(&entry, 0, sizeof(entry));
+						snprintf(entry.folder, sizeof(entry.folder), "%s",
+							 temp.c_str());
+						snprintf(entry.root, sizeof(entry.root), "%s",
+							 root.c_str());
+						snprintf(entry.name, sizeof(entry.name), "%s",
+							 rom.name.c_str());
+						snprintf(entry.stamp, sizeof(entry.stamp), "%s",
+							 stamp.c_str());
+						entry.size = rom.size;
+						manifest_put(&fresh, &entry);
 
 						rom_list_all.push_back(rom);
 					}
@@ -457,6 +523,10 @@ int load_rom_list() {
 	std::vector<ZipEntryInfo> zips = ZipHandler::scanZipFolder();
 	for (size_t i = 0; i < zips.size(); i++)
 		rom_list_all.push_back(RomInfo(zips[i].path, zips[i].file_size, 1));
+
+	manifest_save(&fresh, MANIFEST_FILE);
+	manifest_free(&cache);
+	manifest_free(&fresh);
 
 	/* Ordered and filtered into what is actually shown. */
 	apply_view();

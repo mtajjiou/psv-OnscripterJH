@@ -485,7 +485,10 @@ void draw_config() {
 		{ui_text(UI_CFG_VOL_SE),    number_text(config.vol_se)},
 		{ui_text(UI_CFG_VOL_VOICE), number_text(config.vol_voice)},
 		{ui_text(UI_CFG_DEBUG_LOG),
-			config.debug_log ? ui_text(UI_ON) : ui_text(UI_OFF)}
+			config.debug_log ? ui_text(UI_ON) : ui_text(UI_OFF)},
+		{ui_text(UI_CFG_THEME),
+			config.theme == TH_MODE_LIGHT ? ui_text(UI_THEME_LIGHT)
+						      : ui_text(UI_THEME_DARK)}
 	};
 
 	/* The settings sit on a card over a dimmed library rather than over a
@@ -1667,6 +1670,10 @@ static ScreenState activate_config_row(int row) {
 		config.debug_log = !config.debug_log;
 		apply_debug_log();
 		break;
+	case 14:
+		config.theme = (config.theme + 1) % TH_MODE_COUNT;
+		th_set_theme((ThemeMode)config.theme);
+		break;
 	default:
 		break;
 	}
@@ -1803,6 +1810,10 @@ ScreenState on_config_event() {
 			config.debug_log = !config.debug_log;
 			apply_debug_log();
 			break;
+		case 14:
+			config.theme = (config.theme + 1) % TH_MODE_COUNT;
+			th_set_theme((ThemeMode)config.theme);
+			break;
 		default:
 			break;
 		}
@@ -1866,6 +1877,10 @@ ScreenState on_config_event() {
 		case 13:
 			config.debug_log = !config.debug_log;
 			apply_debug_log();
+			break;
+		case 14:
+			config.theme = (config.theme + 1) % TH_MODE_COUNT;
+			th_set_theme((ThemeMode)config.theme);
 			break;
 		default:
 			break;

@@ -16,6 +16,7 @@
 #include "filesystem.h"   /* checkFileExist, getPathInfo */
 #include "GUI_Utils.h"
 #include "GUI_Text.h"
+#include "GUI_Theme.h"   /* th_set_theme, for the stored palette */
 #include "GUI_common.h"
 #include "ZipHandler.h"
 #include "zipreader.h"
@@ -178,6 +179,7 @@ DEFAULT:
 			"language = en\n"
 			"sort = name\n"
 			"debug_log = 0\n"
+			"theme = dark\n"
 			"[GUI_icon]\n"
 			"row = 4\n"
 			"column = 7\n"
@@ -231,6 +233,9 @@ DEFAULT:
 	config.vol_se     = iniparser_getint(ini, "GAME:vol_se", 100);
 	config.vol_voice  = iniparser_getint(ini, "GAME:vol_voice", 100);
 	config.debug_log  = iniparser_getint(ini, "GUI:debug_log", 0);
+	config.theme = th_theme_from_name(
+		iniparser_getstring(ini, "GUI:theme", "dark"));
+	th_set_theme((ThemeMode)config.theme);
 	iniparser_freedict(ini);
 }
 
@@ -268,6 +273,7 @@ void save_config() {
 	iniparser_set(ini, "GAME:vol_voice", itc);
 	sprintf(itc, "%d", config.debug_log);
 	iniparser_set(ini, "GUI:debug_log", itc);
+	iniparser_set(ini, "GUI:theme", th_theme_name((ThemeMode)config.theme));
 
 	FILE *fp = fopen(CONFIG_FILE, "w");
 	iniparser_dump_ini(ini, fp);

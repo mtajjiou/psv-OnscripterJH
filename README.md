@@ -230,7 +230,7 @@ harmless.
 - [x] **Text Speed Default** — Apply to all games
 - [x] **Volume Presets** — BGM, SE, Voice level defaults
 - [x] **Debug Mode** — Enable logging for troubleshooting
-- [ ] **Theme Support** — Dark/light mode for GUI
+- [x] **Theme Support** — Dark/light mode for GUI
 
 ### Error Handling & Recovery
 - [x] **Detailed Error Messages** — Specific hints on what went wrong

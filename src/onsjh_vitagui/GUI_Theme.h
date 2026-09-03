@@ -29,24 +29,62 @@
 
 /* --- palette ----------------------------------------------------------
  *
- * A near-black ground with two lighter surfaces above it, one accent, and
- * text at two weights.  Nothing else: a screen that needs a sixth colour is
- * usually a screen that needs less on it.
+ * A ground with two surfaces above it, one accent, and text at three
+ * weights.  Nothing else: a screen that needs a sixth colour is usually a
+ * screen that needs less on it.
+ *
+ * The colours are variables rather than constants so the whole launcher can
+ * be turned light without touching a single drawing site -- every one of
+ * them reads through the names below.  th_set_theme() swaps the set; the
+ * names are the same either way, and each means the same thing in both
+ * (the "page", the thing on it, the text on that).
  */
-#define TH_BG            RGBA8(0x0E, 0x10, 0x16, 0xFF)  /* the page        */
-#define TH_SURFACE       RGBA8(0x1A, 0x1D, 0x26, 0xFF)  /* cards, rows     */
-#define TH_SURFACE_HI    RGBA8(0x26, 0x2B, 0x38, 0xFF)  /* hovered surface */
-#define TH_LINE          RGBA8(0x33, 0x39, 0x48, 0xFF)  /* hairline border */
-#define TH_ACCENT        RGBA8(0x4C, 0x8D, 0xFF, 0xFF)  /* selection       */
-#define TH_ACCENT_SOFT   RGBA8(0x4C, 0x8D, 0xFF, 0x33)  /* selection wash  */
-#define TH_TEXT          RGBA8(0xEC, 0xEF, 0xF4, 0xFF)
-#define TH_TEXT_DIM      RGBA8(0x93, 0x9D, 0xB0, 0xFF)
-#define TH_TEXT_FAINT    RGBA8(0x5E, 0x67, 0x78, 0xFF)
-#define TH_SHADOW_1      RGBA8(0x00, 0x00, 0x00, 0x40)
-#define TH_SHADOW_2      RGBA8(0x00, 0x00, 0x00, 0x22)
-#define TH_SCRIM         RGBA8(0x00, 0x00, 0x00, 0xB0)  /* behind dialogs  */
-#define TH_CAPTION       RGBA8(0x0E, 0x10, 0x16, 0xD8)  /* over cover art  */
-#define TH_DANGER        RGBA8(0xE5, 0x6B, 0x6F, 0xFF)
+struct ThemePalette {
+    unsigned int bg;           /* the page                */
+    unsigned int surface;      /* cards, rows             */
+    unsigned int surface_hi;   /* hovered surface         */
+    unsigned int line;         /* hairline border         */
+    unsigned int accent;       /* selection               */
+    unsigned int accent_soft;  /* selection wash          */
+    unsigned int text;
+    unsigned int text_dim;
+    unsigned int text_faint;
+    unsigned int shadow_1;
+    unsigned int shadow_2;
+    unsigned int scrim;        /* behind dialogs          */
+    unsigned int caption;      /* over cover art          */
+    unsigned int danger;
+};
+
+enum ThemeMode {
+    TH_MODE_DARK = 0,
+    TH_MODE_LIGHT,
+    TH_MODE_COUNT
+};
+
+extern ThemePalette th_pal;
+
+/* Swaps the palette.  Everything drawn after this call uses the new one;
+ * nothing is cached, so it takes effect on the next frame. */
+void th_set_theme(ThemeMode mode);
+ThemeMode th_get_theme();
+const char *th_theme_name(ThemeMode mode);   /* "dark" / "light", for the config file */
+ThemeMode th_theme_from_name(const char *name);
+
+#define TH_BG            (th_pal.bg)
+#define TH_SURFACE       (th_pal.surface)
+#define TH_SURFACE_HI    (th_pal.surface_hi)
+#define TH_LINE          (th_pal.line)
+#define TH_ACCENT        (th_pal.accent)
+#define TH_ACCENT_SOFT   (th_pal.accent_soft)
+#define TH_TEXT          (th_pal.text)
+#define TH_TEXT_DIM      (th_pal.text_dim)
+#define TH_TEXT_FAINT    (th_pal.text_faint)
+#define TH_SHADOW_1      (th_pal.shadow_1)
+#define TH_SHADOW_2      (th_pal.shadow_2)
+#define TH_SCRIM         (th_pal.scrim)
+#define TH_CAPTION       (th_pal.caption)
+#define TH_DANGER        (th_pal.danger)
 
 /* --- metrics ---------------------------------------------------------- */
 #define TH_GAP           10   /* between cards            */

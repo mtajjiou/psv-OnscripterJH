@@ -14,6 +14,76 @@
 #include "GUI_Theme.h"
 #include "GUI_common.h"
 
+/* The two palettes.
+ *
+ * The light one is not the dark one inverted: a light screen needs its text
+ * darker than black-on-white would suggest to avoid glare, its shadows much
+ * weaker (a hard shadow on white reads as dirt), and a slightly deeper
+ * accent to hold its own against a bright ground.  The names mean the same
+ * thing in both, so every drawing site reads correctly either way.
+ */
+static const ThemePalette kDarkPalette = {
+    RGBA8(0x0E, 0x10, 0x16, 0xFF),   /* bg          */
+    RGBA8(0x1A, 0x1D, 0x26, 0xFF),   /* surface     */
+    RGBA8(0x26, 0x2B, 0x38, 0xFF),   /* surface_hi  */
+    RGBA8(0x33, 0x39, 0x48, 0xFF),   /* line        */
+    RGBA8(0x4C, 0x8D, 0xFF, 0xFF),   /* accent      */
+    RGBA8(0x4C, 0x8D, 0xFF, 0x33),   /* accent_soft */
+    RGBA8(0xEC, 0xEF, 0xF4, 0xFF),   /* text        */
+    RGBA8(0x93, 0x9D, 0xB0, 0xFF),   /* text_dim    */
+    RGBA8(0x5E, 0x67, 0x78, 0xFF),   /* text_faint  */
+    RGBA8(0x00, 0x00, 0x00, 0x40),   /* shadow_1    */
+    RGBA8(0x00, 0x00, 0x00, 0x22),   /* shadow_2    */
+    RGBA8(0x00, 0x00, 0x00, 0xB0),   /* scrim       */
+    RGBA8(0x0E, 0x10, 0x16, 0xD8),   /* caption     */
+    RGBA8(0xE5, 0x6B, 0x6F, 0xFF)    /* danger      */
+};
+
+static const ThemePalette kLightPalette = {
+    RGBA8(0xF4, 0xF5, 0xF8, 0xFF),   /* bg          */
+    RGBA8(0xFF, 0xFF, 0xFF, 0xFF),   /* surface     */
+    RGBA8(0xE8, 0xEB, 0xF2, 0xFF),   /* surface_hi  */
+    RGBA8(0xD2, 0xD7, 0xE1, 0xFF),   /* line        */
+    RGBA8(0x1F, 0x6F, 0xE5, 0xFF),   /* accent      */
+    RGBA8(0x1F, 0x6F, 0xE5, 0x28),   /* accent_soft */
+    RGBA8(0x14, 0x17, 0x1F, 0xFF),   /* text        */
+    RGBA8(0x53, 0x5C, 0x6D, 0xFF),   /* text_dim    */
+    RGBA8(0x8A, 0x93, 0xA3, 0xFF),   /* text_faint  */
+    RGBA8(0x1B, 0x20, 0x2C, 0x1C),   /* shadow_1    */
+    RGBA8(0x1B, 0x20, 0x2C, 0x0E),   /* shadow_2    */
+    RGBA8(0x22, 0x26, 0x30, 0x80),   /* scrim       */
+    RGBA8(0xFF, 0xFF, 0xFF, 0xD8),   /* caption     */
+    RGBA8(0xC0, 0x39, 0x3D, 0xFF)    /* danger      */
+};
+
+ThemePalette th_pal = kDarkPalette;
+static ThemeMode th_mode = TH_MODE_DARK;
+
+void th_set_theme(ThemeMode mode)
+{
+    th_mode = (mode == TH_MODE_LIGHT) ? TH_MODE_LIGHT : TH_MODE_DARK;
+    th_pal  = (th_mode == TH_MODE_LIGHT) ? kLightPalette : kDarkPalette;
+
+    /* The colour the frame starts as, which is set once at startup and so
+     * would otherwise keep the palette the launcher booted with. */
+    vita2d_set_clear_color(th_pal.bg);
+}
+
+ThemeMode th_get_theme()
+{
+    return th_mode;
+}
+
+const char *th_theme_name(ThemeMode mode)
+{
+    return (mode == TH_MODE_LIGHT) ? "light" : "dark";
+}
+
+ThemeMode th_theme_from_name(const char *name)
+{
+    return (name && name[0] == 'l') ? TH_MODE_LIGHT : TH_MODE_DARK;
+}
+
 vita2d_texture *th_glyph_circle   = NULL;
 vita2d_texture *th_glyph_cross    = NULL;
 vita2d_texture *th_glyph_square   = NULL;

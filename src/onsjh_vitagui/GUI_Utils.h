@@ -47,6 +47,7 @@ typedef struct configure {
 	 * Off by default: it costs a write per line, and a log nobody asked
 	 * for is a log nobody reads. */
 	int debug_log;
+	int theme;         /* ThemeMode: dark or light */
 } configure;
 
 /* How the game list is ordered.  Name is free -- it is already in memory.

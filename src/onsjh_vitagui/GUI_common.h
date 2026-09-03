@@ -125,7 +125,7 @@
 #define GREEN               RGBA8(0x00, 0x80, 0x00, 0xFF)
 
 #define CONFIG_FILE "ux0:data/onsemu/ONSConfig.ini"
-#define CONFIG_NUM 7   /* the last row is the interface language */
+#define CONFIG_NUM 6   /* the last row is the interface language */
 
 #define PACKAGE_TEMP "ux0:onsemu/temp/"
 

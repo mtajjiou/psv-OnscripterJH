@@ -37,7 +37,6 @@ const char *g_strings[UI_STRING_COUNT][UI_LANG_COUNT] = {
     /* UI_CFG_GRAPHIC_MODE   */ { "Game list style",        "显示" },
     /* UI_CFG_LIST           */ { "list",                   "列表" },
     /* UI_CFG_ICON           */ { "icons",                  "图标" },
-    /* UI_CFG_USE_DPAD       */ { "Buttons only",           "仅按键" },
     /* UI_CFG_ICON_ROW       */ { "Icon rows",              "图标行数" },
     /* UI_CFG_ICON_COL       */ { "Icon columns",           "图标列数" },
     /* UI_CFG_LIST_ROW       */ { "List rows",              "列表行数" },

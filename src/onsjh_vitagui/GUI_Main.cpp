@@ -103,7 +103,7 @@ static void cycle_sitting(int slot)
 }
 
 void draw_icon(int curr, int row, int col) {
-	if (config.use_dpad && row == select_row && col == select_col) 
+	if (row == select_row && col == select_col) 
 	{
 		vita2d_draw_rectangle(ICON_LEFT(col) - ITEM_BOX_MARGIN,
 			ICON_TOP(row) - ITEM_BOX_MARGIN,
@@ -150,7 +150,7 @@ void draw_icons(int curr) {
 }
 
 void draw_list_row(int curr, int row) {
-	if (config.use_dpad && row == select_row) {
+	if (row == select_row) {
 		g_choose = curr;
 		vita2d_draw_rectangle(LIST_LEFT - ITEM_BOX_MARGIN,
 			LIST_TOP(row) - ITEM_BOX_MARGIN,
@@ -298,7 +298,6 @@ void draw_config() {
 	struct config_item items[] = {
 		{ui_text(UI_CFG_GRAPHIC_MODE),
 			strcmp(config.list_mode, "icon") ? ui_text(UI_CFG_LIST) : ui_text(UI_CFG_ICON)},
-		{ui_text(UI_CFG_USE_DPAD),   config.use_dpad ? ui_text(UI_ON) : ui_text(UI_OFF)},
 		{ui_text(UI_CFG_ICON_ROW),   RomInfo::to_char(config.icon_row)},
 		{ui_text(UI_CFG_ICON_COL),   RomInfo::to_char(config.icon_col)},
 		{ui_text(UI_CFG_LIST_ROW),   RomInfo::to_char(config.list_row)},
@@ -317,10 +316,10 @@ void draw_config() {
 	for (int i = 0; i < CONFIG_NUM; i++) {
 		int color = i == select_config ? GREEN : WHITE;
 		if (!strcmp(config.list_mode, "list")) {
-			if (i == 2 || i == 3)
+			if (i == 1 || i == 2)
 				color = LIGHT_SLATE_GRAY;
 		}
-		else if (i == 4)
+		else if (i == 3)
 			color = LIGHT_SLATE_GRAY;
 			
 		vita2d_font_draw_text(font, ITEMS_PANEL_LEFT + 10, ITEMS_PANEL_TOP + i * 30 + 30, color, FONT_SIZE, (char*)items[i].name);
@@ -389,7 +388,7 @@ void draw_appinfo(ScreenState state, int choose) {
 		RomInfo::to_char("comming soon"), FONT_SIZE,
 		(state == DELETE_MODE));
 
-	if (config.use_dpad && state == PRINT_APPINFO) {
+	if (state == PRINT_APPINFO) {
 		vita2d_draw_rectangle(APPINFO_BUTTON_LEFT,
 			APPINFO_BUTTON_TOP(select_appinfo_button),
 			APPINFO_BUTTON_WIDTH, APPINFO_BUTTON_HEIGHT,
@@ -470,7 +469,7 @@ void draw_slots(int index_, int slot) {
 			tmp, FONT_SIZE,
 			(slot == i));
 
-		if (slot < 0 && config.use_dpad && select_slot == i) {
+		if (slot < 0 && select_slot == i) {
 			vita2d_draw_rectangle(SLOT_BUTTON_LEFT, SLOT_BUTTON_TOP(i),
 				SLOT_BUTTON_WIDTH, SLOT_BUTTON_HEIGHT,
 				LIGHT_GRAY);
@@ -863,17 +862,18 @@ ScreenState on_mainscreen_event_with_dpad(int steps, int &step, int &curr, int &
 }
 #undef IS_OVERFLOW
 
-/* Buttons and touch both work, always.  They used to be alternatives, so
- * with the default configuration -- use_dpad true -- touching the screen did
- * nothing anywhere in the launcher, and turning it off to get touch took the
- * d-pad away.  Nothing about the hardware requires that choice.
+/* Buttons and touch both work, always.  They used to be alternatives,
+ * chosen by a setting: the buttons moved a cursor and the screen did
+ * nothing, or the screen worked and the cursor was not even drawn.  Nothing
+ * about the hardware requires that choice, and having to visit the settings
+ * to use the input you happen to have your thumb on is the sort of thing
+ * this fork exists to remove.
  *
- * "Buttons only" now means what it says: touch is ignored, for anyone who
- * holds the console in a way that brushes the screen. */
+ * Buttons are handled first because read_buttons() reports a press once;
+ * touch is looked at when they did nothing. */
 ScreenState on_mainscreen_event(int steps, int &step, int &curr, int &touched) {
 	ScreenState state = on_mainscreen_event_with_dpad(steps, step, curr, touched);
 	if (state != UNKNOWN) return state;
-	if (config.use_dpad) return UNKNOWN;
 	return mainscreen_touch(curr, touched);
 }
 
@@ -890,15 +890,12 @@ static void activate_config_row(int row) {
 			mainscreen_list_mode = USE_ICON;
 		}
 		break;
-	case 1:
-		config.use_dpad = !config.use_dpad;
-		break;
-	case 5:
+	case 4:
 		config.use_btouch++;
 		if (config.use_btouch > 2)
 			config.use_btouch = 0;
 		break;
-	case 6:
+	case 5:
 		/* Cycling the language rewrites every label, so the settings menu
 		 * strings are rebuilt here too rather than only at startup. */
 		config.language = (config.language + 1) % UI_LANG_COUNT;
@@ -948,10 +945,10 @@ ScreenState on_config_event() {
 	if (btn & SCE_CTRL_UP) {
 		select_config -= 1;
 		if (strncmp(config.list_mode, "icon", 4) == 0) {
-			for (; select_config == 4; select_config--);
+			for (; select_config == 3; select_config--);
 		}
 		else {
-			for (; select_config == 2|| select_config == 3; select_config--);
+			for (; select_config == 1 || select_config == 2; select_config--);
 		}
 		if (select_config < 0) {
 			select_config = 0;
@@ -962,10 +959,10 @@ ScreenState on_config_event() {
 	if (btn & SCE_CTRL_DOWN) {
 		select_config += 1;
 		if (strncmp(config.list_mode, "icon", 4) == 0) {
-			for (; select_config == 4; select_config++);
+			for (; select_config == 3; select_config++);
 		}
 		else {
-			for (; select_config == 2 || select_config == 3; select_config++);
+			for (; select_config == 1 || select_config == 2; select_config++);
 		}
 		if (select_config > CONFIG_NUM - 1) {
 			select_config = CONFIG_NUM - 1;
@@ -992,27 +989,24 @@ ScreenState on_config_event() {
 			}
 			break;
 		case 1:
-			config.use_dpad = !config.use_dpad;
-			break;
-		case 2:
 			config.icon_row--;
 			if (config.icon_row < ICON_ROW_MIN)
 				config.icon_row = ICON_ROW_MIN;
 			ICONS_ROW = config.icon_row;
 			break;
-		case 3:
+		case 2:
 			config.icon_col--;
 			if (config.icon_col < ICON_COL_MIN)
 				config.icon_col = ICON_COL_MIN;
 			ICONS_COL = config.icon_col;
 			break;
-		case 4:
+		case 3:
 			config.list_row--;
 			if (config.list_row < LIST_ROW_MIN)
 				config.list_row = LIST_ROW_MIN;
 			LIST_ROW = config.list_row;
 			break;
-		case 6:
+		case 5:
 			/* Cycling the language rewrites every label, so the settings
 			 * menu strings are rebuilt here too rather than only at
 			 * startup. */
@@ -1039,27 +1033,24 @@ ScreenState on_config_event() {
 			}
 			break;
 		case 1:
-			config.use_dpad = !config.use_dpad;
-			break;
-		case 2:
 			config.icon_row++;
 			if (config.icon_row > ICON_ROW_MAX)
 				config.icon_row = ICON_ROW_MAX;
 			ICONS_ROW = config.icon_row;
 			break;
-		case 3:
+		case 2:
 			config.icon_col++;
 			if (config.icon_col > ICON_COL_MAX)
 				config.icon_col = ICON_COL_MAX;
 			ICONS_COL = config.icon_col;
 			break;
-		case 4:
+		case 3:
 			config.list_row++;
 			if (config.list_row > LIST_ROW_MAX)
 				config.list_row = LIST_ROW_MAX;
 			LIST_ROW = config.list_row;
 			break;
-		case 6:
+		case 5:
 			/* Cycling the language rewrites every label, so the settings
 			 * menu strings are rebuilt here too rather than only at
 			 * startup. */
@@ -1076,7 +1067,7 @@ ScreenState on_config_event() {
 
 	/* A tap picks the row and applies it, the same as moving to it and
 	 * pressing the enter button. */
-	if (!config.use_dpad) {
+	{
 		point p;
 		if (read_touchscreen(&p)) {
 			if (p.x < ITEMS_PANEL_LEFT || p.x > ITEMS_PANEL_LEFT + ITEMS_PANEL_WIDTH ||
@@ -1201,7 +1192,6 @@ ScreenState on_appinfo_event_with_dpad() {
 ScreenState on_appinfo_event() {
 	ScreenState state = on_appinfo_event_with_dpad();
 	if (state != UNKNOWN) return state;
-	if (config.use_dpad) return UNKNOWN;
 	return appinfo_touch();
 }
 
@@ -1285,7 +1275,6 @@ ScreenState on_slot_event(int &slot) {
 	/* slot >= 0 means the buttons just acted on a row and returned UNKNOWN
 	 * to stay on this screen; going on to the touch half would reset it. */
 	if (state != UNKNOWN || slot >= 0) return state;
-	if (config.use_dpad) return UNKNOWN;
 	return slot_touch(slot);
 }
 
@@ -1313,7 +1302,7 @@ ScreenState on_message_event(int curr, int(*progress_func)(int), ScreenState sta
 		/* The footer reads "cancel no    confirm yes", so the box splits
 		 * down the middle the way it is written: left is no, right is
 		 * yes.  A tap outside the box cancels, like the cancel button. */
-		if (!config.use_dpad) {
+		{
 			point p;
 			if (read_touchscreen(&p)) {
 				if (!IS_TOUCHED(last_dialog_area, p))
@@ -1340,7 +1329,7 @@ ScreenState on_alert_event(ScreenState state) {
 			break;
 		}
 		/* Anywhere closes it; there is only the one thing to do. */
-		if (!config.use_dpad) {
+		{
 			point p;
 			if (read_touchscreen(&p)) break;
 		}

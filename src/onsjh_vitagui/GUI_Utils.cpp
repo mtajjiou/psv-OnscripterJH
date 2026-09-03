@@ -152,7 +152,6 @@ DEFAULT:
 			"[GUI]\n"
 			"version = %d\n"
 			"list_mode = list\n"
-			"use_dpad = false\n"   /* touch on by default; the buttons work either way */
 			"language = en\n"
 			"[GUI_icon]\n"
 			"row = 4\n"
@@ -180,7 +179,6 @@ DEFAULT:
 		goto DEFAULT;
 	}
 	config.list_mode = strdup(iniparser_getstring(ini, "GUI:list_mode", "icon"));
-	config.use_dpad = iniparser_getboolean(ini, "GUI:use_dpad", 0);
 	/* English by default: this fork exists to make the setup understandable
 	 * to someone who does not already know the tool. "zh" restores
 	 * upstream's Chinese labels. */
@@ -207,7 +205,6 @@ void save_config() {
 	}
 	
 	iniparser_set(ini, "GUI:list_mode", config.list_mode);
-	iniparser_set(ini, "GUI:use_dpad", config.use_dpad ? "true" : "false");
 	iniparser_set(ini, "GUI:language", ui_language_name((UILanguage)config.language));
 	char itc[10];
 	sprintf(itc, "%d", GUI_VERSION);

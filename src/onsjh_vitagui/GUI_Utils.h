@@ -27,7 +27,6 @@ typedef struct rectangle {
 typedef struct configure {
 	int ver;
 	char *list_mode;
-	int use_dpad;
 	int use_btouch;
 	int icon_row;
 	int icon_col;

@@ -46,7 +46,6 @@ enum UIStringId {
     UI_CFG_GRAPHIC_MODE,
     UI_CFG_LIST,
     UI_CFG_ICON,
-    UI_CFG_USE_DPAD,
     UI_CFG_ICON_ROW,
     UI_CFG_ICON_COL,
     UI_CFG_LIST_ROW,

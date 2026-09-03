@@ -26,6 +26,8 @@ const char *g_strings[UI_STRING_COUNT][UI_LANG_COUNT] = {
     /* UI_SET_TEXTBOX        */ { "Show text box",          "显示文字框" },
     /* UI_SET_ENCODING       */ { "Script encoding",        "文字编码" },
     /* UI_SET_TOUCH          */ { "Touch panels",           "触摸操作" },
+    /* UI_SET_BACKUP         */ { "Back up saves",           "备份存档" },
+    /* UI_SET_RESTORE        */ { "Restore saves",           "恢复存档" },
     /* UI_SET_RESET          */ { "Reset to defaults",      "恢复默认设置" },
     /* UI_SET_RETURN         */ { "Back",                   "返回" },
 
@@ -110,6 +112,14 @@ const char *g_strings[UI_STRING_COUNT][UI_LANG_COUNT] = {
                                   "已删除 %d 个文件，释放 %s" },
     /* UI_CLEAN_NOTHING      */ { "Nothing to clear.",       "没有需要清理的文件" },
     /* UI_CLEAN_START        */ { "clear",                   "清理" },
+
+    /* UI_SAVES_BACKED_UP    */ { "%d save files backed up.", "已备份 %d 个存档文件" },
+    /* UI_SAVES_RESTORED     */ { "%d save files restored.",  "已恢复 %d 个存档文件" },
+    /* UI_SAVES_NONE         */ { "This game has no saves yet.",
+                                  "该游戏还没有存档" },
+    /* UI_SAVES_NO_BACKUP    */ { "No backup for this game.", "没有该游戏的备份" },
+    /* UI_SAVES_FAIL         */ { "The saves could not be copied.",
+                                  "存档复制失败" },
 
     /* UI_DELETE_ASK         */ { "Delete %s?\n\n"
                                   "  %s in %u files\n"

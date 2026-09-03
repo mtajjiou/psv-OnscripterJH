@@ -501,6 +501,84 @@ uint64_t clean_temp_files(int *files)
 	return freed;
 }
 
+/* The names a save can have.  Slots first, then the three files the engine
+ * keeps beside them. */
+static bool is_save_name(const char *name)
+{
+	if (strncasecmp(name, "save", 4) == 0) {
+		const char *p = name + 4;
+		if (*p < '0' || *p > '9') return false;
+		while (*p >= '0' && *p <= '9') p++;
+		return strcasecmp(p, ".dat") == 0;
+	}
+	return strcasecmp(name, "gloval.sav") == 0 ||
+	       strcasecmp(name, "envdata") == 0 ||
+	       strcasecmp(name, "kidoku.dat") == 0;
+}
+
+/* Copies every save from one folder to the other, creating the destination.
+ * Used both ways round: backing up and restoring differ only in which is
+ * which. */
+static int copy_saves(const string &from, const string &to, int *count)
+{
+	int copied = 0;
+	bool failed = false;
+
+	SceUID dfd = sceIoDopen(from.c_str());
+	if (dfd < 0) {
+		if (count) *count = 0;
+		return 0;
+	}
+
+	int res = 0;
+	do {
+		SceIoDirent entry;
+		memset(&entry, 0, sizeof(entry));
+		res = sceIoDread(dfd, &entry);
+		if (res <= 0) break;
+		if (SCE_S_ISDIR(entry.d_stat.st_mode)) continue;
+		if (!is_save_name(entry.d_name)) continue;
+
+		/* The destination is made only once something is going into it,
+		 * so a game with no saves leaves no empty folder behind. */
+		if (copied == 0) {
+			sceIoMkdir(SAVE_BACKUP_FOLDER, 0777);
+			sceIoMkdir(to.c_str(), 0777);
+		}
+
+		const string src = from + "/" + entry.d_name;
+		const string dst = to + "/" + entry.d_name;
+		if (copyFile(src.c_str(), dst.c_str()) < 0) failed = true;
+		else copied++;
+	} while (res > 0);
+	sceIoClose(dfd);
+
+	if (count) *count = copied;
+	return (copied > 0 && !failed) ? 1 : 0;
+}
+
+/* The backup folder for a game, named after the game's own folder. */
+static string save_backup_path(const string &game_path)
+{
+	string name = game_path;
+	size_t slash = name.find_last_of("/\\");
+	if (slash != string::npos) name = name.substr(slash + 1);
+	if (name.empty()) name = "game";
+	return string(SAVE_BACKUP_FOLDER) + "/" + name;
+}
+
+int backup_saves(const string &game_path, int *count)
+{
+	return copy_saves(game_path, save_backup_path(game_path), count);
+}
+
+int restore_saves(const string &game_path, int *count)
+{
+	/* Straight back into the game folder: the engine reads its saves from
+	 * where the script is, so there is nowhere else for them to go. */
+	return copy_saves(save_backup_path(game_path), game_path, count);
+}
+
 int load_rom_list() {
 
 	/* What was learned last time, and what is true now.  Building a second

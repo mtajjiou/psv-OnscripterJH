@@ -90,8 +90,8 @@ static void init_sittings_text()
 	sittings[3] = ui_text(UI_SET_TEXTBOX);
 	sittings[4] = ui_text(UI_SET_ENCODING);
 	sittings[SITTINGS_TOUCH] = ui_text(UI_SET_TOUCH);
-	sittings[6] = "";
-	sittings[7] = "";
+	sittings[SITTINGS_BACKUP]  = ui_text(UI_SET_BACKUP);
+	sittings[SITTINGS_RESTORE] = ui_text(UI_SET_RESTORE);
 	sittings[SITTINGS_DEFAULT] = ui_text(UI_SET_RESET);
 	sittings[SITTINGS_RETURN]  = ui_text(UI_SET_RETURN);
 }
@@ -1206,6 +1206,12 @@ void draw_screen(ScreenState state, int curr, int choose, int slot) {
 	case SETTING_MODE:
 		draw_slots(choose, -1);
 		break;
+	case SAVES_DONE:
+		/* Over the screen it was started from, so it is clear which
+		 * game the report is about. */
+		draw_slots(choose, -1);
+		draw_alert(saves_result_message, FONT_SIZE);
+		break;
 	case DELETE_MODE:
 		draw_message(delete_confirm_message, choose, FONT_SIZE);
 		break;
@@ -1851,6 +1857,9 @@ ScreenState slot_touch(int &slot) {
 			else if (slot < SITTINGS_NUM) {
 				cycle_sitting(slot);
 			}
+			else if (slot == SITTINGS_BACKUP || slot == SITTINGS_RESTORE) {
+				return SAVES_DONE;
+			}
 			return UNKNOWN;
 		}
 	}
@@ -1888,6 +1897,9 @@ ScreenState on_slot_event_with_dpad(int &slot) {
 		}
 		else if (slot < SITTINGS_NUM) {
 			cycle_sitting(slot);
+		}
+		else if (slot == SITTINGS_BACKUP || slot == SITTINGS_RESTORE) {
+			return SAVES_DONE;
 		}
 		return UNKNOWN;
 	}
@@ -2033,6 +2045,37 @@ int game_delete(int choose) {
 	snprintf(delete_result_message, sizeof(delete_result_message),
 		ui_text(UI_DELETE_OK), free_str);
 	return 1;
+}
+
+/* Copying a game's saves out of its folder and back in again.
+ *
+ * Deleting a game to free space takes its saves with it, and there is
+ * nowhere else on the card they are kept.  This is what makes deleting a
+ * game recoverable, and the way to carry progress across a reinstall. */
+static char saves_result_message[160] = { '\0' };
+
+static void run_backup_saves(int choose) {
+	if (choose < 0 || choose >= (int)rom_list.size()) return;
+
+	int count = 0;
+	if (backup_saves(rom_list[choose].path, &count))
+		snprintf(saves_result_message, sizeof(saves_result_message),
+			 ui_text(UI_SAVES_BACKED_UP), count);
+	else
+		snprintf(saves_result_message, sizeof(saves_result_message), "%s",
+			 count > 0 ? ui_text(UI_SAVES_FAIL) : ui_text(UI_SAVES_NONE));
+}
+
+static void run_restore_saves(int choose) {
+	if (choose < 0 || choose >= (int)rom_list.size()) return;
+
+	int count = 0;
+	if (restore_saves(rom_list[choose].path, &count))
+		snprintf(saves_result_message, sizeof(saves_result_message),
+			 ui_text(UI_SAVES_RESTORED), count);
+	else
+		snprintf(saves_result_message, sizeof(saves_result_message), "%s",
+			 count > 0 ? ui_text(UI_SAVES_FAIL) : ui_text(UI_SAVES_NO_BACKUP));
 }
 
 /* Clears what nothing needs any more and says what that came to.  The
@@ -2515,6 +2558,13 @@ int mainloop() {
 			case SETTING_MODE:
 				if (!need_save) need_save = 1;
 				new_state = on_slot_event(slot);
+				if (new_state == SAVES_DONE) {
+					if (slot == SITTINGS_BACKUP) run_backup_saves(choose);
+					else                         run_restore_saves(choose);
+				}
+				break;
+			case SAVES_DONE:
+				new_state = on_alert_event(SETTING_MODE);
 				break;
 			case DELETE_MODE:
 				new_state = on_message_event(choose, NULL, DELETE_RUN,

@@ -219,6 +219,19 @@ void measure_sizes();
  * freed and, through *files, how many things were removed.  Saves, scripts
  * and half-finished installs are never touched. */
 uint64_t clean_temp_files(int *files);
+
+/* Where a game's saves are copied to, one folder per game. */
+#define SAVE_BACKUP_FOLDER "ux0:data/onsemu/saves"
+
+/* Copies a game's saves out to SAVE_BACKUP_FOLDER, or back in again.  What
+ * counts as a save is save<N>.dat and the three files the engine keeps
+ * beside them: gloval.sav, envdata and kidoku.dat -- read flags and global
+ * variables are as much a player's progress as a save slot is.
+ *
+ * Returns 1 on success, 0 if nothing was found or a copy failed, and puts
+ * the number of files copied in *count. */
+int backup_saves(const std::string &game_path, int *count);
+int restore_saves(const std::string &game_path, int *count);
 extern configure config;
 extern vita2d_font* font;
 

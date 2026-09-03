@@ -150,6 +150,11 @@
  * with the console propped up wants the back panel left alone. */
 #define SITTINGS_TOUCH 5
 
+/* Not settings but actions, on the same screen because this is the screen
+ * that is about one game. */
+#define SITTINGS_BACKUP 6
+#define SITTINGS_RESTORE 7
+
 #define SITTINGS_DEFAULT 8
 #define SITTINGS_RETURN 9
 
@@ -193,6 +198,9 @@ typedef enum {
 	PRINT_APPINFO,
 	START_MODE,
 	SETTING_MODE,
+	/* The report after copying a game's saves; drawn over the settings
+	 * screen it was started from. */
+	SAVES_DONE,
 	DELETE_MODE,
 	SHORTCUT_MODE,
 	SHORTCUT_WAIT,

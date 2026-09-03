@@ -33,6 +33,8 @@ enum UIStringId {
     UI_SET_TEXTBOX,
     UI_SET_ENCODING,
     UI_SET_TOUCH,
+    UI_SET_BACKUP,
+    UI_SET_RESTORE,
     UI_SET_RESET,
     UI_SET_RETURN,
 
@@ -105,6 +107,13 @@ enum UIStringId {
     UI_CLEAN_DONE,
     UI_CLEAN_NOTHING,
     UI_CLEAN_START,
+
+    /* Copying a game's saves out and back */
+    UI_SAVES_BACKED_UP,
+    UI_SAVES_RESTORED,
+    UI_SAVES_NONE,
+    UI_SAVES_NO_BACKUP,
+    UI_SAVES_FAIL,
 
     /* Removing an installed game, and what is left on the card */
     UI_DELETE_ASK,

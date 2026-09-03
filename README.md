@@ -221,7 +221,7 @@ harmless.
 - [x] **Storage Monitor** — Shows free space on `ux0:` partition
 - [ ] **Compression Option** — Optional ZIP caching instead of full extraction
 - [x] **Cleanup Tool** — Remove extracted games from menu, free space
-- [ ] **Save File Manager** — Backup/restore game saves
+- [x] **Save File Manager** — Backup/restore game saves
 - [x] **Cache Cleaner** — Clear font cache, temp files
 
 ### Settings & Preferences

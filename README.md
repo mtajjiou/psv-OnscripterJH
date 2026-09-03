@@ -6,15 +6,18 @@ This is an enhanced fork of [YuriSizuku/psv-OnscripterJH](https://github.com/Yur
 
 ## Features
 
-### ✨ New Easy Setup Features
-- **ZIP Auto-Extraction** — Drop a `.zip` file and the launcher handles extraction automatically
-- **Unified Game Manager** — Browse and play extracted games and ZIP files from one interface
-- **Auto-Game Detection** — Intelligently finds game scripts (`.ons`, `.txt`, `nscript.dat`, etc.)
-- **Smart Video Handling** — Detects missing/incompatible videos and gracefully degrades
-- **One-Click Launch** — Select ZIP or folder → Auto-extract → Play
-- **Game Metadata** — Auto-reads game info from config files (caption.txt, ons_args)
-- **Touch Mode Auto-Config** — Sets optimal touch controls per game
-- **Memory Optimizer** — Auto-selects best settings for PSVita's constraints
+### ✨ Easy Setup Features
+
+**Working today:**
+- **ZIP install from the launcher** — drop a `.zip` in `ux0:data/game_zips/`, pick it in the game list, and it extracts into `ux0:onsemu/` with a progress bar
+- **Auto game detection** — finds the game folder inside the archive by locating the script (`0.txt`, `00.txt`, `nscript.dat`, `nscr_sec.dat`, `nscript.___`, `onscript.nt2`, `onscript.nt3`), so both flat and nested archive layouts install correctly
+- **Safe folder names** — destination names are reduced to ASCII, since the engine cannot open paths containing non-ASCII bytes
+- **Space check** — refuses to start an install that would not fit, keeping a margin free
+- **Clean failures** — a failed or canceled install removes what it wrote; corrupt, zip64, encrypted and script-less archives each report what is actually wrong
+
+**Not implemented yet** — see the checklist below:
+game icons from the archive, video format detection, per-game touch presets,
+settings persistence, storage/save management, in-app help.
 
 ### ✅ Original Features (Preserved)
 - Hardware-accelerated AVC video playback (MP4 support)
@@ -33,56 +36,64 @@ This is an enhanced fork of [YuriSizuku/psv-OnscripterJH](https://github.com/Yur
 
 ### Quick Start
 
-1. **Place game ZIPs in `ux0:data/game_zips/`**
+1. **Drop game ZIPs in `ux0:data/game_zips/`** (the launcher creates this
+   folder on first run)
    ```
    ux0:/data/game_zips/
    ├── game1.zip
-   ├── game2.zip
-   └── game3.zip
+   └── game2.zip
    ```
 
-2. **Or extract games manually to `ux0:onsemu/`**
-   ```
-   ux0:/onsemu/
-   ├── game1/
-   │   ├── nscript.dat
-   │   ├── script.txt
-   │   └── ...
-   └── game2/
-       └── ...
-   ```
+2. **Launch the app** — the list shows installed games first, then any
+   archives waiting to be installed
 
-3. **Launch the app** — Menu shows all available games
-4. **Select a ZIP** → Auto-extracts to `ux0:onsemu/` (if space available)
-5. **Select a folder** → Launches immediately
-6. **Play!**
+3. **Select an archive** — a prompt shows the destination folder, the space
+   needed and the space free; confirm to extract (CIRCLE cancels)
+
+4. **Select the installed game** to configure and play
+
+Already-extracted games in `ux0:onsemu/` keep working as before:
+
+```
+ux0:/onsemu/
+├── game1/
+│   ├── nscript.dat
+│   └── ...
+└── game2/
+```
+
+The archive is left in `game_zips/` after installing, so delete it yourself
+once the game runs.
+
+**Videos** still need converting to MP4 (AVC) on a PC beforehand — see
+"Not implemented yet" above.
 
 ---
 
 ## What's Improved (Detailed Checklist)
 
 ### Launcher UI/UX
-- [ ] **Game List Display** — Shows both extracted games and pending ZIPs
+- [x] **Game List Display** — Shows both extracted games and pending ZIPs
 - [ ] **Game Icons** — Auto-loads `icon.png` from game folder/ZIP
 - [ ] **Game Info Panel** — Displays game name, size, last played date
 - [ ] **ZIP Info Tooltip** — Shows ZIP size and estimated extract time
 - [ ] **Search/Filter** — Quick find games by name
 - [ ] **Sort Options** — By name, date, size
-- [ ] **Controller Navigation** — D-pad to navigate, X to select, O to cancel
+- [x] **Controller Navigation** — D-pad to navigate, X to select, O to cancel
 - [ ] **Touch Support** — Tap to select, long-press for options
 
 ### ZIP Extraction System
-- [ ] **ZIP Handler Library** — Wrapper for PSVita's archive extraction
-- [ ] **Smart Path Detection** — Finds game root in nested archives
-- [ ] **Progress Indicator** — Shows extraction progress (%)
-- [ ] **Space Check** — Warns if insufficient storage before extracting
+- [x] **ZIP Handler Library** — Wrapper for PSVita's archive extraction
+- [x] **Smart Path Detection** — Finds game root in nested archives
+- [x] **Progress Indicator** — Shows extraction progress (%)
+- [x] **Space Check** — Warns if insufficient storage before extracting
 - [ ] **Resume Extraction** — Can resume interrupted extractions
-- [ ] **Auto-Cleanup** — Removes failed partial extractions
+- [x] **Auto-Cleanup** — Removes failed partial extractions
 - [ ] **Symlink Support** — Fallback for copy-on-write if extraction fails
 
 ### Game Detection & Config
-- [ ] **Script Finder** — Searches for `.ons`, `.txt`, `nscript.dat`, `.scr`
-- [ ] **Nested Structure Handler** — Finds game in subdirectories
+- [x] **Script Finder** — Searches for `0.txt`, `00.txt`, `nscript.dat`, `nscr_sec.dat`, `nscript.___`, `onscript.nt2`, `onscript.nt3`
+- [x] **Nested Structure Handler** — Finds game in subdirectories
 - [ ] **Config Parser** — Reads `ons_args`, `caption.txt`, config files
 - [ ] **Game Metadata Cache** — Stores game info in `game_manifest.json`
 - [ ] **Auto-Config Generator** — Creates optimal `ons_args` per game
@@ -117,10 +128,10 @@ This is an enhanced fork of [YuriSizuku/psv-OnscripterJH](https://github.com/Yur
 - [ ] **Theme Support** — Dark/light mode for GUI
 
 ### Error Handling & Recovery
-- [ ] **Detailed Error Messages** — Specific hints on what went wrong
+- [x] **Detailed Error Messages** — Specific hints on what went wrong
 - [ ] **Log Viewer** — In-app logs accessible from menu
 - [ ] **Recovery Options** — Retry, skip, or fallback actions
-- [ ] **Corruption Detection** — Checks ZIP integrity before extraction
+- [x] **Corruption Detection** — CRC checked per entry during extraction
 - [ ] **Crash Reporter** — Saves error logs for debugging
 
 ### Performance & Optimization
@@ -138,7 +149,7 @@ This is an enhanced fork of [YuriSizuku/psv-OnscripterJH](https://github.com/Yur
 - [ ] **Video Conversion Guide** — Built-in ffmpeg instructions
 
 ### Testing & QA
-- [ ] **Unit Tests** — ZIP extraction, path parsing, config reading
+- [x] **Unit Tests** — ZIP extraction, path parsing, config reading
 - [ ] **Integration Tests** — Full game launch workflows
 - [ ] **Compatibility Matrix** — Games tested and verified
 - [ ] **Performance Benchmarks** — Launch time, extraction speed
@@ -153,8 +164,8 @@ This is an enhanced fork of [YuriSizuku/psv-OnscripterJH](https://github.com/Yur
 # Install vitasdk
 sh ./script/install_vitasdk.sh [vitasdkdir]
 
-# Install additional libraries for ZIP support
-sh ./script/setup_dependencies.sh
+# No extra libraries are needed: ZIP support is built on zlib,
+# which the engine and launcher already link against.
 ```
 
 ### Build
@@ -171,74 +182,60 @@ sh ./script/build_vitavpk.sh vpk [vitasdkdir]
 sh ./script/send_vitavpk.sh ./../build/vita_onscripter.vpk 10.2.12.6 VITAONSJH
 ```
 
+### Tests
+
+The archive handling is portable C and is tested on a host machine, with no
+vitasdk or Vita required:
+
+```bash
+sh test/run_tests.sh
+```
+
 ---
 
 ## Project Structure
 
 ```
 src/
-├── onsjh/                      # Core engine (unchanged)
-│   ├── ONScripter.cpp
-│   ├── ONScripter_*.cpp
-│   └── ...
-├── onsjh_vitagui/              # Launcher GUI (enhanced)
-│   ├── GUI_Main.cpp            # Main entry point
-│   ├── GUI_Utils.cpp
-│   ├── GameManager.cpp         # NEW: Game discovery & launch
-│   ├── GameManager.h
-│   ├── ZipHandler.cpp          # NEW: ZIP extraction
-│   ├── ZipHandler.h
-│   ├── GameMetadata.cpp        # NEW: Config parsing
-│   ├── GameMetadata.h
-│   ├── VideoDetector.cpp       # NEW: Video validation
-│   ├── VideoDetector.h
-│   ├── StorageManager.cpp      # NEW: Space management
-│   ├── StorageManager.h
-│   ├── SettingsManager.cpp     # NEW: Persistent settings
-│   ├── SettingsManager.h
-│   ├── ErrorHandler.cpp        # NEW: Error & logging
-│   ├── ErrorHandler.h
-│   ├── UIRenderer.cpp          # NEW: Enhanced UI
-│   ├── UIRenderer.h
-│   └── vitaPackage.cpp         # Package installer
-├── common/                     # Shared utilities
-│   ├── filesystem.cpp
-│   ├── dictionary.c
-│   ├── iniparser.c
-│   ├── sha1.cpp
-│   └── unzip.c                 # NEW: ZIP library
-└── CMakeLists.txt
+├── onsjh/                      # Core engine
+├── onsjh_vitagui/              # Launcher GUI
+│   ├── GUI_Main.cpp            # Screens, main loop, install flow
+│   ├── GUI_Utils.cpp           # Input, config, game list
+│   ├── ZipHandler.cpp/.h       # Installs a game from a .zip
+│   └── vitaPackage.cpp         # Shortcut bubble installer
+└── common/
+    ├── zipreader.c/.h          # Portable ZIP reader (stdio + zlib)
+    ├── filesystem.cpp
+    ├── iniparser.c
+    └── ...
+
+test/
+├── run_tests.sh                # Host-side test runner
+├── test_zipreader.c            # Archive parsing / path safety tests
+└── make_fixtures.py            # Builds the test archives
 
 script/
 ├── build_vitavpk.sh
 ├── send_vitavpk.sh
-├── setup_dependencies.sh       # NEW: Install ZIP libs
-└── setup_first_run.sh          # NEW: Create directories
-
-doc/
-├── SETUP_GUIDE.md              # Detailed user guide
-├── DEVELOPER_GUIDE.md          # Code architecture
-├── COMPATIBILITY.md            # Game compatibility list
-└── CHANGELOG.md                # Version history
+└── install_vitasdk.sh
 ```
 
 ---
 
-## Dependencies Added
+## Dependencies
 
-- **minizip** — ZIP file extraction
-- **zlib** — Compression support
-- **vita2d_ext** — Already used, no change
+No new dependencies. ZIP reading is implemented in `src/common/zipreader.c`
+on top of **zlib**, which the engine and launcher already link against.
 
 ---
 
 ## Roadmap
 
-### v1.0 (MVP)
+### v1.0 (MVP) — done
 - [x] ZIP file detection
-- [x] Basic extraction UI
-- [x] Game auto-discovery
-- [x] One-click launch
+- [x] Extraction UI with progress and cancel
+- [x] Game auto-discovery inside archives
+- [x] Install and launch from the launcher
 
 ### v1.1 (Polish)
 - [ ] Game icons in launcher
@@ -268,7 +265,8 @@ doc/
 
 ## Contributing
 
-Please submit PRs against the `feature/easy-setup` branch. See `DEVELOPER_GUIDE.md` for code style and architecture.
+Match the surrounding code style. Run `sh test/run_tests.sh` before sending a
+change that touches archive handling.
 
 ---
 
@@ -298,7 +296,3 @@ For issues, please create a GitHub issue with:
 - PSVita firmware version
 - Error message/screenshot
 - Steps to reproduce
-
----
-
-Generated: 2026-09-03

@@ -37,6 +37,7 @@
 #include "ZipHandler.h"
 
 #include "GUI_common.h"
+#include "build_version.h"
 #include "GUI_Utils.h"
 #include "version.h"
 #include "iniparser.h"
@@ -235,8 +236,11 @@ void draw_title() {
 	vita2d_draw_rectangle(0, 0,
 		ITEMS_PANEL_WIDTH, HEADER_HEIGHT, BLACK_1);
 	char *ver_str = new char[256];
-	sprintf(ver_str, "Vita ONScripter-Jh (yuri) %s (GUI %d, Jh %s, %d.%02d)\n", 
-		ONS_JH_VITA_VERSION, GUI_VERSION, ONS_JH_VERSION, 
+	/* The build's own version and commit lead, since that is the thing
+	 * anyone actually needs to read off the screen to know what they
+	 * installed; the engine versions follow. */
+	sprintf(ver_str, "ONS Easy Setup %s (%s) - Jh %s, %d.%02d", 
+		ONS_BUILD_VERSION, ONS_BUILD_COMMIT, ONS_JH_VERSION, 
 		NSC_VERSION / 100, NSC_VERSION % 100);
 	
 	char time_str[16];
@@ -267,7 +271,7 @@ void draw_help() {
 			g_choose + 1, rom_list.size());
 		vita2d_font_draw_text(font, 5, FOOTER_TOP + FONT_SIZE - 1, WHITE, FONT_SIZE , helpbuf);
 	}
-	vita2d_font_draw_text(font, ITEMS_PANEL_WIDTH - 120, FOOTER_TOP + FONT_SIZE - 1, WHITE, FONT_SIZE -2, GUI_VERSION_DATE);
+	vita2d_font_draw_text(font, ITEMS_PANEL_WIDTH - 120, FOOTER_TOP + FONT_SIZE - 1, WHITE, FONT_SIZE -2, ONS_BUILD_DATE);
 }
 
 
@@ -1517,6 +1521,10 @@ int main()
 	printf("ONScripter-Jh for Vita version %s (Jh %s, ons %s, %d.%02d)\n", 
 		ONS_JH_VITA_VERSION, ONS_JH_VERSION, ONS_VERSION, 
 		NSC_VERSION / 100, NSC_VERSION % 100);
+	/* Which build this actually is.  The launcher prints it too, since a
+	 * crash before the engine starts leaves this as the only marker in the
+	 * log of what was installed. */
+	printf("%s\n", ONS_BUILD_STRING);
 
 	sceIoMkdir("ux0:data/onsemu", 0777);
 	vita2d_init();

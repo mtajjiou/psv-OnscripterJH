@@ -29,6 +29,7 @@
 #include "sjis2utf16.h"
 #include "version.h"
 #include "encoding_detect.h"
+#include "build_version.h"
 
 ONScripter ons;
 Coding2UTF16 *coding2utf16 = NULL;
@@ -263,6 +264,9 @@ extern "C"
     {
         utils::printInfo("ONScripter-Jh version %s (%s, %d.%02d)\n",
             ONS_JH_VERSION, ONS_VERSION, NSC_VERSION / 100, NSC_VERSION % 100);
+        /* Which build this actually is.  Without it a log cannot be told
+         * apart from one produced by a vpk installed days earlier. */
+        utils::printInfo("%s\n", ONS_BUILD_STRING);
         for(int i=0; i<argc; i++)
 		{
 			SDL_Log("## ons_main argv[%d] %s\n", i, argv[i]);

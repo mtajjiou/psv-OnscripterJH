@@ -301,12 +301,17 @@ size_t SarReader::getFileLength( const char *file_name )
 
     ArchiveInfo *info = archive_info.next;
     unsigned int j = 0;
-    for ( int i=0 ; i<num_of_sar_archives ; i++ ){
+    bool found = false;
+    for ( int i=0 ; i<num_of_sar_archives && info ; i++ ){
         j = getIndexFromFile( info, file_name );
-        if ( j != info->num_of_files ) break;
+        if ( j != info->num_of_files ){ found = true; break; }
         info = info->next;
     }
-    if ( !info ) return 0;
+    /* Not in any archive.  The old test only caught a NULL info, so a name
+     * that was absent from the last archive searched read fi_list one past
+     * its end -- which is every miss, and misses are routine now that a
+     * game carrying both archive kinds falls back to the .sar. */
+    if ( !info || !found ) return 0;
     
     if ( info->fi_list[j].original_length != 0 )
         return info->fi_list[j].original_length;

@@ -57,9 +57,20 @@ int NsaReader::open( const char *nsa_path )
     bool archive_found = false;
     char archive_name[256], archive_name2[256];
 
-    if ( !SarReader::open( "arc.sar" ) ) return 0;
-    
-    sar_flag = false;
+    /* A game may ship both kinds of archive: arc.sar for part of its data
+     * and arc.nsa/arc1.nsa for the rest.  This used to stop the moment the
+     * .sar opened (SarReader::open returns 0 for success, so the test read
+     * backwards), which left the .nsa archives unopened and sar_flag true,
+     * routing every lookup to the .sar alone.  For Tsukihime, whose images
+     * all live in arc.nsa, that is a black screen and a run of
+     *
+     *   *** can't find file [image\\title\\title1.png] ***
+     *
+     * So note the .sar and keep going.  The .sar stays searchable as a
+     * fallback below, and sar_flag is only left true when no nsa or ns2
+     * archive turned up -- which is the sar-only game this was written for.
+     */
+    bool sar_found = ( SarReader::open( "arc.sar" ) == 0 );
 
     if (archive_type & ARCHIVE_TYPE_NS2){
         for ( i=0 ; i<MAX_NS2_ARCHIVE ; i++ ){
@@ -98,7 +109,9 @@ int NsaReader::open( const char *nsa_path )
         }
     }
 
-    if (!archive_found) return -1;
+    if (!archive_found) return sar_found ? 0 : -1;
+
+    sar_flag = false;
 
     return 0;
 }
@@ -180,6 +193,9 @@ size_t NsaReader::getFileLength( const char *file_name )
         if ( (ret = getFileLengthSub( &archive_info2[i], file_name )) ) return ret;
     }
 
+    /* A game carrying both kinds of archive keeps files in either. */
+    if ( num_of_sar_archives > 0 ) return SarReader::getFileLength( file_name );
+
     return 0;
 }
 
@@ -209,6 +225,9 @@ size_t NsaReader::getFile( const char *file_name, unsigned char *buffer, int *lo
             return ret;
         }
     }
+
+    if ( num_of_sar_archives > 0 )
+        return SarReader::getFile( file_name, buffer, location );
 
     return 0;
 }

@@ -53,6 +53,13 @@ const char *g_strings[UI_STRING_COUNT][UI_LANG_COUNT] = {
 
     /* UI_CFG_FETCH_COVERS   */ { "Fetch missing covers",   "\xE8\x8E\xB7\xE5\x8F\x96\xE7\xBC\xBA\xE5\xB0\x91\xE7\x9A\x84\xE5\xB0\x81\xE9\x9D\xA2" },
     /* UI_CFG_CLEAN          */ { "Clear temporary files",   "清理临时文件" },
+    /* UI_CFG_TEXT_SPEED     */ { "Text speed (new games)",  "文字速度(新游戏)" },
+    /* UI_CFG_VOL_BGM        */ { "BGM volume (new games)",  "音乐音量(新游戏)" },
+    /* UI_CFG_VOL_SE         */ { "SE volume (new games)",   "音效音量(新游戏)" },
+    /* UI_CFG_VOL_VOICE      */ { "Voice volume (new games)","语音音量(新游戏)" },
+    /* UI_SPEED_SLOW         */ { "slow",                    "慢" },
+    /* UI_SPEED_NORMAL       */ { "normal",                  "普通" },
+    /* UI_SPEED_FAST         */ { "fast",                    "快" },
 
     /* UI_CFG_SORT           */ { "Order",                  "\xE6\x8E\x92\xE5\xBA\x8F" },
     /* UI_SORT_NAME          */ { "name",                   "\xE5\x90\x8D\xE7\xA7\xB0" },

@@ -136,7 +136,7 @@
  * ons_args file is nothing but eleventh arguments. */
 #define CMD_MAX 32
 
-#define CONFIG_NUM 9   /* order, language, then the two library actions */
+#define CONFIG_NUM 13  /* ...then the two library actions and the game defaults */
 
 #define PACKAGE_TEMP "ux0:onsemu/temp/"
 

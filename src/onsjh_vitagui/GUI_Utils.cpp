@@ -183,7 +183,11 @@ DEFAULT:
 			"[GUI_list]\n"
 			"row = 5\n"
 			"[GAME]\n"
-			"use_btouch = 1\n",
+			"use_btouch = 1\n"
+			"text_speed = 1\n"
+			"vol_bgm = 100\n"
+			"vol_se = 100\n"
+			"vol_voice = 100\n",
 			GUI_VERSION
 			);
 		fclose(tmp);
@@ -221,6 +225,10 @@ DEFAULT:
 	LIST_ROW = iniparser_getint(ini, "GUI_list:row", LIST_ROW);
 	config.list_row = LIST_ROW;
 	config.use_btouch = iniparser_getint(ini, "GAME:use_btouch", 1);
+	config.text_speed = iniparser_getint(ini, "GAME:text_speed", 1);
+	config.vol_bgm    = iniparser_getint(ini, "GAME:vol_bgm", 100);
+	config.vol_se     = iniparser_getint(ini, "GAME:vol_se", 100);
+	config.vol_voice  = iniparser_getint(ini, "GAME:vol_voice", 100);
 	iniparser_freedict(ini);
 }
 
@@ -248,6 +256,14 @@ void save_config() {
 	iniparser_set(ini, "GUI_list:row", itc);
 	sprintf(itc, "%d", config.use_btouch);
 	iniparser_set(ini, "GAME:use_btouch", itc);
+	sprintf(itc, "%d", config.text_speed);
+	iniparser_set(ini, "GAME:text_speed", itc);
+	sprintf(itc, "%d", config.vol_bgm);
+	iniparser_set(ini, "GAME:vol_bgm", itc);
+	sprintf(itc, "%d", config.vol_se);
+	iniparser_set(ini, "GAME:vol_se", itc);
+	sprintf(itc, "%d", config.vol_voice);
+	iniparser_set(ini, "GAME:vol_voice", itc);
 
 	FILE *fp = fopen(CONFIG_FILE, "w");
 	iniparser_dump_ini(ini, fp);

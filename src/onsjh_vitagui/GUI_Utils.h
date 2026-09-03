@@ -35,6 +35,13 @@ typedef struct configure {
 	int list_row;
 	int language;      /* UILanguage; the launcher's interface language */
 	int sort_mode;     /* SortMode: how the list is ordered */
+	/* Defaults handed to a game the first time it is played, so a
+	 * comfortable text speed and volume are set once rather than in every
+	 * game's own menu.  A game that has been played keeps its own. */
+	int text_speed;    /* 0 slow, 1 normal, 2 fast */
+	int vol_bgm;       /* 0-100 */
+	int vol_se;
+	int vol_voice;
 } configure;
 
 /* How the game list is ordered.  Name is free -- it is already in memory.

@@ -225,10 +225,10 @@ harmless.
 - [x] **Cache Cleaner** — Clear font cache, temp files
 
 ### Settings & Preferences
-- [ ] **Global Settings Menu** — Accessible from launcher
+- [x] **Global Settings Menu** — Accessible from launcher
 - [ ] **Language Selection** — EN, JP, Chinese, etc.
-- [ ] **Text Speed Default** — Apply to all games
-- [ ] **Volume Presets** — BGM, SE, Voice level defaults
+- [x] **Text Speed Default** — Apply to all games
+- [x] **Volume Presets** — BGM, SE, Voice level defaults
 - [ ] **Debug Mode** — Enable logging for troubleshooting
 - [ ] **Theme Support** — Dark/light mode for GUI
 

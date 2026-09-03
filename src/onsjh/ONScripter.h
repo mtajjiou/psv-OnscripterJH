@@ -88,6 +88,12 @@ public:
 #if defined(PSV)
 	void enableTextBox();
 	void setTouchMode(const char* str);
+	/* What a game starts at when it has no envdata of its own: the
+	 * launcher's defaults, so a player sets a comfortable text speed and
+	 * volume once rather than in every game's own menu.  A game that has
+	 * already been played keeps whatever it saved. */
+	void setDefaultTextSpeed(int no);
+	void setDefaultVolumes(int music, int se, int voice);
 #endif
 
     void enableCDAudio();
@@ -811,6 +817,10 @@ private:
 
     bool new_line_skip_flag;
     int  text_speed_no;
+    int  default_text_speed_no = 1;
+    int  default_music_volume = DEFAULT_VOLUME;
+    int  default_se_volume    = DEFAULT_VOLUME;
+    int  default_voice_volume = DEFAULT_VOLUME;
     bool is_kinsoku;
     AnimationInfo text_info;
     AnimationInfo sentence_font_info;

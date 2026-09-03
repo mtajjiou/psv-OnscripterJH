@@ -395,6 +395,18 @@ void ONScripter::setTouchMode(const char* str)
 {
 	setStr(&touchMode, str);
 }
+
+void ONScripter::setDefaultTextSpeed(int no)
+{
+	if (no >= 0 && no <= 2) default_text_speed_no = no;
+}
+
+void ONScripter::setDefaultVolumes(int music, int se, int voice)
+{
+	if (music >= 0 && music <= 100) default_music_volume = music;
+	if (se    >= 0 && se    <= 100) default_se_volume    = se;
+	if (voice >= 0 && voice <= 100) default_voice_volume = voice;
+}
 #endif
 void ONScripter::setVsyncOff() {
     vsync = false;
@@ -1364,7 +1376,7 @@ void ONScripter::saveAll()
 void ONScripter::loadEnvData()
 {
     volume_on_flag = true;
-    text_speed_no = 1;
+    text_speed_no = default_text_speed_no;
     skip_mode &= ~SKIP_TO_EOP;
     default_env_font = NULL;
     cdaudio_on_flag = true;
@@ -1399,7 +1411,11 @@ void ONScripter::loadEnvData()
     }
     else{
         setStr( &default_env_font, DEFAULT_ENV_FONT );
-        voice_volume = se_volume = music_volume = DEFAULT_VOLUME;
+        /* No envdata: this is the game's first run, so the launcher's
+         * defaults are what it starts at. */
+        voice_volume = default_voice_volume;
+        se_volume    = default_se_volume;
+        music_volume = default_music_volume;
     }
 }
 

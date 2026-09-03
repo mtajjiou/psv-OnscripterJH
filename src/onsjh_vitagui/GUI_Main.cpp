@@ -408,6 +408,8 @@ static rectangle last_dialog_area = { 0, 0, 0, 0 };
  * from the number of rows, so the touch handling reads the geometry back
  * rather than recomputing it and drifting. */
 static int config_rows_top = 0;
+static int config_scroll = 0;
+static int config_visible_rows = CONFIG_NUM;
 static int config_row_height = 44;
 static int config_panel_left = 0;
 static int config_panel_width = SCREEN_WIDTH;
@@ -436,7 +438,17 @@ void draw_config() {
 		 * something that applies to the whole library rather than to the
 		 * game under the cursor. */
 		{ui_text(UI_CFG_FETCH_COVERS), ui_text(UI_COVERS_START)},
-		{ui_text(UI_CFG_CLEAN), ui_text(UI_CLEAN_START)}
+		{ui_text(UI_CFG_CLEAN), ui_text(UI_CLEAN_START)},
+		/* What a game starts at the first time it is played.  A game
+		 * that has been played keeps whatever it saved, so these are
+		 * defaults rather than an override. */
+		{ui_text(UI_CFG_TEXT_SPEED),
+			config.text_speed == 0 ? ui_text(UI_SPEED_SLOW)
+				: (config.text_speed == 2 ? ui_text(UI_SPEED_FAST)
+							  : ui_text(UI_SPEED_NORMAL))},
+		{ui_text(UI_CFG_VOL_BGM),   RomInfo::to_char(config.vol_bgm)},
+		{ui_text(UI_CFG_VOL_SE),    RomInfo::to_char(config.vol_se)},
+		{ui_text(UI_CFG_VOL_VOICE), RomInfo::to_char(config.vol_voice)}
 	};
 
 	/* The settings sit on a card over a dimmed library rather than over a
@@ -446,7 +458,19 @@ void draw_config() {
 
 	const int panel_w = 560;
 	const int row_h   = 44;
-	const int panel_h = CONFIG_NUM * row_h + TH_PAD * 2 + 34;
+
+	/* More settings than fit on a 544-pixel screen, so the list scrolls
+	 * with the selection rather than the panel growing off the edge. */
+	int visible = (ITEMS_PANEL_HEIGHT - TH_PAD * 2 - 34) / row_h;
+	if (visible > CONFIG_NUM) visible = CONFIG_NUM;
+	if (visible < 1) visible = 1;
+	if (select_config < config_scroll) config_scroll = select_config;
+	if (select_config > config_scroll + visible - 1)
+		config_scroll = select_config - visible + 1;
+	if (config_scroll > CONFIG_NUM - visible) config_scroll = CONFIG_NUM - visible;
+	if (config_scroll < 0) config_scroll = 0;
+
+	const int panel_h = visible * row_h + TH_PAD * 2 + 34;
 	const int panel_x = (SCREEN_WIDTH - panel_w) / 2;
 	/* Settled position, which is what the touch handling is told about;
 	 * the drawing is offset while it arrives so a tap during those few
@@ -463,8 +487,9 @@ void draw_config() {
 
 	const int first_row = panel_y + TH_PAD + 34;
 
-	for (int i = 0; i < CONFIG_NUM; i++) {
-		const int y = first_row + i * row_h;
+	for (int v = 0; v < visible; v++) {
+		const int i = config_scroll + v;
+		const int y = first_row + v * row_h;
 
 		/* Rows that do not apply to the current list style are still shown,
 		 * so the settings do not change shape as you move, but they are
@@ -489,7 +514,17 @@ void draw_config() {
 			value_color, TH_FONT_S, items[i].value);
 	}
 
+	/* A hint that there is more above or below, so a list that scrolls
+	 * does not look like a list that ends. */
+	if (config_scroll > 0)
+		th_text_right(panel_x + panel_w - TH_PAD, panel_y + TH_PAD + TH_FONT_M - 2,
+			TH_TEXT_FAINT, TH_FONT_S, "^");
+	if (config_scroll + visible < CONFIG_NUM)
+		th_text_right(panel_x + panel_w - TH_PAD, panel_y + panel_h - TH_PAD + 2,
+			TH_TEXT_FAINT, TH_FONT_S, "v");
+
 	/* Where the rows are, for the touch handling. */
+	config_visible_rows = visible;
 	config_rows_top = first_row + (settled_y - panel_y);
 	config_row_height = row_h;
 	config_panel_left = panel_x;
@@ -1473,6 +1508,15 @@ ScreenState on_mainscreen_event(int steps, int &step, int &curr, int &touched) {
 /* What a row does when it is chosen, by button or by tap.  Most rows change
  * a setting and stay put; the covers row asks to leave for another screen,
  * which is what the return value is for. */
+/* Volumes move in tens and stop at the ends rather than wrapping: running
+ * past 100 back to 0 is a way to mute a game by accident. */
+static int volume_step(int value, int direction) {
+	value += direction * 10;
+	if (value > 100) value = 100;
+	if (value < 0) value = 0;
+	return value;
+}
+
 static ScreenState activate_config_row(int row) {
 	switch (row) {
 	case 0:
@@ -1507,6 +1551,18 @@ static ScreenState activate_config_row(int row) {
 		return COVERS_ALL_CONFIRM;
 	case 8:
 		return CLEAN_CONFIRM;
+	case 9:
+		config.text_speed = (config.text_speed + 1) % 3;
+		break;
+	case 10:
+		config.vol_bgm = volume_step(config.vol_bgm, +1);
+		break;
+	case 11:
+		config.vol_se = volume_step(config.vol_se, +1);
+		break;
+	case 12:
+		config.vol_voice = volume_step(config.vol_voice, +1);
+		break;
 	default:
 		break;
 	}
@@ -1520,10 +1576,10 @@ static int config_row_at(const point &p) {
 	if (p.x < config_panel_left || p.x > config_panel_left + config_panel_width)
 		return -1;
 
-	for (int i = 0; i < CONFIG_NUM; i++) {
-		int top = config_rows_top + i * config_row_height;
+	for (int v = 0; v < config_visible_rows; v++) {
+		int top = config_rows_top + v * config_row_height;
 		if (p.y >= top && p.y < top + config_row_height)
-			return i;
+			return config_scroll + v;
 	}
 	return -1;
 }
@@ -1627,6 +1683,18 @@ ScreenState on_config_event() {
 			ui_set_language((UILanguage)config.language);
 			init_sittings_text();
 			break;
+		case 9:
+			config.text_speed = (config.text_speed + -1 + 3) % 3;
+			break;
+		case 10:
+			config.vol_bgm = volume_step(config.vol_bgm, -1);
+			break;
+		case 11:
+			config.vol_se = volume_step(config.vol_se, -1);
+			break;
+		case 12:
+			config.vol_voice = volume_step(config.vol_voice, -1);
+			break;
 		default:
 			break;
 		}
@@ -1674,6 +1742,18 @@ ScreenState on_config_event() {
 			config.language = (config.language + 1) % UI_LANG_COUNT;
 			ui_set_language((UILanguage)config.language);
 			init_sittings_text();
+			break;
+		case 9:
+			config.text_speed = (config.text_speed + 1 + 3) % 3;
+			break;
+		case 10:
+			config.vol_bgm = volume_step(config.vol_bgm, 1);
+			break;
+		case 11:
+			config.vol_se = volume_step(config.vol_se, 1);
+			break;
+		case 12:
+			config.vol_voice = volume_step(config.vol_voice, 1);
 			break;
 		default:
 			break;
@@ -2774,6 +2854,18 @@ int main()
 		}
 		cmd_str[cmd_num++] = (char*)"--touch-mode";
 		cmd_str[cmd_num++] = (char*)touch_arg[touch_choice];
+
+		/* What a game starts at when it has no envdata yet.  Held in
+		 * statics because sceAppMgrLoadExec reads the array after this
+		 * function returns. */
+		static char speed_str[8], volumes_str[16];
+		snprintf(speed_str, sizeof(speed_str), "%d", config.text_speed);
+		snprintf(volumes_str, sizeof(volumes_str), "%d,%d,%d",
+			 config.vol_bgm, config.vol_se, config.vol_voice);
+		cmd_str[cmd_num++] = (char*)"--text-speed";
+		cmd_str[cmd_num++] = speed_str;
+		cmd_str[cmd_num++] = (char*)"--volumes";
+		cmd_str[cmd_num++] = volumes_str;
 		/* What the launcher worked out, then what the game asked for --
 		 * in that order, so a hand-written ons_args overrides a guess. */
 		cmd_num = appendAutoArgs(rom_path, cmd_str, cmd_num, CMD_MAX);

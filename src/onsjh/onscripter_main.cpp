@@ -78,6 +78,8 @@ void optionHelp()
     printf( "      --enc:auto\tdetect the script encoding; the default\n");
     printf( "      --debug:1\t\tprint debug info\n");
     printf( "      --fontcache\tcache default font\n");
+    printf( "      --text-speed no\tdefault text speed, 0 slow to 2 fast\n");
+    printf( "      --volumes m,s,v\tdefault volumes, 0-100 each\n");
     printf( "  -h, --help\t\tshow this help and exit\n");
     printf( "  -v, --version\t\tshow the version information and exit\n");
     exit(0);
@@ -219,6 +221,27 @@ void parseOption(int argc, char *argv[]) {
             }
             else if (!strcmp(argv[0]+1, "-debug:1")){
                 ons.setDebugLevel(1);
+            }
+            /* Defaults from the launcher, used only by a game that has no
+             * envdata yet: a player should not have to set a comfortable
+             * text speed and volume in every game's own menu. */
+            else if (!strcmp(argv[0]+1, "-text-speed")){
+                argc--; argv++;
+                if (argc == 0) break;
+                ons.setDefaultTextSpeed(atoi(argv[0]));
+            }
+            else if (!strcmp(argv[0]+1, "-volumes")){
+                /* One option rather than three, in "music,se,voice". */
+                argc--; argv++;
+                if (argc == 0) break;
+                {
+                    int m = DEFAULT_VOLUME, s = DEFAULT_VOLUME, v = DEFAULT_VOLUME;
+                    if (sscanf(argv[0], "%d,%d,%d", &m, &s, &v) == 3)
+                        ons.setDefaultVolumes(m, s, v);
+                    else
+                        utils::printError(" --volumes wants music,se,voice: %s\n",
+                                          argv[0]);
+                }
             }
             else if (!strcmp(argv[0]+1, "-fontcache")){
                 ons.setFontCache();

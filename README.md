@@ -263,7 +263,7 @@ harmless.
 - [x] **Unit Tests** — ZIP extraction, path parsing, config reading
 - [x] **Integration Tests** — Full game launch workflows
 - [ ] **Compatibility Matrix** — Games tested and verified
-- [ ] **Performance Benchmarks** — Launch time, extraction speed
+- [x] **Performance Benchmarks** — Launch time, extraction speed
 - [x] **Edge Cases** — Symlinks, special characters, large files, etc.
 
 ---
@@ -302,6 +302,25 @@ vitasdk or Vita required:
 sh test/run_tests.sh
 ```
 
+### Benchmarks
+
+```bash
+sh script/benchmark.sh
+```
+
+Times the same portable half: inflating archives, the scan cache, reading
+the end of a log. **Host numbers, not Vita numbers** — an install on the
+console is bound by writes to the memory card, which nothing here can stand
+in for. Run it before and after a change and compare the two runs; that
+tells "the code got slower" from "the card is slow", which timing an install
+on the console cannot.
+
+For the console's own numbers, turn on **Write a debug log** and play a
+game. The engine reports what a screen flush costs, broken into its four
+steps, and what a hundred characters of text actually took against what they
+asked for; the launcher learns each install's throughput and uses it for the
+estimate it shows before the next one.
+
 ---
 
 ## Project Structure
@@ -323,6 +342,8 @@ src/
 test/
 ├── run_tests.sh                # Host-side test runner
 ├── test_zipreader.c            # Archive parsing / path safety tests
+├── test_install_flow.cpp       # The install decisions, end to end
+├── bench.c                     # What script/benchmark.sh runs
 └── make_fixtures.py            # Builds the test archives
 
 script/

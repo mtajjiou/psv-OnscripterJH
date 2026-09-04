@@ -262,7 +262,7 @@ harmless.
 ### Testing & QA
 - [x] **Unit Tests** — ZIP extraction, path parsing, config reading
 - [x] **Integration Tests** — Full game launch workflows
-- [ ] **Compatibility Matrix** — Games tested and verified
+- [~] **Compatibility Matrix** — Games tested and verified *(the document exists as [doc/COMPATIBILITY.md](doc/COMPATIBILITY.md); filling it in needs people playing games — see #59)*
 - [x] **Performance Benchmarks** — Launch time, extraction speed
 - [x] **Edge Cases** — Symlinks, special characters, large files, etc.
 

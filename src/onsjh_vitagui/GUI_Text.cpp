@@ -209,6 +209,37 @@ const char *g_strings[UI_STRING_COUNT][UI_LANG_COUNT] = {
     /* UI_HELP_STICK         */ { "same as the d-pad",      "\xE7\xAD\x89\xE5\x90\x8C\xE6\x96\xB9\xE5\x90\x91\xE9\x94\xAE" },
     /* UI_HELP_OVERLAY       */ { "show this list in game", "\xE6\xB8\xB8\xE6\x88\x8F\xE4\xB8\xAD\xE6\x98\xBE\xE7\xA4\xBA\xE6\x9C\xAC\xE5\x88\x97\xE8\xA1\xA8" },
 
+    /* UI_LAUNCHER_TITLE     */ { "The launcher",            "启动器操作" },
+    /* UI_LAUNCHER_START     */ { "start the game, install an archive",
+                                  "启动游戏 / 安装压缩包" },
+    /* UI_LAUNCHER_PANEL     */ { "settings, saves and cover for one game",
+                                  "单个游戏的设置、存档与封面" },
+    /* UI_LAUNCHER_SETTINGS  */ { "settings for everything",  "全局设置" },
+    /* UI_LAUNCHER_HELP      */ { "this screen",              "本帮助界面" },
+    /* UI_LAUNCHER_SEARCH    */ { "search the library",       "搜索游戏" },
+    /* UI_LAUNCHER_ABOUT     */ { "about this build",         "关于本版本" },
+    /* UI_LAUNCHER_MOVE      */ { "move through the library", "浏览游戏列表" },
+    /* UI_WHERE_TITLE        */ { "Where games go",           "游戏放在哪里" },
+    /* UI_WHERE_ZIP          */ { "ux0:data/game_zips/  -- archives to install",
+                                  "ux0:data/game_zips/ -- 待安装的压缩包" },
+    /* UI_WHERE_FOLDER       */ { "ux0:onsemu/  -- installed games, one folder each",
+                                  "ux0:onsemu/ -- 已安装的游戏，每个一个文件夹" },
+
+    /* UI_FIRST_RUN_TITLE    */ { "No games yet",             "还没有游戏" },
+    /* UI_FIRST_RUN_BODY     */ { "Copy a game to the memory card and it appears here.\n\n"
+                                  "  A .zip goes in       ux0:data/game_zips/\n"
+                                  "  and is installed from this screen.\n\n"
+                                  "  A game folder goes in ux0:onsemu/\n"
+                                  "  and runs as it is.\n\n"
+                                  "Both folders have been created for you.",
+                                  "\xE5\xB0\x86\xE6\xB8\xB8\xE6\x88\x8F\xE5\xA4\x8D\xE5\x88\xB6\xE5\x88\xB0\xE5\xAD\x98\xE5\x82\xA8\xE5\x8D\xA1\xE5\x90\x8E\xE5\x8D\xB3\xE5\x8F\xAF\xE6\x98\xBE\xE7\xA4\xBA\xE3\x80\x82\n\n"
+                                  "  \xE5\x8E\x8B\xE7\xBC\xA9\xE5\x8C\x85\xEF\xBC\x9A ux0:data/game_zips/\n"
+                                  "  \xE5\x9C\xA8\xE6\x9C\xAC\xE7\x95\x8C\xE9\x9D\xA2\xE5\xAE\x89\xE8\xA3\x85\xE3\x80\x82\n\n"
+                                  "  \xE6\xB8\xB8\xE6\x88\x8F\xE6\x96\x87\xE4\xBB\xB6\xE5\xA4\xB9\xEF\xBC\x9A ux0:onsemu/\n"
+                                  "  \xE5\x8F\xAF\xE7\x9B\xB4\xE6\x8E\xA5\xE8\xBF\x90\xE8\xA1\x8C\xE3\x80\x82\n\n"
+                                  "\xE4\xB8\xA4\xE4\xB8\xAA\xE6\x96\x87\xE4\xBB\xB6\xE5\xA4\xB9\xE5\xB7\xB2\xE8\x87\xAA\xE5\x8A\xA8\xE5\x88\x9B\xE5\xBB\xBA\xE3\x80\x82" },
+    /* UI_PROMPT_LAUNCHER    */ { "launcher",                 "启动器" },
+
     /* UI_FORMATS_TITLE      */ { "Formats this build can open",
                                   "\xE6\x9C\xAC\xE7\x89\x88\xE6\x9C\xAC\xE6\x94\xAF\xE6\x8C\x81\xE7\x9A\x84\xE6\xA0\xBC\xE5\xBC\x8F" },
     /* UI_FORMATS_LEGEND     */ { "convert anything marked \"convert\" on a PC first",

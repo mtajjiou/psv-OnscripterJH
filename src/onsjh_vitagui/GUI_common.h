@@ -204,6 +204,9 @@ typedef enum {
 	HELP_MSG,
 	/* The same screen's second page: what this build can open. */
 	FORMATS_MSG,
+	/* The third page: the launcher's own controls, and where a game has
+	 * to be for it to appear at all. */
+	LAUNCHER_MSG,
 	ABOUT_MSG,
 	/* Installing a game from a .zip.  These sit before PRINT_APPINFO so the
 	 * game list still draws behind them but the per-game info panel, which

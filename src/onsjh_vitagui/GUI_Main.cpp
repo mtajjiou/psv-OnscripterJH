@@ -273,6 +273,48 @@ void draw_list_row(int curr, int row) {
 	}
 }
 
+/*
+ * What the launcher shows before there is anything to show.
+ *
+ * An empty grid with a line of footer text was accurate and useless: the
+ * one thing a new user needs is where a game has to be for it to appear,
+ * and that is not something they can find by pressing buttons.  Both
+ * folders exist by the time this is drawn -- the launcher creates them at
+ * startup -- so it can say so rather than ask.
+ */
+void draw_first_run() {
+	const int padding = 28;
+	const int width   = 640;
+	const int height  = 300;
+	const int left    = (SCREEN_WIDTH - width) / 2;
+	const int top     = HEADER_HEIGHT + (ITEMS_PANEL_HEIGHT - height) / 2;
+
+	th_shadow(left, top, width, height);
+	th_card(left, top, width, height, TH_SURFACE, TH_BG);
+	th_border(left, top, width, height, 1, TH_LINE);
+
+	th_text(left + padding, top + padding + TH_FONT_L, TH_TEXT, TH_FONT_L,
+		ui_text(UI_FIRST_RUN_TITLE));
+
+	/* Drawn line by line: the body is a paragraph with two indented paths
+	 * in it, and vita2d draws a string with newlines as one line. */
+	const char *body = ui_text(UI_FIRST_RUN_BODY);
+	int y = top + padding + TH_FONT_L + 30;
+	while (*body) {
+		char line[128];
+		int n = 0;
+		while (*body && *body != '\n' && n < (int)sizeof(line) - 1)
+			line[n++] = *body++;
+		line[n] = '\0';
+		if (*body == '\n') body++;
+
+		if (n > 0)
+			th_text(left + padding, y, TH_TEXT_DIM, TH_FONT_S,
+				th_fit(line, TH_FONT_S, width - padding * 2));
+		y += 22;
+	}
+}
+
 void draw_list(int curr) {
 	// __________tm_bat
 	// |__|___________|
@@ -347,8 +389,12 @@ void draw_help() {
 				th_fit(empty, TH_FONT_S, SCREEN_WIDTH - TH_PAD * 2));
 			return;
 		}
-		th_text(TH_PAD, baseline, TH_TEXT_DIM, TH_FONT_S,
-			"No games yet -- put a folder or a .zip in ux0:onsemu/");
+		/* The panel in the middle of the screen says where games go;
+		 * the footer says how to read more. */
+		int hx = TH_PAD;
+		hx += th_button(hx, baseline, th_glyph_r, "R", TH_FONT_S) + 5;
+		th_hint(hx, baseline, NULL, ui_text(UI_HINT_HELP), TH_TEXT_DIM,
+			TH_FONT_S);
 		return;
 	}
 
@@ -432,7 +478,8 @@ static ScreenState layer_last = UNKNOWN;
 
 static bool state_is_layer(ScreenState state) {
 	return state >= PRINT_APPINFO || state == CONFIG_SCREEN ||
-	       state == HELP_MSG || state == FORMATS_MSG || state == ABOUT_MSG;
+	       state == HELP_MSG || state == FORMATS_MSG ||
+	       state == LAUNCHER_MSG || state == ABOUT_MSG;
 }
 
 /* Defined with the install code further down, which is where the number it
@@ -1198,6 +1245,96 @@ ScreenState on_log_event() {
 	}
 }
 
+/*
+ * The help screen's third page: the launcher.
+ *
+ * The first two pages answer questions someone has while playing.  This one
+ * answers the question they have before that -- where does a game go so
+ * that it shows up at all -- which is the one thing a new user cannot work
+ * out by pressing buttons.
+ */
+void draw_launcher_screen() {
+	struct launcher_row {
+		vita2d_texture **glyph;
+		const char      *chip;
+		UIStringId       description;
+	};
+	const launcher_row rows[] = {
+		{ &th_glyph_enter,    NULL,     UI_LAUNCHER_START },
+		{ &th_glyph_dpad,     NULL,     UI_LAUNCHER_MOVE },
+		{ &th_glyph_triangle, "/\\",    UI_LAUNCHER_SEARCH },
+		{ &th_glyph_l,        "L",      UI_LAUNCHER_SETTINGS },
+		{ &th_glyph_r,        "R",      UI_LAUNCHER_HELP },
+		{ &th_glyph_select,   "SELECT", UI_LAUNCHER_ABOUT },
+	};
+	const int count = (int)(sizeof(rows) / sizeof(rows[0]));
+
+	const int padding = 28;
+	const int row_h   = 30;
+	const int col_w   = 150;
+
+	int desc_w = 0;
+	for (int i = 0; i < count; i++) {
+		int w = vita2d_font_text_width(font, TH_FONT_S,
+			ui_text(rows[i].description));
+		if (w > desc_w) desc_w = w;
+	}
+	int where_w = vita2d_font_text_width(font, TH_FONT_S, ui_text(UI_WHERE_ZIP));
+	int w2 = vita2d_font_text_width(font, TH_FONT_S, ui_text(UI_WHERE_FOLDER));
+	if (w2 > where_w) where_w = w2;
+
+	int width = padding * 2 + col_w + desc_w;
+	if (padding * 2 + where_w > width) width = padding * 2 + where_w;
+	const int height = padding * 2 + 40 + count * row_h + 34 + 76;
+	const int left   = (SCREEN_WIDTH - width) / 2;
+	const int top    = (SCREEN_HEIGHT - height) / 2;
+
+	vita2d_draw_rectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, TH_SCRIM);
+	th_shadow(left, top, width, height);
+	th_card(left, top, width, height, TH_SURFACE, TH_BG);
+	th_border(left, top, width, height, 1, TH_LINE);
+
+	last_dialog_area.left = left;
+	last_dialog_area.top = top;
+	last_dialog_area.right = left + width;
+	last_dialog_area.bottom = top + height;
+
+	th_text(left + padding, top + padding + TH_FONT_M, TH_TEXT, TH_FONT_M,
+		ui_text(UI_LAUNCHER_TITLE));
+
+	for (int i = 0; i < count; i++) {
+		const int baseline = top + padding + 40 + (i + 1) * row_h;
+		th_button(left + padding, baseline,
+			  rows[i].glyph ? *rows[i].glyph : NULL, rows[i].chip,
+			  TH_FONT_M);
+		th_text(left + padding + col_w, baseline, TH_TEXT_DIM, TH_FONT_S,
+			ui_text(rows[i].description));
+	}
+
+	/* Where the files go, which is the reason this page exists. */
+	int y = top + padding + 40 + (count + 1) * row_h + 12;
+	vita2d_draw_rectangle(left + padding, y - 16, width - padding * 2, 1, TH_LINE);
+	th_text(left + padding, y + TH_FONT_S, TH_TEXT, TH_FONT_S,
+		ui_text(UI_WHERE_TITLE));
+	th_text(left + padding, y + TH_FONT_S + 24, TH_TEXT_DIM, TH_FONT_S,
+		ui_text(UI_WHERE_ZIP));
+	th_text(left + padding, y + TH_FONT_S + 46, TH_TEXT_DIM, TH_FONT_S,
+		ui_text(UI_WHERE_FOLDER));
+
+	vita2d_draw_rectangle(left + padding, top + height - 44,
+		width - padding * 2, 1, TH_LINE);
+
+	int next_w  = th_hint_width(th_glyph_dpad, ui_text(UI_PROMPT_CONTROLS),
+				    TH_FONT_S);
+	int close_w = th_hint_width(th_glyph_enter, ui_text(UI_PROMPT_CLOSE),
+				    TH_FONT_S);
+	int x = left + (width - (next_w + 28 + close_w)) / 2;
+	x += th_hint(x, top + height - padding + 6, th_glyph_dpad,
+		     ui_text(UI_PROMPT_LAUNCHER), TH_TEXT_DIM, TH_FONT_S);
+	th_hint(x + 28, top + height - padding + 6, th_glyph_enter,
+		ui_text(UI_PROMPT_CLOSE), TH_TEXT_DIM, TH_FONT_S);
+}
+
 void draw_message(char *msg, int choose, int fontsize) {
 	/* Two answers: cancel on the left, confirm on the right -- the order
 	 * the touch handling splits the box in. */
@@ -1489,7 +1626,13 @@ void draw_screen(ScreenState state, int curr, int choose, int slot) {
 		//draw footer
 		draw_help();
 
-		switch (mainscreen_list_mode) {
+		/* Nothing installed and nothing searched for: the one moment
+		 * where the launcher has to say something rather than show
+		 * something. */
+		if (rom_list.size() == 0 && rom_search.empty()) {
+			draw_first_run();
+		}
+		else switch (mainscreen_list_mode) {
 		case USE_ICON:
 			draw_icons(curr);
 			break;
@@ -1507,6 +1650,9 @@ void draw_screen(ScreenState state, int curr, int choose, int slot) {
 	}
 	if (state == FORMATS_MSG) {
 		draw_formats_screen();
+	}
+	if (state == LAUNCHER_MSG) {
+		draw_launcher_screen();
 	}
 	if (state == ABOUT_MSG) {
 		draw_alert((char*)about_msg, FONT_SIZE);
@@ -2980,6 +3126,9 @@ int mainloop() {
 				new_state = on_help_event(FORMATS_MSG);
 				break;
 			case FORMATS_MSG:
+				new_state = on_help_event(LAUNCHER_MSG);
+				break;
+			case LAUNCHER_MSG:
 				new_state = on_help_event(HELP_MSG);
 				break;
 			case ABOUT_MSG:
@@ -3141,6 +3290,12 @@ int main()
 	sceClibPrintf("%s\n", ONS_BUILD_STRING);
 
 	sceIoMkdir("ux0:data/onsemu", 0777);
+	/* The two folders a game can be put in, made before anything is drawn
+	 * -- the first-run panel tells the player they are there, and a folder
+	 * you are told about and cannot find is worse than no instruction.
+	 * ux0:onsemu was previously created only when an install ran. */
+	sceIoMkdir(GAME_INSTALL_FOLDER, 0777);
+	sceIoMkdir(GAME_ZIP_FOLDER, 0777);
 	vita2d_init();
 	vita2d_set_clear_color(TH_BG);
 	

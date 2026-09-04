@@ -185,6 +185,25 @@ enum UIStringId {
     UI_HELP_STICK,
     UI_HELP_OVERLAY,
 
+    /* The help screen's third page: the launcher itself, and where
+     * a game has to be for it to appear at all. */
+    UI_LAUNCHER_TITLE,
+    UI_LAUNCHER_START,
+    UI_LAUNCHER_PANEL,
+    UI_LAUNCHER_SETTINGS,
+    UI_LAUNCHER_HELP,
+    UI_LAUNCHER_SEARCH,
+    UI_LAUNCHER_ABOUT,
+    UI_LAUNCHER_MOVE,
+    UI_WHERE_TITLE,
+    UI_WHERE_ZIP,
+    UI_WHERE_FOLDER,
+
+    /* Shown in place of the list when there are no games at all. */
+    UI_FIRST_RUN_TITLE,
+    UI_FIRST_RUN_BODY,
+    UI_PROMPT_LAUNCHER,
+
     /* The help screen's second page: what this build can open, and how
      * to get between the two pages.  See draw_formats_screen(). */
     UI_FORMATS_TITLE,

@@ -247,8 +247,8 @@ harmless.
 - [~] **Parallel Extraction** — Multi-threaded ZIP if PSVita allows *(not planned: extraction is bound by the memory card, not by inflate — see #51)*
 
 ### Documentation & Help
-- [ ] **In-App Help** — Press SELECT for quick tips
-- [ ] **Setup Wizard** — First-run configuration
+- [x] **In-App Help** — Press SELECT for quick tips
+- [x] **Setup Wizard** — First-run configuration
 - [ ] **Game Compatibility List** — Integrated or web-linked
 - [ ] **FAQ Section** — Common issues and solutions
 - [ ] **Video Conversion Guide** — Built-in ffmpeg instructions

@@ -43,6 +43,7 @@
 #include "GUI_Theme.h"
 #include "build_version.h"
 #include "GUI_Text.h"
+#include "installname.h"
 
 extern "C" {
 #include "logfile.h"
@@ -51,6 +52,7 @@ extern "C" {
 
 extern "C" {
 #include "formats.h"
+#include "patchplan.h"
 }
 #include "GUI_Utils.h"
 #include "version.h"
@@ -101,6 +103,7 @@ static void init_sittings_text()
 	sittings[SITTINGS_VOL_BGM]    = ui_text(UI_CFG_VOL_BGM_GAME);
 	sittings[SITTINGS_VOL_SE]     = ui_text(UI_CFG_VOL_SE_GAME);
 	sittings[SITTINGS_VOL_VOICE]  = ui_text(UI_CFG_VOL_VOICE_GAME);
+	sittings[SITTINGS_PATCHES] = ui_text(UI_SET_PATCHES);
 	sittings[SITTINGS_BACKUP]  = ui_text(UI_SET_BACKUP);
 	sittings[SITTINGS_RESTORE] = ui_text(UI_SET_RESTORE);
 	sittings[SITTINGS_DEFAULT] = ui_text(UI_SET_RESET);
@@ -1619,6 +1622,279 @@ ScreenState run_install(int choose) {
 	return INSTALL_FAIL;
 }
 
+/* ------------------------------------------------------------------ *
+ *  Patches over a game that is already installed
+ *
+ *  A translation patch is an archive with no script in it, whose files
+ *  belong on top of a game that is already there.  Selecting one used to
+ *  offer to install it as a game, which failed twice over -- no script,
+ *  and the destination exists -- and told the player nothing about what to
+ *  do instead.  Selecting one now asks which game it goes on.
+ * ------------------------------------------------------------------ */
+
+struct PatchCandidate {
+	std::string name;   /* what the list calls the game */
+	std::string path;   /* its folder */
+	int         score;  /* how well the archive's name matches it */
+};
+
+static std::vector<PatchCandidate> patch_candidates;
+static int         patch_pick_index = 0;
+static std::string patch_zip_path;
+static std::string patch_target_path;
+static std::string patch_target_name;
+static char        patch_confirm_message[512];
+static char        patch_message[512];
+
+/* The patches on one game, and which of them is selected. */
+static std::vector<std::string> patch_applied;
+static int         patch_list_index = 0;
+static std::string patch_list_game;      /* folder */
+static std::string patch_list_name;      /* what to call it on screen */
+
+/* A record file's name without ".mod", which is what the player is shown. */
+static std::string patch_display_name(const std::string &record) {
+	std::string name = record;
+	const size_t suffix = strlen(PATCH_RECORD_SUFFIX);
+	if (name.size() > suffix) name.erase(name.size() - suffix);
+	return name;
+}
+
+/* Every installed game, likeliest first.  The archive is named after the
+ * game often enough that the right answer is usually already at the top;
+ * the rest are there because that guess is only a guess. */
+static bool prepare_patch_pick(const std::string &zip_path) {
+	patch_zip_path = zip_path;
+	patch_candidates.clear();
+	patch_pick_index = 0;
+
+	const std::string archive = install_base_name(zip_path);
+
+	for (size_t i = 0; i < rom_list.size(); i++) {
+		if (rom_list[i].is_zip || rom_list[i].is_partial) continue;
+
+		PatchCandidate c;
+		c.name  = rom_list[i].char_name();
+		c.path  = rom_list[i].path;
+		c.score = patch_name_match(archive.c_str(), c.name.c_str());
+		patch_candidates.push_back(c);
+	}
+
+	/* Small list, drawn once: an insertion sort keeps games of equal score
+	 * in the order the list already had them. */
+	for (size_t i = 1; i < patch_candidates.size(); i++) {
+		PatchCandidate value = patch_candidates[i];
+		size_t j = i;
+		while (j > 0 && patch_candidates[j - 1].score < value.score) {
+			patch_candidates[j] = patch_candidates[j - 1];
+			j--;
+		}
+		patch_candidates[j] = value;
+	}
+
+	return !patch_candidates.empty();
+}
+
+/* One column of names in a card, with the selected row picked out.  Shared
+ * by "which game does this patch go on" and "which patch comes off". */
+static void draw_pick_list(const char *title, const std::vector<std::string> &rows,
+			   int index, const char *empty_text,
+			   const char *enter_label) {
+	const int padding = 24;
+	const int row_h   = 28;
+	const int visible = 8;
+
+	const int count = (int)rows.size();
+	int first = index - visible / 2;
+	if (first > count - visible) first = count - visible;
+	if (first < 0) first = 0;
+
+	const int shown  = count < visible ? count : visible;
+	const int width  = SCREEN_WIDTH - 200;
+	const int height = padding * 2 + 40 + (shown > 0 ? shown : 1) * row_h + 34;
+	const int left   = (SCREEN_WIDTH - width) / 2;
+	const int top    = (SCREEN_HEIGHT - height) / 2;
+
+	vita2d_draw_rectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, TH_SCRIM);
+	th_shadow(left, top, width, height);
+	th_card(left, top, width, height, TH_SURFACE, TH_BG);
+	th_border(left, top, width, height, 1, TH_LINE);
+
+	last_dialog_area.left   = left;
+	last_dialog_area.top    = top;
+	last_dialog_area.right  = left + width;
+	last_dialog_area.bottom = top + height;
+
+	th_text(left + padding, top + padding + TH_FONT_M, TH_TEXT, TH_FONT_M,
+		th_fit(title, TH_FONT_M, width - padding * 2));
+
+	if (count == 0) {
+		th_text(left + padding, top + padding + 40 + TH_FONT_S,
+			TH_TEXT_DIM, TH_FONT_S, empty_text);
+	}
+	for (int i = 0; i < shown; i++) {
+		const int item = first + i;
+		const int y    = top + padding + 40 + i * row_h;
+
+		if (item == index) {
+			vita2d_draw_rectangle(left + padding - 8, y,
+				width - padding * 2 + 16, row_h, TH_ACCENT_SOFT);
+			vita2d_draw_rectangle(left + padding - 8, y, 3, row_h, TH_ACCENT);
+		}
+		th_text(left + padding, y + TH_FONT_S + 6,
+			item == index ? TH_TEXT : TH_TEXT_DIM, TH_FONT_S,
+			th_fit(rows[item].c_str(), TH_FONT_S, width - padding * 2));
+	}
+
+	/* Which of a longer list is being looked at, so the eight rows on
+	 * screen do not read as the whole library. */
+	if (count > visible) {
+		char position[32];
+		snprintf(position, sizeof(position), "%d/%d", index + 1, count);
+		th_text_right(left + width - padding, top + padding + TH_FONT_M,
+			      TH_TEXT_DIM, TH_FONT_S, position);
+	}
+
+	vita2d_draw_rectangle(left + padding, top + height - 44,
+		width - padding * 2, 1, TH_LINE);
+
+	const int baseline = top + height - 22 + 6;
+	int enter_w = th_hint_width(th_glyph_enter, enter_label, TH_FONT_S);
+	int close_w = th_hint_width(th_glyph_cancel, ui_text(UI_PROMPT_CLOSE),
+				    TH_FONT_S);
+	int x = left + (width - (enter_w + 28 + close_w)) / 2;
+	x += th_hint(x, baseline, th_glyph_enter, enter_label, TH_TEXT, TH_FONT_S);
+	th_hint(x + 28, baseline, th_glyph_cancel, ui_text(UI_PROMPT_CLOSE),
+		TH_TEXT_DIM, TH_FONT_S);
+}
+
+void draw_patch_pick() {
+	std::vector<std::string> rows;
+	for (size_t i = 0; i < patch_candidates.size(); i++)
+		rows.push_back(patch_candidates[i].name);
+
+	draw_pick_list(ui_text(UI_PATCH_TITLE), rows, patch_pick_index,
+		       ui_text(UI_PATCH_NO_GAMES), ui_text(UI_PROMPT_YES));
+}
+
+/* Moves the selection, or leaves this screen.  UNKNOWN means stay. */
+static ScreenState on_pick_event(int &index, int count, ScreenState on_enter,
+				 ScreenState on_cancel) {
+	int btn = read_buttons();
+
+	if (btn & SCE_CTRL_UP) {
+		if (index > 0) index--;
+		return UNKNOWN;
+	}
+	if (btn & SCE_CTRL_DOWN) {
+		if (index + 1 < count) index++;
+		return UNKNOWN;
+	}
+	if (!(btn & SCE_CTRL_HOLD) && (btn & SCE_CTRL_CANCEL)) return on_cancel;
+	if (!(btn & SCE_CTRL_HOLD) && (btn & SCE_CTRL_ENTER))
+		return count > 0 ? on_enter : on_cancel;
+	return UNKNOWN;
+}
+
+ScreenState on_patch_pick_event() {
+	ScreenState state = on_pick_event(patch_pick_index,
+					  (int)patch_candidates.size(),
+					  PATCH_CONFIRM, MAIN_SCREEN);
+	if (state != PATCH_CONFIRM) return state;
+
+	patch_target_path = patch_candidates[patch_pick_index].path;
+	patch_target_name = patch_candidates[patch_pick_index].name;
+
+	char size_str[16];
+	getSizeString(size_str, ZipHandler::installedSize(patch_zip_path));
+	snprintf(patch_confirm_message, sizeof(patch_confirm_message),
+		 ui_text(UI_PATCH_ASK),
+		 install_base_name(patch_zip_path).c_str(),
+		 patch_target_name.c_str(), size_str);
+	return PATCH_CONFIRM;
+}
+
+ScreenState run_patch() {
+	install_progress.bytes_done  = 0;
+	install_progress.bytes_total = 0;
+	install_progress.percent     = 0;
+	install_progress.current_file.clear();
+
+	const ZipInstallStatus status =
+		ZipHandler::installPatch(patch_zip_path, patch_target_path,
+					 install_progress_callback, NULL);
+
+	if (status == ZIP_INSTALL_OK)
+		snprintf(patch_message, sizeof(patch_message),
+			 ui_text(UI_PATCH_OK), patch_target_name.c_str());
+	else if (status == ZIP_INSTALL_EXISTS)
+		snprintf(patch_message, sizeof(patch_message), "%s",
+			 ui_text(UI_PATCH_EXISTS));
+	else
+		snprintf(patch_message, sizeof(patch_message), "%s",
+			 ZipHandler::statusMessage(status));
+
+	return PATCH_DONE;
+}
+
+/* The patches on the game whose settings screen this was opened from. */
+void prepare_patch_list(int choose) {
+	patch_list_index = 0;
+	patch_applied.clear();
+	patch_list_game.clear();
+	patch_list_name.clear();
+
+	if (choose < 0 || choose >= (int)rom_list.size()) return;
+	if (rom_list[choose].is_zip) return;
+
+	patch_list_game = rom_list[choose].path;
+	patch_list_name = rom_list[choose].char_name();
+	patch_applied   = ZipHandler::appliedPatches(patch_list_game);
+}
+
+void draw_patch_list() {
+	std::vector<std::string> rows;
+	for (size_t i = 0; i < patch_applied.size(); i++)
+		rows.push_back(patch_display_name(patch_applied[i]));
+
+	char title[128];
+	snprintf(title, sizeof(title), ui_text(UI_PATCH_LIST_TITLE),
+		 patch_list_name.c_str());
+
+	draw_pick_list(title, rows, patch_list_index, ui_text(UI_PATCH_NONE),
+		       ui_text(UI_PROMPT_REMOVE));
+}
+
+ScreenState on_patch_list_event() {
+	ScreenState state = on_pick_event(patch_list_index,
+					  (int)patch_applied.size(),
+					  PATCH_REMOVE_CONFIRM, SETTING_MODE);
+	if (state != PATCH_REMOVE_CONFIRM) return state;
+
+	snprintf(patch_confirm_message, sizeof(patch_confirm_message),
+		 ui_text(UI_PATCH_REMOVE_ASK),
+		 patch_display_name(patch_applied[patch_list_index]).c_str(),
+		 patch_list_name.c_str());
+	return PATCH_REMOVE_CONFIRM;
+}
+
+ScreenState run_patch_remove() {
+	if (patch_list_index < 0 || patch_list_index >= (int)patch_applied.size())
+		return PATCH_DONE;
+
+	const bool ok = ZipHandler::removePatch(patch_list_game,
+						patch_applied[patch_list_index]);
+	snprintf(patch_message, sizeof(patch_message), "%s",
+		 ui_text(ok ? UI_PATCH_REMOVED : UI_PATCH_REMOVE_FAIL));
+
+	patch_applied = ZipHandler::appliedPatches(patch_list_game);
+	if (patch_list_index >= (int)patch_applied.size())
+		patch_list_index = (int)patch_applied.size() - 1;
+	if (patch_list_index < 0) patch_list_index = 0;
+
+	return PATCH_REMOVE_DONE;
+}
+
 void draw_screen(ScreenState state, int curr, int choose, int slot) {
 
 	/* Opening a layer restarts it; moving between two layers does not, so
@@ -1699,7 +1975,34 @@ void draw_screen(ScreenState state, int curr, int choose, int slot) {
 		draw_message(install_confirm_message, choose, FONT_SIZE);
 		break;
 	case INSTALL_RUN:
+	case PATCH_RUN:
 		draw_install_progress(install_progress);
+		break;
+	case PATCH_PICK:
+		draw_patch_pick();
+		break;
+	case PATCH_CONFIRM:
+		draw_message(patch_confirm_message, choose, FONT_SIZE);
+		break;
+	case PATCH_DONE:
+		draw_alert(patch_message, FONT_SIZE);
+		break;
+	case PATCH_LIST:
+		/* Over the settings screen it was opened from, so it is clear
+		 * whose patches these are. */
+		draw_slots(choose, -1);
+		draw_patch_list();
+		break;
+	case PATCH_REMOVE_CONFIRM:
+		draw_slots(choose, -1);
+		draw_message(patch_confirm_message, choose, FONT_SIZE);
+		break;
+	case PATCH_REMOVE_RUN:
+		draw_slots(choose, -1);
+		break;
+	case PATCH_REMOVE_DONE:
+		draw_slots(choose, -1);
+		draw_alert(patch_message, FONT_SIZE);
 		break;
 	case INSTALL_DONE:
 	case INSTALL_FAIL:
@@ -2459,6 +2762,9 @@ ScreenState slot_touch(int &slot) {
 			else if (slot == SITTINGS_BACKUP || slot == SITTINGS_RESTORE) {
 				return SAVES_DONE;
 			}
+			else if (slot == SITTINGS_PATCHES) {
+				return PATCH_LIST;
+			}
 			return UNKNOWN;
 		}
 	}
@@ -2499,6 +2805,9 @@ ScreenState on_slot_event_with_dpad(int &slot) {
 		}
 		else if (slot == SITTINGS_BACKUP || slot == SITTINGS_RESTORE) {
 			return SAVES_DONE;
+		}
+		else if (slot == SITTINGS_PATCHES) {
+			return PATCH_LIST;
 		}
 		return UNKNOWN;
 	}
@@ -3097,14 +3406,54 @@ int mainloop() {
 				if (new_state == PRINT_APPINFO &&
 					choose >= 0 && choose < (int)rom_list.size() &&
 					rom_list[choose].is_zip) {
-					prepare_install_confirm(choose);
-					new_state = INSTALL_CONFIRM;
+					/* An archive with no script in it is a patch,
+					 * not a game: ask which game it goes on
+					 * rather than failing at the end of an
+					 * extraction. */
+					if (ZipHandler::archiveKind(rom_list[choose].path)
+						== PATCH_KIND_PATCH &&
+					    prepare_patch_pick(rom_list[choose].path)) {
+						new_state = PATCH_PICK;
+					}
+					else {
+						prepare_install_confirm(choose);
+						new_state = INSTALL_CONFIRM;
+					}
 				}
 				//printf("%d \n", curr);
 				break;
 			case INSTALL_CONFIRM:
 				new_state = on_message_event(choose, NULL, INSTALL_RUN,
 					MAIN_SCREEN, MAIN_SCREEN, 1);
+				break;
+			case PATCH_PICK:
+				new_state = on_patch_pick_event();
+				break;
+			case PATCH_CONFIRM:
+				new_state = on_message_event(choose, NULL, PATCH_RUN,
+					MAIN_SCREEN, PATCH_PICK, 1);
+				break;
+			case PATCH_RUN:
+				new_state = run_patch();
+				break;
+			case PATCH_DONE:
+				on_alert_event(MAIN_SCREEN);
+				/* A patch changes what is in a game folder, so the
+				 * list is read again rather than trusted. */
+				return 1;
+			case PATCH_LIST:
+				new_state = on_patch_list_event();
+				break;
+			case PATCH_REMOVE_CONFIRM:
+				new_state = on_message_event(choose, NULL, PATCH_REMOVE_RUN,
+					PATCH_LIST, PATCH_LIST, 1);
+				break;
+			case PATCH_REMOVE_RUN:
+				new_state = run_patch_remove();
+				break;
+			case PATCH_REMOVE_DONE:
+				on_alert_event(PATCH_LIST);
+				new_state = PATCH_LIST;
 				break;
 			case INSTALL_RUN:
 				new_state = run_install(choose);
@@ -3177,6 +3526,7 @@ int mainloop() {
 			case SETTING_MODE:
 				if (!need_save) need_save = 1;
 				new_state = on_slot_event(slot);
+				if (new_state == PATCH_LIST) prepare_patch_list(choose);
 				if (new_state == SAVES_DONE) {
 					if (slot == SITTINGS_BACKUP) run_backup_saves(choose);
 					else                         run_restore_saves(choose);

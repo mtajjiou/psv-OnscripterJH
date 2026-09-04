@@ -216,6 +216,21 @@ enum UIStringId {
     UI_PROMPT_FORMATS,
     UI_PROMPT_CONTROLS,
 
+    /* Patches: an archive with no game in it, applied over a game that is
+     * already installed, and taken off again. */
+    UI_SET_PATCHES,
+    UI_PATCH_TITLE,
+    UI_PATCH_NO_GAMES,
+    UI_PATCH_ASK,
+    UI_PATCH_OK,
+    UI_PATCH_EXISTS,
+    UI_PATCH_LIST_TITLE,
+    UI_PATCH_NONE,
+    UI_PATCH_REMOVE_ASK,
+    UI_PATCH_REMOVED,
+    UI_PATCH_REMOVE_FAIL,
+    UI_PROMPT_REMOVE,
+
     /* Long text */
     UI_ABOUT,
 

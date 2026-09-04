@@ -104,7 +104,7 @@
 
 #define SLOT_BUTTONS_TOP            (SLOT_HEADER_TOP + SLOT_HEADER_HEIGHT)
 #define SLOT_BUTTONS_HEIGHT         (SLOT_PANEL_HEIGHT - SLOT_HEADER_HEIGHT - (SLOT_PANEL_PADDING * 2))
-#define SLOT_BUTTON                 14
+#define SLOT_BUTTON                 15
 #define SLOT_BUTTON_MARGIN          5
 #define SLOT_BUTTON_WIDTH           (int)(SLOT_PANEL_WIDTH - (SLOT_BUTTON_MARGIN * 2))
 #define SLOT_BUTTON_HEIGHT          (int)((SLOT_BUTTONS_HEIGHT - (SLOT_BUTTON_MARGIN * (SLOT_BUTTON + 1))) / SLOT_BUTTON)
@@ -172,8 +172,10 @@
 #define SITTINGS_BACKUP 10
 #define SITTINGS_RESTORE 11
 
-#define SITTINGS_DEFAULT 12
-#define SITTINGS_RETURN 13
+/* The patches applied over this game, and the way to take one off. */
+#define SITTINGS_PATCHES 12
+#define SITTINGS_DEFAULT 13
+#define SITTINGS_RETURN 14
 
 #define SCE_CTRL_HOLD 0x80000000
 #define FONT_SIZE 24
@@ -215,6 +217,17 @@ typedef enum {
 	INSTALL_RUN,
 	INSTALL_DONE,
 	INSTALL_FAIL,
+	/* Applying an archive that is not a game over one that is: which
+	 * game, confirm, run, report -- then the list of what is applied to a
+	 * game, and taking one off again. */
+	PATCH_PICK,
+	PATCH_CONFIRM,
+	PATCH_RUN,
+	PATCH_DONE,
+	PATCH_LIST,
+	PATCH_REMOVE_CONFIRM,
+	PATCH_REMOVE_RUN,
+	PATCH_REMOVE_DONE,
 	PRINT_APPINFO,
 	START_MODE,
 	SETTING_MODE,

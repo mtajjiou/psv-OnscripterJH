@@ -47,6 +47,27 @@ def build(out_dir):
         z.writestr("data/arc.nsa", "z" * 50)
 
 
+    # A translation patch: files meant to land on top of a game that is
+    # already installed, wrapped in a folder named after itself, and with
+    # no script of its own.
+    with zipfile.ZipFile(os.path.join(out_dir, "patch.zip"), "w",
+                         zipfile.ZIP_DEFLATED) as z:
+        z.writestr("MyGame English Patch v2/", "")
+        z.writestr("MyGame English Patch v2/arc.nsa", "translated arc\n")
+        z.writestr("MyGame English Patch v2/readme.txt", "apply over MyGame\n")
+        z.writestr("MyGame English Patch v2/extra/font.ttf", "TTF" * 20)
+
+    # A patch that is not wrapped: its files sit at the archive root.
+    with zipfile.ZipFile(os.path.join(out_dir, "patch_flat.zip"), "w",
+                         zipfile.ZIP_DEFLATED) as z:
+        z.writestr("arc.nsa", "flat patch arc\n")
+        z.writestr("bgm/01.ogg", "OGG" * 10)
+
+    # An archive with nothing in it at all.
+    with zipfile.ZipFile(os.path.join(out_dir, "empty.zip"), "w",
+                         zipfile.ZIP_DEFLATED) as z:
+        pass
+
     # --- the awkward archives -----------------------------------------
     #
     # Everything below is something a real download has been seen to

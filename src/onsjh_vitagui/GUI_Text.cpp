@@ -250,6 +250,41 @@ const char *g_strings[UI_STRING_COUNT][UI_LANG_COUNT] = {
     /* UI_PROMPT_FORMATS     */ { "formats",                "\xE6\xA0\xBC\xE5\xBC\x8F" },
     /* UI_PROMPT_CONTROLS    */ { "controls",               "\xE6\x93\x8D\xE4\xBD\x9C" },
 
+    /* UI_SET_PATCHES        */ { "Patches",                "补丁" },
+    /* UI_PATCH_TITLE        */ { "Apply this patch to which game?",
+                                  "将此补丁应用到哪个游戏?" },
+    /* UI_PATCH_NO_GAMES     */ { "No installed game to apply it to.",
+                                  "没有可应用的已安装游戏。" },
+    /* UI_PATCH_ASK          */ { "Apply this patch?\n\n"
+                                  "  %s\n"
+                                  "  onto %s\n\n"
+                                  "  writes %s; the files it replaces are kept",
+                                  "应用此补丁?\n\n"
+                                  "  %s\n"
+                                  "  到 %s\n\n"
+                                  "  写入 %s;被替换的文件会保留" },
+    /* UI_PATCH_OK           */ { "Patch applied to\n%s\n\n"
+                                  "Remove it again from the game's settings.",
+                                  "补丁已应用到\n%s\n\n可在游戏设置中移除。" },
+    /* UI_PATCH_EXISTS       */ { "This patch is already applied to that game.",
+                                  "该游戏已应用此补丁。" },
+    /* UI_PATCH_LIST_TITLE   */ { "Patches applied to %s", "%s 已应用的补丁" },
+    /* UI_PATCH_NONE         */ { "No patches applied to this game.",
+                                  "此游戏没有应用补丁。" },
+    /* UI_PATCH_REMOVE_ASK   */ { "Remove this patch?\n\n"
+                                  "  %s\n"
+                                  "  from %s\n\n"
+                                  "  the files it replaced come back",
+                                  "移除此补丁?\n\n"
+                                  "  %s\n"
+                                  "  自 %s\n\n"
+                                  "  被替换的文件将恢复" },
+    /* UI_PATCH_REMOVED      */ { "Patch removed.", "补丁已移除。" },
+    /* UI_PATCH_REMOVE_FAIL  */ { "That patch's record could not be read,\n"
+                                  "so nothing was changed.",
+                                  "无法读取该补丁的记录,未做任何更改。" },
+    /* UI_PROMPT_REMOVE      */ { "remove",                 "移除" },
+
     /* UI_ABOUT */
     { "About ONS Easy Setup\n\n"
       "ONScripter        <Ogapee>\n"
@@ -292,6 +327,25 @@ struct JapaneseString {
 };
 
 const JapaneseString g_japanese[] = {
+    { UI_SET_PATCHES,              "パッチ" },
+    { UI_PATCH_TITLE,              "このパッチをどのゲームに適用しますか?" },
+    { UI_PATCH_NO_GAMES,           "適用できるゲームがインストールされていません。" },
+    { UI_PATCH_ASK,                "このパッチを適用しますか?\n\n"
+                                   "  %s\n"
+                                   "  適用先 %s\n\n"
+                                   "  %s を書き込みます。置き換えるファイルは保存されます" },
+    { UI_PATCH_OK,                 "パッチを適用しました\n%s\n\n"
+                                   "ゲームの設定から取り外せます。" },
+    { UI_PATCH_EXISTS,             "このパッチはすでに適用されています。" },
+    { UI_PATCH_LIST_TITLE,         "%s に適用中のパッチ" },
+    { UI_PATCH_NONE,               "このゲームにパッチは適用されていません。" },
+    { UI_PATCH_REMOVE_ASK,         "このパッチを取り外しますか?\n\n"
+                                   "  %s\n"
+                                   "  対象 %s\n\n"
+                                   "  置き換えられたファイルが戻ります" },
+    { UI_PATCH_REMOVED,            "パッチを取り外しました。" },
+    { UI_PATCH_REMOVE_FAIL,        "パッチの記録を読み取れないため、何も変更していません。" },
+    { UI_PROMPT_REMOVE,            "取り外す" },
     { UI_SET_FULLSCREEN,           "強制フルスクリーン" },
     { UI_SET_FONTCACHE,            "フォントをキャッシュ" },
     { UI_SET_TEXTSHADOW,           "文字の影" },

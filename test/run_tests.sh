@@ -31,6 +31,15 @@ ${CXX:-c++} -std=c++11 -Wall -Wextra -g \
 
 "$work/test_install_flow" "$work"
 
+# --- patch (overlay) decisions --------------------------------------------
+${CC:-cc} -std=c99 -Wall -Wextra -g \
+  -I"$root/src/common" \
+  "$root/test/test_patchplan.c" "$root/src/common/patchplan.c" \
+  "$root/src/common/zipreader.c" \
+  -lz -o "$work/test_patchplan"
+
+"$work/test_patchplan" "$work"
+
 # --- script encoding detection --------------------------------------------
 ${CXX:-c++} -std=c++11 -Wall -Wextra -g \
   -I"$root/src/onsjh" \

@@ -92,6 +92,33 @@ public:
     /* How many bytes of this archive are already on the card, or 0. */
     static uint64_t resumableBytes(const std::string &zip_path);
 
+    /* --- patches (mods) applied over a game that is already installed ---
+     *
+     * An archive with no script in it is not a game; it is almost always a
+     * translation patch, a voice pack or a mod, whose files are meant to
+     * land on top of a game that is already there.  Installing one is the
+     * same extraction with two differences: it writes into an existing
+     * folder, and it keeps a record of what it did so it can be undone. */
+
+    /* Is this archive a game, a patch, or empty?  See patch_kind. */
+    static int archiveKind(const std::string &zip_path);
+
+    /* Apply zip_path over the installed game at game_folder, keeping the
+     * originals of the files it replaces.  ZIP_INSTALL_EXISTS means this
+     * patch is already applied to that game. */
+    static ZipInstallStatus installPatch(const std::string &zip_path,
+                                         const std::string &game_folder,
+                                         ZipProgressCallback callback = NULL,
+                                         void *user = NULL);
+
+    /* Patches currently applied to a game, oldest first. */
+    static std::vector<std::string> appliedPatches(const std::string &game_folder);
+
+    /* Take a patch off again: the files it replaced come back, the files it
+     * added go.  Returns false if the record cannot be read. */
+    static bool removePatch(const std::string &game_folder,
+                            const std::string &patch_name);
+
     /* Message to show the user for a failed install. */
     static const char *statusMessage(ZipInstallStatus status);
 

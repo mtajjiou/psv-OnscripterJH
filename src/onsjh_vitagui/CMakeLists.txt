@@ -46,6 +46,7 @@ add_executable(${PROJECT_NAME}
   vitaPackage.cpp
   ./../common/filesystem.cpp
   ./../common/zipreader.c
+  ./../common/patchplan.c
   ./../common/manifest.c
   ./../common/formats.c
   ./../common/logfile.c

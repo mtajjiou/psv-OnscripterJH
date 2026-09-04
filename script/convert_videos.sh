@@ -39,7 +39,10 @@ command -v ffmpeg >/dev/null 2>&1 || {
 
 # The console's screen. Anything larger is wasted pixels and battery; the
 # scale keeps the aspect ratio and never enlarges a smaller video.
-SCALE="scale='min(960,iw)':'min(544,ih)':force_original_aspect_ratio=decrease"
+# force_divisible_by=2 because H.264 with yuv420p cannot encode an odd
+# width or height, and decreasing to fit the screen lands on one often
+# enough to matter -- the encode then fails on a file that was fine.
+SCALE="scale='min(960,iw)':'min(544,ih)':force_original_aspect_ratio=decrease:force_divisible_by=2"
 
 converted=0
 skipped=0

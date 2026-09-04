@@ -150,6 +150,12 @@ for the short clips a visual novel ships, *convert* will not open at all.
 The list comes from `src/common/formats.c`, which is also what the launcher
 draws; change it there and both follow.
 
+## Documentation
+
+- [doc/FAQ.md](doc/FAQ.md) — what goes wrong, what it looks like, and what to do
+- [doc/VIDEO.md](doc/VIDEO.md) — converting videos, and the ffmpeg flags that matter here
+- [doc/COMPATIBILITY.md](doc/COMPATIBILITY.md) — games tested, and how to add one
+
 ## Per-game files
 
 Two optional files can sit in a game's folder, and neither has to be there.
@@ -249,9 +255,9 @@ harmless.
 ### Documentation & Help
 - [x] **In-App Help** — Press SELECT for quick tips
 - [x] **Setup Wizard** — First-run configuration
-- [ ] **Game Compatibility List** — Integrated or web-linked
-- [ ] **FAQ Section** — Common issues and solutions
-- [ ] **Video Conversion Guide** — Built-in ffmpeg instructions
+- [x] **Game Compatibility List** — Integrated or web-linked
+- [x] **FAQ Section** — Common issues and solutions
+- [x] **Video Conversion Guide** — Built-in ffmpeg instructions
 
 ### Testing & QA
 - [x] **Unit Tests** — ZIP extraction, path parsing, config reading

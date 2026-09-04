@@ -186,19 +186,19 @@ harmless.
 ### Launcher UI/UX
 - [x] **Game List Display** — Shows both extracted games and pending ZIPs
 - [ ] **Game Icons** — Auto-loads `icon.png` from game folder/ZIP
-- [ ] **Game Info Panel** — Displays game name, size, last played date
-- [ ] **ZIP Info Tooltip** — Shows ZIP size and estimated extract time
+- [x] **Game Info Panel** — Displays game name, size, last played date
+- [x] **ZIP Info Tooltip** — Shows ZIP size and estimated extract time
 - [ ] **Search/Filter** — Quick find games by name
 - [ ] **Sort Options** — By name, date, size
 - [x] **Controller Navigation** — D-pad to navigate, X to select, O to cancel
-- [ ] **Touch Support** — Tap to select, long-press for options
+- [x] **Touch Support** — Tap to select, long-press for options
 
 ### ZIP Extraction System
 - [x] **ZIP Handler Library** — Wrapper for PSVita's archive extraction
 - [x] **Smart Path Detection** — Finds game root in nested archives
 - [x] **Progress Indicator** — Shows extraction progress (%)
 - [x] **Space Check** — Warns if insufficient storage before extracting
-- [ ] **Resume Extraction** — Can resume interrupted extractions
+- [x] **Resume Extraction** — Can resume interrupted extractions
 - [x] **Auto-Cleanup** — Removes failed partial extractions
 - [ ] **Symlink Support** — Fallback for copy-on-write if extraction fails
 
@@ -206,13 +206,13 @@ harmless.
 - [x] **Script Finder** — Searches for `0.txt`, `00.txt`, `nscript.dat`, `nscr_sec.dat`, `nscript.___`, `onscript.nt2`, `onscript.nt3`
 - [x] **Nested Structure Handler** — Finds game in subdirectories
 - [x] **Config Parser** — Reads `ons_args`, `caption.txt`, config files
-- [ ] **Game Metadata Cache** — Stores game info in `game_manifest.json`
+- [x] **Game Metadata Cache** — Stores game info in `game_manifest.json`
 - [x] **Auto-Config Generator** — Works out per-game arguments at launch
 
 ### Video & Media Handling
 - [ ] **Video Format Detector** — Checks for incompatible video formats
 - [ ] **Graceful Degradation** — Skips missing/broken videos instead of crashing
-- [ ] **Video Conversion Helper** — Bundles `ffmpeg` instructions or helper script
+- [x] **Video Conversion Helper** — Bundles `ffmpeg` instructions or helper script
 - [ ] **Audio-Only Fallback** — Extracts audio if video fails
 - [x] **Format Support List** — Shows which formats are playable
 

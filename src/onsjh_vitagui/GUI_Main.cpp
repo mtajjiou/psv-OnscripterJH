@@ -264,8 +264,16 @@ void draw_list_row(int curr, int row) {
 		th_fit(rom_list[curr].char_path(), TH_FONT_S, text_width));
 
 	if (rom_list[curr].is_zip) {
-		th_text_right(x + w - TH_PAD, y + (h / 2) + 2, TH_ACCENT, TH_FONT_S,
-			".zip");
+		/* How big it is, before you pick it: a row that only says ".zip"
+		 * makes you open the panel to find out whether it will fit. */
+		const int right = x + w - TH_PAD;
+		th_text_right(right, y + (h / 2) + 2, TH_ACCENT, TH_FONT_S, ".zip");
+
+		const int tag_w = vita2d_font_text_width(font, TH_FONT_S, ".zip");
+		char size_str[16];
+		getSizeString(size_str, rom_list[curr].size);
+		th_text_right(right - tag_w - 10, y + (h / 2) + 2, TH_TEXT_FAINT,
+			      TH_FONT_S, size_str);
 	}
 	else if (rom_list[curr].is_partial) {
 		th_text_right(x + w - TH_PAD, y + (h / 2) + 2, TH_DANGER, TH_FONT_S,

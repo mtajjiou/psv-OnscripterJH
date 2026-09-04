@@ -10,7 +10,8 @@ asks which installed game it belongs to. Or open a game and press **Mods**,
 which lists what is in `ux0:data/game_mods/` against that game and checks
 whether the one you pick belongs there before writing anything. Either way
 the original of every replaced file is kept under `.mods/` in the game
-folder, and **Patches** on the game's settings screen takes one back off.
+folder, and either screen takes one back off again: **Patches** on the
+game's settings screen, or square on an applied row in the **Mods** list.
 
 Turn on **Write a debug log** first — the launcher writes what it did to
 `ux0:data/onsemu/`, and the log viewer is in the settings.
@@ -26,7 +27,9 @@ Turn on **Write a debug log** first — the launcher writes what it did to
    possible from that warning.
 4. Apply it, start the game, see the patch.
 5. Game settings → **Patches** → remove it; start the game, see the
-   original back.
+   original back. The same removal from the **Mods** list: square on the
+   row marked *applied* should ask the same question and, once done, drop
+   the mark from the row.
 6. Apply the same patch twice — the second time should say it is already
    applied rather than backing up the patch's own files over the game's.
    A mod already on the game is marked *applied* in the Mods list.

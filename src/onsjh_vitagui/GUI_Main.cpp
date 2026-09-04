@@ -2004,6 +2004,8 @@ ScreenState on_patch_list_event() {
 					  PATCH_REMOVE_CONFIRM, SETTING_MODE);
 	if (state != PATCH_REMOVE_CONFIRM) return state;
 
+	mod_from_panel = false;
+
 	snprintf(patch_confirm_message, sizeof(patch_confirm_message),
 		 ui_text(UI_PATCH_REMOVE_ASK),
 		 patch_display_name(patch_applied[patch_list_index]).c_str(),
@@ -2215,10 +2217,29 @@ ScreenState on_plugin_list_event() {
 static std::vector<ZipEntryInfo> mod_list;
 static int  mod_index = 0;
 
+/* The record each row would be filed under once applied, and whether the
+ * game already has it.  Kept beside the list rather than worked out while
+ * drawing: the row says so, and the square button acts on it. */
+static std::vector<std::string> mod_record;
+static std::vector<bool>        mod_applied;
+
+static void refresh_mod_applied() {
+	const std::vector<std::string> applied =
+		ZipHandler::appliedPatches(patch_target_path);
+
+	mod_applied.assign(mod_record.size(), false);
+	for (size_t i = 0; i < mod_record.size(); i++) {
+		if (mod_record[i].empty()) continue;
+		for (size_t k = 0; k < applied.size(); k++)
+			if (applied[k] == mod_record[i]) { mod_applied[i] = true; break; }
+	}
+}
 
 void prepare_mod_list(int choose) {
 	mod_index = 0;
 	mod_list.clear();
+	mod_record.clear();
+	mod_applied.clear();
 
 	if (choose < 0 || choose >= (int)rom_list.size()) return;
 	if (rom_list[choose].is_zip) return;
@@ -2226,6 +2247,14 @@ void prepare_mod_list(int choose) {
 	patch_target_path = rom_list[choose].path;
 	patch_target_name = rom_list[choose].char_name();
 	mod_list = ZipHandler::scanModFolder();
+
+	for (size_t i = 0; i < mod_list.size(); i++) {
+		char record[128];
+		mod_record.push_back(
+			patch_record_name(mod_list[i].path.c_str(), record, sizeof(record))
+				? record : "");
+	}
+	refresh_mod_applied();
 }
 
 void draw_mod_list() {
@@ -2235,17 +2264,10 @@ void draw_mod_list() {
 
 		/* A mod already on this game is worth saying so about: applying it
 		 * twice is refused, and the row is where that is explained. */
-		char record[128];
-		if (patch_record_name(mod_list[i].path.c_str(), record, sizeof(record))) {
-			const std::vector<std::string> applied =
-				ZipHandler::appliedPatches(patch_target_path);
-			for (size_t k = 0; k < applied.size(); k++) {
-				if (applied[k] != record) continue;
-				row += "  [";
-				row += ui_text(UI_MOD_APPLIED);
-				row += "]";
-				break;
-			}
+		if (i < mod_applied.size() && mod_applied[i]) {
+			row += "  [";
+			row += ui_text(UI_MOD_APPLIED);
+			row += "]";
 		}
 		rows.push_back(row);
 	}
@@ -2254,13 +2276,45 @@ void draw_mod_list() {
 	snprintf(title, sizeof(title), ui_text(UI_MOD_LIST_TITLE),
 		 patch_target_name.c_str());
 
+	/* Taking a mod off again is offered on the row it is on, and only
+	 * there: there is nothing to remove from the others. */
+	const bool removable = mod_index >= 0 &&
+		mod_index < (int)mod_applied.size() && mod_applied[mod_index];
+
 	draw_pick_list(title, rows, mod_index, ui_text(UI_MOD_NONE),
-		       ui_text(UI_PROMPT_YES));
+		       ui_text(UI_PROMPT_YES),
+		       removable ? ui_text(UI_PROMPT_REMOVE) : NULL);
 }
 
 ScreenState on_mod_list_event() {
 	ScreenState state = on_pick_event(mod_index, (int)mod_list.size(),
-					  PATCH_CONFIRM, PRINT_APPINFO);
+					  PATCH_CONFIRM, PRINT_APPINFO,
+					  PATCH_REMOVE_CONFIRM);
+
+	/* Square on a mod the game already has: the same removal the Patches
+	 * screen does, asked from the row that shows it is applied. */
+	if (state == PATCH_REMOVE_CONFIRM) {
+		if (mod_index < 0 || mod_index >= (int)mod_applied.size() ||
+		    !mod_applied[mod_index])
+			return UNKNOWN;
+
+		patch_list_game = patch_target_path;
+		patch_list_name = patch_target_name;
+		patch_applied   = ZipHandler::appliedPatches(patch_list_game);
+		patch_list_index = -1;
+		for (size_t i = 0; i < patch_applied.size(); i++)
+			if (patch_applied[i] == mod_record[mod_index])
+				patch_list_index = (int)i;
+		if (patch_list_index < 0) return UNKNOWN;
+
+		mod_from_panel = true;
+		snprintf(patch_confirm_message, sizeof(patch_confirm_message),
+			 ui_text(UI_PATCH_REMOVE_ASK),
+			 patch_display_name(patch_applied[patch_list_index]).c_str(),
+			 patch_list_name.c_str());
+		return PATCH_REMOVE_CONFIRM;
+	}
+
 	if (state != PATCH_CONFIRM) return state;
 
 	patch_zip_path = mod_list[mod_index].path;
@@ -2278,6 +2332,13 @@ ScreenState on_mod_list_event() {
 		 install_base_name(patch_zip_path).c_str(),
 		 patch_target_name.c_str(), matching, total);
 	return PATCH_CONFIRM;
+}
+
+/* Removal is asked for from two places, and the question is drawn over
+ * whichever of them asked it. */
+static void draw_remove_backdrop(int choose) {
+	if (mod_from_panel) draw_appinfo(MOD_LIST, choose);
+	else                draw_slots(choose, -1);
 }
 
 void draw_screen(ScreenState state, int curr, int choose, int slot) {
@@ -2398,14 +2459,14 @@ void draw_screen(ScreenState state, int curr, int choose, int slot) {
 		draw_patch_list();
 		break;
 	case PATCH_REMOVE_CONFIRM:
-		draw_slots(choose, -1);
+		draw_remove_backdrop(choose);
 		draw_message(patch_confirm_message, choose, FONT_SIZE);
 		break;
 	case PATCH_REMOVE_RUN:
-		draw_slots(choose, -1);
+		draw_remove_backdrop(choose);
 		break;
 	case PATCH_REMOVE_DONE:
-		draw_slots(choose, -1);
+		draw_remove_backdrop(choose);
 		draw_alert(patch_message, FONT_SIZE);
 		break;
 	case INSTALL_DONE:
@@ -4001,14 +4062,18 @@ int mainloop() {
 				break;
 			case PATCH_REMOVE_CONFIRM:
 				new_state = on_message_event(choose, NULL, PATCH_REMOVE_RUN,
-					PATCH_LIST, PATCH_LIST, 1);
+					mod_from_panel ? MOD_LIST : PATCH_LIST,
+					mod_from_panel ? MOD_LIST : PATCH_LIST, 1);
 				break;
 			case PATCH_REMOVE_RUN:
 				new_state = run_patch_remove();
 				break;
 			case PATCH_REMOVE_DONE:
-				on_alert_event(PATCH_LIST);
-				new_state = PATCH_LIST;
+				on_alert_event(mod_from_panel ? MOD_LIST : PATCH_LIST);
+				/* The game has one mod fewer, so the rows that say which
+				 * are applied are worked out again. */
+				if (mod_from_panel) refresh_mod_applied();
+				new_state = mod_from_panel ? MOD_LIST : PATCH_LIST;
 				break;
 			case INSTALL_RUN:
 				new_state = run_install(choose);

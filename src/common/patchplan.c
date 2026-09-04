@@ -12,31 +12,31 @@
 
 #include "patchplan.h"
 
-int patch_archive_kind(const zip_reader *z) {
+int patch_archive_kind(const archive *a) {
     char root[ZIP_MAX_NAME];
     int i, files = 0;
 
-    for (i = 0; i < zip_count(z); i++)
-        if (!zip_entry_is_dir(z, i)) files++;
+    for (i = 0; i < archive_count(a); i++)
+        if (!archive_entry_is_dir(a, i)) files++;
 
     if (files == 0) return PATCH_KIND_EMPTY;
-    if (zip_find_game_root(z, root, sizeof(root))) return PATCH_KIND_GAME;
+    if (archive_find_game_root(a, root, sizeof(root))) return PATCH_KIND_GAME;
     return PATCH_KIND_PATCH;
 }
 
-int patch_overlay_root(const zip_reader *z, char *out, size_t n) {
+int patch_overlay_root(const archive *a, char *out, size_t n) {
     int i, files = 0;
 
     if (n == 0) return 0;
     out[0] = '\0';
 
-    for (i = 0; i < zip_count(z); i++)
-        if (!zip_entry_is_dir(z, i)) files++;
+    for (i = 0; i < archive_count(a); i++)
+        if (!archive_entry_is_dir(a, i)) files++;
     if (files == 0) return 0;
 
-    /* zip_common_root() leaves out empty when the entries do not share
+    /* archive_common_root() leaves out empty when the entries do not share
      * one, which is exactly the answer wanted here. */
-    zip_common_root(z, out, n);
+    archive_common_root(a, out, n);
     return 1;
 }
 

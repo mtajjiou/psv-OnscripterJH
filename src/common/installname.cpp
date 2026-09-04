@@ -9,17 +9,17 @@
 
 #include "installname.h"
 
+extern "C" {
+#include "archive.h"
+}
+
 #include <string.h>
 
 bool install_has_zip_suffix(const char *name) {
-    size_t len = name ? strlen(name) : 0;
-    if (len < 4) return false;
-
-    const char *ext = name + len - 4;
-    return ext[0] == '.' &&
-           (ext[1] == 'z' || ext[1] == 'Z') &&
-           (ext[2] == 'i' || ext[2] == 'I') &&
-           (ext[3] == 'p' || ext[3] == 'P');
+    /* One definition of "an archive the launcher can open", in archive.c,
+     * so the folder scan and the reader cannot disagree about what is
+     * worth opening. */
+    return archive_has_suffix(name) != 0;
 }
 
 std::string install_base_name(const std::string &path) {
@@ -61,7 +61,9 @@ std::string install_destination_name(const std::string &zip_path) {
     /* >= rather than >: a file called nothing but ".zip" has no name to
      * keep, and folding what is left gives the fallback rather than a
      * hidden folder called ".zip". */
-    if (name.size() >= 4 && install_has_zip_suffix(name.c_str()))
-        name.erase(name.size() - 4);
+    /* ".zip" is four characters and ".7z" is three; asking rather than
+     * assuming is what keeps a 7z from installing as "MyGam". */
+    const int suffix = archive_suffix_length(name.c_str());
+    if (suffix > 0) name.erase(name.size() - (size_t)suffix);
     return install_safe_folder_name(name);
 }

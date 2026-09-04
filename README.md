@@ -17,6 +17,7 @@ This is an enhanced fork of [YuriSizuku/psv-OnscripterJH](https://github.com/Yur
 - **Video playback for formats the hardware refuses** — `sceAvPlayer` decodes only H.264/AAC in an MP4, and anything else used to fail inside it with no message, so the scene silently did nothing. The engine now reads the file's own bytes to identify the container and, when the hardware will not take it, decodes it in software with libavcodec: MPEG-1/2 (`.mpg`), MPEG-4/DivX and MSMPEG4 (`.avi`), WMV/VC-1, Theora, VP8/9 and more. Audio is resampled and fed to the mixer; cross or start skips, as with a hardware video. A converted `<name>.mp4` beside the original is still preferred when present, since the hardware decoder is cheaper
 - **English, Chinese and Japanese interface** — the launcher's menus, settings, prompts, help and about screens were Chinese with a bracketed English gloss; every string now exists properly in all three languages (`src/onsjh_vitagui/GUI_Text.cpp`) and the **Language** row in the config menu cycles between them, each named in its own script. English is the default; set `language` to `en`, `zh` or `ja` under `[GUI]` in `ux0:data/onsemu/ONSConfig.ini`, or flip the setting. The Japanese strings are the author's own and have not been reviewed by a native speaker — corrections welcome
 - **Version you can actually read** — the app version is derived from the git commit count at build time (`01.21`, `01.22`, ...), never edited by hand, so every build differs from the one before. The launcher shows it with the commit hash in its title bar, and both binaries print `ONS Easy Setup <version> (<commit>, <date>)` at startup, so a log always says which build produced it
+- **.7z as well as .zip** — a mod is distributed as a `.7z` at least as often as a `.zip`, and an archive the launcher cannot open is a mod you have to unpack on a PC first. Both are now read the same way, everywhere: installing a game, applying a mod, the size shown before either. The kind is decided by the file's own first bytes rather than its name, so an archive renamed `.zip` still works. Reading `.7z` is Igor Pavlov's public-domain LZMA SDK, vendored in `src/common/lzma/` ([why and what](src/common/lzma/README.md)). One limit: **Install mode → keep compressed** applies to `.zip` only, since the engine mounts the archive the install leaves behind; a `.7z` is extracted whichever mode is set
 - **Patches and mods over an installed game** — a translation patch or voice pack is an archive with no script in it, and the installer used to refuse it twice over: no game inside, and a destination that already exists. There are two ways in now. Selecting one in the game list asks which installed game it belongs to, likeliest first. Or open a game and press **Mods**: everything in `ux0:data/game_mods/` is listed against *that* game, and picking one checks whether it belongs there before it writes anything — how much of what it would write the game already has, and whether the names match — warning first when the answer is "probably not". Either way the original of every replaced file is kept under `.mods/` in the game folder, and **Patches** on the game's settings screen lists what is applied and takes one back off
 - **Install without extracting** — **Install mode** in the settings cycles between *extract* and *keep compressed*. A compressed install writes out only what the engine opens as a file — `.nsa`/`.sar` archives, videos, fonts — keeps the archive as `game.zip` in the game folder, and reads everything else out of it while the game runs. A game whose art and audio are loose files roughly halves what it costs on the card; one that ships everything in an `arc.nsa` saves nothing, since that file goes to the card either way
 - **Send a game over Wi-Fi** — the settings screen listens on the console's own address and serves one page: what is installed, and a box to send a `.zip` to. It lands in `ux0:data/game_zips/`, ready to install, with no FTP client and no taking the card out. It runs only while that screen is open, and takes `.zip` files only
@@ -352,7 +353,10 @@ src/
 │   ├── PluginManager.cpp/.h    # Finds plugins, applies them per game
 │   └── vitaPackage.cpp         # Shortcut bubble installer
 └── common/
+    ├── archive.c/.h            # One archive, .zip or .7z, one interface
     ├── zipreader.c/.h          # Portable ZIP reader (stdio + zlib)
+    ├── sevenzip.c/.h           # .7z reader over the vendored LZMA SDK
+    ├── lzma/                   # The SDK itself (public domain, unmodified)
     ├── zipfs.c/.h              # Reads a game out of its .zip at run time
     ├── patchplan.c/.h          # Is this archive a patch, and for which game
     ├── httpd.c/.h              # The Wi-Fi upload page's request parsing
@@ -368,6 +372,7 @@ test/
 ├── test_install_flow.cpp       # The install decisions, end to end
 ├── test_patchplan.c            # Patch detection, matching and records
 ├── test_zipfs.c                # Reading files out of a mounted archive
+├── test_archive.c              # The same contents read as .zip and as .7z
 ├── test_httpd.c                # Request heads and split multipart uploads
 ├── test_ftpproto.c             # Replies, PASV, remote paths
 ├── test_plugins.c              # Manifests, matching, enabled lists
@@ -384,8 +389,11 @@ script/
 
 ## Dependencies
 
-No new dependencies. ZIP reading is implemented in `src/common/zipreader.c`
-on top of **zlib**, which the engine and launcher already link against.
+No new libraries to install. ZIP reading is implemented in
+`src/common/zipreader.c` on top of **zlib**, which the engine and launcher
+already link against; `.7z` reading uses the LZMA SDK vendored in
+`src/common/lzma/`, which is public-domain C with no dependencies of its
+own and is built as part of the launcher.
 
 ---
 

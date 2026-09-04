@@ -106,6 +106,11 @@ public:
                                               ZipProgressCallback callback = NULL,
                                               void *user = NULL);
 
+    /* Can this archive be installed compressed?  Only a .zip can: the
+     * engine mounts the archive it leaves behind, and that reader speaks
+     * zip.  A .7z is extracted whichever mode the setting is in. */
+    static bool canInstallCompressed(const std::string &zip_path);
+
     /* What a compressed install of this archive would take on the card,
      * against installedSize()'s answer for an ordinary one. */
     static uint64_t compressedInstallSize(const std::string &zip_path);

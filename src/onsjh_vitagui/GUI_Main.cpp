@@ -1604,8 +1604,12 @@ void prepare_install_confirm(int choose) {
 		return;
 	}
 	/* A compressed install writes far less, so the figure the prompt
-	 * shows has to be the one for the mode that is about to run. */
-	if (config.install_compressed)
+	 * shows has to be the one for the mode that is about to run -- and
+	 * that is not the mode the setting names when the archive cannot take
+	 * it. */
+	const bool compressed = config.install_compressed &&
+		ZipHandler::canInstallCompressed(zip_path);
+	if (compressed)
 		getSizeString(needed_str, ZipHandler::compressedInstallSize(zip_path));
 
 	snprintf(install_confirm_message, sizeof(install_confirm_message),
@@ -1615,8 +1619,8 @@ void prepare_install_confirm(int choose) {
 		"  %s: needs %s, %s free",
 		rom_list[choose].char_name(),
 		ZipHandler::destinationName(zip_path).c_str(),
-		config.install_compressed ? ui_text(UI_INSTALL_COMPRESSED)
-					  : ui_text(UI_INSTALL_EXTRACT),
+		compressed ? ui_text(UI_INSTALL_COMPRESSED)
+			   : ui_text(UI_INSTALL_EXTRACT),
 		needed_str, free_str);
 }
 
@@ -1635,7 +1639,13 @@ ScreenState run_install(int choose) {
 	 * this card and this console actually managed. */
 	const uint64_t started_us = sceKernelGetProcessTimeWide();
 
-	install_status = config.install_compressed
+	/* A .7z cannot be left compressed: the engine mounts what the install
+	 * leaves behind, and that reader speaks zip.  Such an archive is
+	 * extracted whichever mode the setting is in. */
+	const bool compressed = config.install_compressed &&
+		ZipHandler::canInstallCompressed(rom_list[choose].path);
+
+	install_status = compressed
 		? ZipHandler::installCompressed(rom_list[choose].path, installed_path,
 						install_progress_callback, NULL)
 		: ZipHandler::install(rom_list[choose].path, installed_path,
@@ -1650,7 +1660,7 @@ ScreenState run_install(int choose) {
 			(uint32_t)((sceKernelGetProcessTimeWide() - started_us) / 1000));
 
 	if (install_status == ZIP_INSTALL_OK) {
-		if (config.install_compressed) {
+		if (compressed) {
 			/* Worth saying in numbers: the whole reason to choose this
 			 * mode is what it does not write, and the archive has
 			 * moved, so "it was kept in game_zips" would be wrong. */

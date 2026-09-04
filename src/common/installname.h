@@ -21,8 +21,9 @@
 
 #include <string>
 
-/* Case-insensitive ".zip" test.  Spelled out rather than using strcasecmp,
- * which the vitasdk toolchain does not declare via <string.h>. */
+/* Case-insensitive test for a suffix the launcher can open: ".zip" or
+ * ".7z".  Spelled out rather than using strcasecmp, which the vitasdk
+ * toolchain does not declare via <string.h>. */
 bool install_has_zip_suffix(const char *name);
 
 /* The last component of a path, with either kind of separator. */

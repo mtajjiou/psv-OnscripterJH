@@ -14,6 +14,31 @@ trap 'rm -rf "$work"' EXIT
 
 python3 "$root/test/make_fixtures.py" "$work"
 
+# --- the archive readers, shared by the tests that need them ---------------
+#
+# The vendored LZMA SDK is third-party C compiled with warnings off: it is
+# not this project's code to tidy, and its warnings would bury ours.
+mkdir -p "$work/lzma"
+for f in "$root"/src/common/lzma/*.c; do
+  ${CC:-cc} -c -O2 -w -I"$root/src/common/lzma" "$f" -o "$work/lzma/$(basename "$f" .c).o"
+done
+${CC:-cc} -c -std=c99 -Wall -Wextra -g -I"$root/src/common" -I"$root/src/common/lzma" \
+  "$root/src/common/sevenzip.c" -o "$work/sevenzip.o"
+${CC:-cc} -c -std=c99 -Wall -Wextra -g -I"$root/src/common" -I"$root/src/common/lzma" \
+  "$root/src/common/archive.c" -o "$work/archive.o"
+${CC:-cc} -c -std=c99 -Wall -Wextra -g -I"$root/src/common" \
+  "$root/src/common/zipreader.c" -o "$work/zipreader.o"
+ar rcs "$work/libarchive.a" "$work/archive.o" "$work/sevenzip.o" \
+  "$work/zipreader.o" "$work"/lzma/*.o
+
+# --- either kind of archive, through one reader ----------------------------
+${CC:-cc} -std=c99 -Wall -Wextra -g \
+  -I"$root/src/common" \
+  "$root/test/test_archive.c" "$work/libarchive.a" \
+  -lz -o "$work/test_archive"
+
+"$work/test_archive" "$work"
+
 # --- zip reader -----------------------------------------------------------
 ${CC:-cc} -std=c99 -Wall -Wextra -g \
   -I"$root/src/common" \
@@ -25,8 +50,8 @@ ${CC:-cc} -std=c99 -Wall -Wextra -g \
 # --- the install decision chain, end to end -------------------------------
 ${CXX:-c++} -std=c++11 -Wall -Wextra -g \
   -I"$root/src/common" \
-  "$root/test/test_install_flow.cpp" "$root/src/common/zipreader.c" \
-  "$root/src/common/installname.cpp" \
+  "$root/test/test_install_flow.cpp" "$root/src/common/installname.cpp" \
+  "$work/libarchive.a" \
   -lz -o "$work/test_install_flow"
 
 "$work/test_install_flow" "$work"
@@ -77,7 +102,7 @@ ${CC:-cc} -std=c99 -Wall -Wextra -g \
 ${CC:-cc} -std=c99 -Wall -Wextra -g \
   -I"$root/src/common" \
   "$root/test/test_patchplan.c" "$root/src/common/patchplan.c" \
-  "$root/src/common/zipreader.c" \
+  "$work/libarchive.a" \
   -lz -o "$work/test_patchplan"
 
 "$work/test_patchplan" "$work"

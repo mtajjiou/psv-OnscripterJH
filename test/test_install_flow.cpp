@@ -21,7 +21,7 @@
 #include <string>
 
 extern "C" {
-#include "zipreader.h"
+#include "archive.h"
 }
 #include "installname.h"
 
@@ -48,7 +48,7 @@ static void check_str(const std::string &got, const std::string &want,
 
 /* What the installer would write, without writing it: every entry's name
  * sanitised, relative to the game root it found. */
-static bool plan_install(zip_reader *z, const std::string &root,
+static bool plan_install(archive *z, const std::string &root,
                          std::string *first_bad, int *files, uint64_t *bytes) {
     char clean[ZIP_MAX_NAME];
     bool ok = true;
@@ -56,8 +56,8 @@ static bool plan_install(zip_reader *z, const std::string &root,
     *files = 0;
     *bytes = 0;
 
-    for (int i = 0; i < zip_count(z); i++) {
-        const char *name = zip_entry_name(z, i);
+    for (int i = 0; i < archive_count(z); i++) {
+        const char *name = archive_entry_name(z, i);
 
         if (!root.empty()) {
             if (strncmp(name, root.c_str(), root.size()) != 0) continue;
@@ -71,10 +71,10 @@ static bool plan_install(zip_reader *z, const std::string &root,
             ok = false;
             continue;
         }
-        if (zip_entry_is_dir(z, i)) continue;
+        if (archive_entry_is_dir(z, i)) continue;
 
         (*files)++;
-        *bytes += zip_entry_size(z, i);
+        *bytes += archive_entry_size(z, i);
     }
     return ok;
 }
@@ -100,7 +100,7 @@ static void install_flow(const char *dir, const char *file,
     printf("%s\n", file);
 
     /* 1. It opens. */
-    zip_reader *z = zip_open(path, &err);
+    archive *z = archive_open(path, &err);
     check(z != NULL, "the archive opens");
     if (!z) {
         printf("  (%s)\n", zip_error_string(err));
@@ -110,7 +110,7 @@ static void install_flow(const char *dir, const char *file,
     /* 2. There is a game in it, and the root is where the script lives --
      *    not the archive's outermost folder, which for a nested release is
      *    a wrapper nobody wants installed. */
-    check(zip_find_game_root(z, root_buf, sizeof(root_buf)) == 1,
+    check(archive_find_game_root(z, root_buf, sizeof(root_buf)) == 1,
           "a game is found in it");
     check_str(root_buf, want_root, "the game root is the folder with the script");
 
@@ -127,24 +127,24 @@ static void install_flow(const char *dir, const char *file,
     if (!first_bad.empty()) printf("  first refused: %s\n", first_bad.c_str());
     check(files > 0, "there is something to write");
     check(bytes > 0, "and it has a size to check free space against");
-    check(bytes <= zip_total_size(z),
+    check(bytes <= archive_total_size(z),
           "no more than the archive's own total");
 
     /* 6. The script comes out as it went in.  An install that writes the
      *    right names and the wrong bytes is the worst of the failures,
      *    because everything looks installed. */
     int idx = -1;
-    for (int i = 0; i < zip_count(z); i++)
-        if (strcmp(zip_entry_name(z, i), want_script) == 0) idx = i;
+    for (int i = 0; i < archive_count(z); i++)
+        if (strcmp(archive_entry_name(z, i), want_script) == 0) idx = i;
     check(idx >= 0, "the script is one of the entries");
     if (idx >= 0) {
         sink s;
-        check(zip_extract_entry(z, idx, sink_write, &s) == ZIP_OK,
+        check(archive_extract_entry(z, idx, sink_write, &s) == ZIP_OK,
               "the script extracts");
         check_str(s.data, want_content, "byte for byte");
     }
 
-    zip_close(z);
+    archive_close(z);
 }
 
 int main(int argc, char **argv) {

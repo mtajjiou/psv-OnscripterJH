@@ -68,6 +68,34 @@ def build(out_dir):
                          zipfile.ZIP_DEFLATED) as z:
         pass
 
+    # The same game, and the same patch, as .7z -- mods are distributed
+    # that way at least as often as in a zip, and the launcher has to reach
+    # the same conclusions about either.  Skipped when py7zr is not
+    # installed, which is what the tests check for before using them.
+    try:
+        import py7zr
+    except ImportError:
+        pass
+    else:
+        with py7zr.SevenZipFile(os.path.join(out_dir, "nested.7z"), "w") as z:
+            z.writestr("nested game script\n", "MyGame/nscript.dat")
+            z.writestr("My Game Title\n", "MyGame/caption.txt")
+            # Big and repetitive: spans several blocks of decoded output.
+            z.writestr("abcdefgh" * 40000, "MyGame/arc.nsa")
+            z.writestr("PNGDATA" * 10, "MyGame/icon.png")
+
+        with py7zr.SevenZipFile(os.path.join(out_dir, "patch.7z"), "w") as z:
+            z.writestr("translated arc\n", "MyGame English Patch v2/arc.nsa")
+            z.writestr("apply over MyGame\n",
+                       "MyGame English Patch v2/readme.txt")
+            z.writestr("TTF" * 20, "MyGame English Patch v2/extra/font.ttf")
+
+        # A name in the alphabet these games ship in, and a deep one.
+        with py7zr.SevenZipFile(os.path.join(out_dir, "names.7z"), "w") as z:
+            z.writestr("japanese folder\n", "\u6708\u59eb/nscript.dat")
+            z.writestr("PNG", "\u6708\u59eb/\u80cc\u666f.png")
+            z.writestr("deep", "\u6708\u59eb/a/b/c/deep.txt")
+
     # --- the awkward archives -----------------------------------------
     #
     # Everything below is something a real download has been seen to

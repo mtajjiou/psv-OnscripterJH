@@ -12,6 +12,7 @@
 #include <string.h>
 
 #include "patchplan.h"
+#include "archive.h"
 
 static int failures = 0;
 static int checks = 0;
@@ -32,13 +33,13 @@ static void check_str(const char *got, const char *want, const char *what) {
     }
 }
 
-static zip_reader *open_fixture(const char *dir, const char *name) {
+static archive *open_fixture(const char *dir, const char *name) {
     char path[512];
     int err = 0;
-    zip_reader *z;
+    archive *z;
 
     snprintf(path, sizeof(path), "%s/%s", dir, name);
-    z = zip_open(path, &err);
+    z = archive_open(path, &err);
     if (z == NULL) {
         printf("FAIL: cannot open fixture %s (%s)\n", name,
                zip_error_string(err));
@@ -48,14 +49,14 @@ static zip_reader *open_fixture(const char *dir, const char *name) {
 }
 
 static void test_kinds(const char *dir) {
-    zip_reader *z;
+    archive *z;
     char root[ZIP_MAX_NAME];
 
     z = open_fixture(dir, "nested.zip");
     if (z) {
         check(patch_archive_kind(z) == PATCH_KIND_GAME,
               "an archive with a script is a game, not a patch");
-        zip_close(z);
+        archive_close(z);
     }
 
     z = open_fixture(dir, "patch.zip");
@@ -66,7 +67,7 @@ static void test_kinds(const char *dir) {
               "a patch has an overlay root");
         check_str(root, "MyGame English Patch v2",
                   "the wrapping folder is stripped, not installed");
-        zip_close(z);
+        archive_close(z);
     }
 
     z = open_fixture(dir, "patch_flat.zip");
@@ -76,7 +77,7 @@ static void test_kinds(const char *dir) {
         check(patch_overlay_root(z, root, sizeof(root)) == 1,
               "an unwrapped patch has an overlay root");
         check_str(root, "", "an unwrapped patch overlays from the archive root");
-        zip_close(z);
+        archive_close(z);
     }
 
     z = open_fixture(dir, "empty.zip");
@@ -85,7 +86,7 @@ static void test_kinds(const char *dir) {
               "an archive with no files is neither a game nor a patch");
         check(patch_overlay_root(z, root, sizeof(root)) == 0,
               "an empty archive has nothing to overlay");
-        zip_close(z);
+        archive_close(z);
     }
 
     /* noscript.zip carries a readme and a data folder: no script, so a
@@ -96,7 +97,41 @@ static void test_kinds(const char *dir) {
               "a script-less archive of loose files is a patch");
         patch_overlay_root(z, root, sizeof(root));
         check_str(root, "", "entries with no shared folder overlay from the root");
-        zip_close(z);
+        archive_close(z);
+    }
+}
+
+/* The same questions of the same contents in the other container: a mod
+ * arrives as a .7z as often as a .zip, and every decision here has to come
+ * out the same.  Skipped when the fixtures are absent, which is when py7zr
+ * is not installed. */
+static void test_kinds_7z(const char *dir) {
+    char path[512];
+    char root[ZIP_MAX_NAME];
+    int err = 0;
+    archive *z;
+
+    snprintf(path, sizeof(path), "%s/patch.7z", dir);
+    z = archive_open(path, &err);
+    if (z == NULL) {
+        printf("SKIPPED the 7z checks: fixtures need py7zr\n");
+        return;
+    }
+
+    check(patch_archive_kind(z) == PATCH_KIND_PATCH,
+          "a 7z with no script in it is a patch, as a zip would be");
+    check(patch_overlay_root(z, root, sizeof(root)) == 1,
+          "a 7z patch has an overlay root");
+    check_str(root, "MyGame English Patch v2",
+              "and the wrapping folder is stripped from it too");
+    archive_close(z);
+
+    snprintf(path, sizeof(path), "%s/nested.7z", dir);
+    z = archive_open(path, &err);
+    if (z) {
+        check(patch_archive_kind(z) == PATCH_KIND_GAME,
+              "and a 7z with a script in it is a game");
+        archive_close(z);
     }
 }
 
@@ -195,6 +230,7 @@ int main(int argc, char **argv) {
     const char *dir = argc > 1 ? argv[1] : ".";
 
     test_kinds(dir);
+    test_kinds_7z(dir);
     test_matching();
     test_confidence();
     test_records();

@@ -25,7 +25,7 @@
 #define __PATCHPLAN_H__
 
 #include <stddef.h>
-#include "zipreader.h"
+#include "archive.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -48,7 +48,7 @@ enum patch_kind {
     PATCH_KIND_EMPTY        /* no files at all */
 };
 
-int patch_archive_kind(const zip_reader *z);
+int patch_archive_kind(const archive *a);
 
 /* Directory inside the archive whose contents overlay the game folder.
  *
@@ -58,7 +58,7 @@ int patch_archive_kind(const zip_reader *z);
  * overlay root is the archive root.  Copies the root (no trailing '/',
  * empty for the archive root) into out and returns 1, or returns 0 when
  * the archive has nothing in it. */
-int patch_overlay_root(const zip_reader *z, char *out, size_t n);
+int patch_overlay_root(const archive *a, char *out, size_t n);
 
 /* How well a patch's name matches an installed game's, 0 (unrelated) to
  * 100 (the same name).  Case, spaces, punctuation and the words patches

@@ -15,9 +15,10 @@ folder, and **Patches** on the game's settings screen takes one back off.
 Turn on **Write a debug log** first — the launcher writes what it did to
 `ux0:data/onsemu/`, and the log viewer is in the settings.
 
-1. Put a real translation patch `.zip` in `ux0:data/game_mods/`, open the
-   game it belongs to, and press **Mods**: it should be listed, and the
-   prompt should say how many of its files are already in the game.
+1. Put a real translation patch in `ux0:data/game_mods/` -- try a `.7z`,
+   since that is what most mods ship as -- open the game it belongs to, and
+   press **Mods**: it should be listed, and the prompt should say how many
+   of its files are already in the game.
 2. The same patch in `ux0:data/game_zips/`, selected from the game list:
    it should ask **which game**, with the right one first.
 3. A patch for a *different* game, from the **Mods** button: the prompt

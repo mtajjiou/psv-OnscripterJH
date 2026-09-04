@@ -21,7 +21,7 @@
 #include "filesystem.h"
 
 extern "C" {
-#include "zipreader.h"
+#include "archive.h"
 #include "patchplan.h"
 #include "zipfs.h"
 }
@@ -111,7 +111,10 @@ void ZipHandler::scanOneFolder(const char *folder,
         ZipEntryInfo info;
         info.path = std::string(folder) + "/" + dir.d_name;
         info.display_name = dir.d_name;
-        info.display_name.erase(info.display_name.size() - 4);  /* ".zip" */
+        /* ".zip" is four characters and ".7z" is three: asking is what
+         * keeps a mod from being listed with a letter of its name gone. */
+        info.display_name.erase(info.display_name.size() -
+                                (size_t)archive_suffix_length(dir.d_name));
         info.file_size = (uint64_t)dir.d_stat.st_size;
         zips.push_back(info);
     } while (res > 0);
@@ -145,10 +148,10 @@ std::string ZipHandler::destinationName(const std::string &zip_path) {
 
 uint64_t ZipHandler::installedSize(const std::string &zip_path) {
     int err = 0;
-    zip_reader *z = zip_open(zip_path.c_str(), &err);
+    archive *z = archive_open(zip_path.c_str(), &err);
     if (!z) return 0;
-    uint64_t total = zip_total_size(z);
-    zip_close(z);
+    uint64_t total = archive_total_size(z);
+    archive_close(z);
     return total;
 }
 
@@ -247,14 +250,14 @@ uint64_t ZipHandler::resumableBytes(const std::string &zip_path) {
     if (last_done < 0 || from_zip != zip_path) return 0;
 
     int err = 0;
-    zip_reader *z = zip_open(zip_path.c_str(), &err);
+    archive *z = archive_open(zip_path.c_str(), &err);
     if (!z) return 0;
 
     uint64_t done = 0;
-    for (int i = 0; i <= last_done && i < zip_count(z); i++)
-        if (!zip_entry_is_dir(z, i)) done += zip_entry_size(z, i);
+    for (int i = 0; i <= last_done && i < archive_count(z); i++)
+        if (!archive_entry_is_dir(z, i)) done += archive_entry_size(z, i);
 
-    zip_close(z);
+    archive_close(z);
     return done;
 }
 
@@ -263,12 +266,12 @@ ZipInstallStatus ZipHandler::install(const std::string &zip_path,
                                      ZipProgressCallback callback,
                                      void *user) {
     int err = 0;
-    zip_reader *z = zip_open(zip_path.c_str(), &err);
+    archive *z = archive_open(zip_path.c_str(), &err);
     if (!z) return ZIP_INSTALL_BAD_ARCHIVE;
 
     char root[ZIP_MAX_NAME];
-    if (!zip_find_game_root(z, root, sizeof(root))) {
-        zip_close(z);
+    if (!archive_find_game_root(z, root, sizeof(root))) {
+        archive_close(z);
         return ZIP_INSTALL_NO_SCRIPT;
     }
 
@@ -289,21 +292,21 @@ ZipInstallStatus ZipHandler::install(const std::string &zip_path,
         std::string from_zip;
         const int last_done = readJournal(dest, from_zip);
         if (last_done < 0 || from_zip != zip_path) {
-            zip_close(z);
+            archive_close(z);
             return ZIP_INSTALL_EXISTS;
         }
         resume_from = last_done + 1;
     }
 
-    uint64_t needed = zip_total_size(z);
+    uint64_t needed = archive_total_size(z);
     uint64_t available = freeSpace();
     if (available > 0 && needed + INSTALL_SPACE_MARGIN > available) {
-        zip_close(z);
+        archive_close(z);
         return ZIP_INSTALL_NO_SPACE;
     }
 
     if (!ensureDirectory(GAME_INSTALL_FOLDER) || !ensureDirectory(dest)) {
-        zip_close(z);
+        archive_close(z);
         return ZIP_INSTALL_WRITE_FAILED;
     }
 
@@ -313,18 +316,18 @@ ZipInstallStatus ZipHandler::install(const std::string &zip_path,
     progress.percent     = 0;
 
     ZipInstallStatus status = ZIP_INSTALL_OK;
-    const int count = zip_count(z);
+    const int count = archive_count(z);
 
     for (int i = 0; i < count && status == ZIP_INSTALL_OK; i++) {
         /* Already on the card: counted so the bar starts where the last
          * attempt stopped rather than at zero. */
         if (i < resume_from) {
-            if (!zip_entry_is_dir(z, i)) progress.bytes_done += zip_entry_size(z, i);
+            if (!archive_entry_is_dir(z, i)) progress.bytes_done += archive_entry_size(z, i);
             continue;
         }
 
         char clean[ZIP_MAX_NAME];
-        if (zip_sanitize_name(zip_entry_name(z, i), clean, sizeof(clean)) != ZIP_OK)
+        if (zip_sanitize_name(archive_entry_name(z, i), clean, sizeof(clean)) != ZIP_OK)
             continue;   /* an unsafe name is skipped, never written */
 
         std::string relative = clean;
@@ -334,7 +337,7 @@ ZipInstallStatus ZipHandler::install(const std::string &zip_path,
         }
         if (relative.empty()) continue;
 
-        if (zip_entry_is_dir(z, i)) {
+        if (archive_entry_is_dir(z, i)) {
             relative.erase(relative.size() - 1);  /* trailing '/' */
             if (!relative.empty() && !ensureDirectory(dest + "/" + relative))
                 status = ZIP_INSTALL_WRITE_FAILED;
@@ -364,7 +367,7 @@ ZipInstallStatus ZipHandler::install(const std::string &zip_path,
 
         progress.current_file = relative;
 
-        int rc = zip_extract_entry(z, i, writeChunk, &ctx);
+        int rc = archive_extract_entry(z, i, writeChunk, &ctx);
         sceIoClose(fd);
 
         if (rc != ZIP_OK) {
@@ -379,7 +382,7 @@ ZipInstallStatus ZipHandler::install(const std::string &zip_path,
         }
     }
 
-    zip_close(z);
+    archive_close(z);
 
     if (status != ZIP_INSTALL_OK) {
         /* What was written stays, with its journal, so the install can be
@@ -431,10 +434,10 @@ static std::string patchBackupFolder(const std::string &game_folder,
 
 int ZipHandler::archiveKind(const std::string &zip_path) {
     int err = 0;
-    zip_reader *z = zip_open(zip_path.c_str(), &err);
+    archive *z = archive_open(zip_path.c_str(), &err);
     if (!z) return -1;
     int kind = patch_archive_kind(z);
-    zip_close(z);
+    archive_close(z);
     return kind;
 }
 
@@ -490,14 +493,14 @@ ZipInstallStatus ZipHandler::installPatch(const std::string &zip_path,
         return ZIP_INSTALL_WRITE_FAILED;
 
     int err = 0;
-    zip_reader *z = zip_open(zip_path.c_str(), &err);
+    archive *z = archive_open(zip_path.c_str(), &err);
     if (!z) return ZIP_INSTALL_BAD_ARCHIVE;
 
     /* Nothing in it is not a patch; saying "installed" for an archive that
      * changed no file is how a bad download passes for a good one. */
     const int kind = patch_archive_kind(z);
     if (kind == PATCH_KIND_EMPTY) {
-        zip_close(z);
+        archive_close(z);
         return ZIP_INSTALL_BAD_ARCHIVE;
     }
 
@@ -506,13 +509,13 @@ ZipInstallStatus ZipHandler::installPatch(const std::string &zip_path,
      * not the wrapper around it. */
     char root[ZIP_MAX_NAME];
     if (kind == PATCH_KIND_GAME) {
-        if (!zip_find_game_root(z, root, sizeof(root))) {
-            zip_close(z);
+        if (!archive_find_game_root(z, root, sizeof(root))) {
+            archive_close(z);
             return ZIP_INSTALL_NO_SCRIPT;
         }
     }
     else if (!patch_overlay_root(z, root, sizeof(root))) {
-        zip_close(z);
+        archive_close(z);
         return ZIP_INSTALL_BAD_ARCHIVE;
     }
 
@@ -521,7 +524,7 @@ ZipInstallStatus ZipHandler::installPatch(const std::string &zip_path,
 
     char record_name[128];
     if (!patch_record_name(zip_path.c_str(), record_name, sizeof(record_name))) {
-        zip_close(z);
+        archive_close(z);
         return ZIP_INSTALL_WRITE_FAILED;
     }
 
@@ -531,21 +534,21 @@ ZipInstallStatus ZipHandler::installPatch(const std::string &zip_path,
     /* Applying the same patch twice would back up its own files over the
      * game's originals, and the game could never be got back. */
     if (checkFileExist(record.c_str())) {
-        zip_close(z);
+        archive_close(z);
         return ZIP_INSTALL_EXISTS;
     }
 
-    const uint64_t needed = zip_total_size(z);
+    const uint64_t needed = archive_total_size(z);
     const uint64_t available = freeSpace();
     /* Twice over: the files going on, and the originals coming off. */
     if (available > 0 && needed * 2 + INSTALL_SPACE_MARGIN > available) {
-        zip_close(z);
+        archive_close(z);
         return ZIP_INSTALL_NO_SPACE;
     }
 
     if (!ensureDirectory(patchFolder(game_folder)) ||
         !ensureDirectory(backups)) {
-        zip_close(z);
+        archive_close(z);
         return ZIP_INSTALL_WRITE_FAILED;
     }
 
@@ -555,11 +558,11 @@ ZipInstallStatus ZipHandler::installPatch(const std::string &zip_path,
     progress.percent     = 0;
 
     ZipInstallStatus status = ZIP_INSTALL_OK;
-    const int count = zip_count(z);
+    const int count = archive_count(z);
 
     for (int i = 0; i < count && status == ZIP_INSTALL_OK; i++) {
         char clean[ZIP_MAX_NAME];
-        if (zip_sanitize_name(zip_entry_name(z, i), clean, sizeof(clean)) != ZIP_OK)
+        if (zip_sanitize_name(archive_entry_name(z, i), clean, sizeof(clean)) != ZIP_OK)
             continue;
 
         std::string relative = clean;
@@ -569,7 +572,7 @@ ZipInstallStatus ZipHandler::installPatch(const std::string &zip_path,
         }
         if (relative.empty()) continue;
 
-        if (zip_entry_is_dir(z, i)) {
+        if (archive_entry_is_dir(z, i)) {
             relative.erase(relative.size() - 1);
             if (!relative.empty() &&
                 !ensureDirectory(game_folder + "/" + relative))
@@ -618,7 +621,7 @@ ZipInstallStatus ZipHandler::installPatch(const std::string &zip_path,
         appendPatchLine(record, replacing ? PATCH_LINE_REPLACED : PATCH_LINE_NEW,
                         relative);
 
-        int rc = zip_extract_entry(z, i, writeChunk, &ctx);
+        int rc = archive_extract_entry(z, i, writeChunk, &ctx);
         sceIoClose(fd);
 
         if (rc != ZIP_OK) {
@@ -628,7 +631,7 @@ ZipInstallStatus ZipHandler::installPatch(const std::string &zip_path,
         }
     }
 
-    zip_close(z);
+    archive_close(z);
 
     if (status != ZIP_INSTALL_OK) {
         /* Unlike a game install, which keeps what it wrote so it can be
@@ -691,21 +694,31 @@ bool ZipHandler::removePatch(const std::string &game_folder,
  *  Installing without extracting
  * ------------------------------------------------------------------ */
 
+bool ZipHandler::canInstallCompressed(const std::string &zip_path) {
+    int err = 0;
+    archive *z = archive_open(zip_path.c_str(), &err);
+    if (!z) return false;
+
+    const bool zip = (archive_kind_of(z) == ARCHIVE_ZIP);
+    archive_close(z);
+    return zip;
+}
+
 uint64_t ZipHandler::compressedInstallSize(const std::string &zip_path) {
     int err = 0;
-    zip_reader *z = zip_open(zip_path.c_str(), &err);
+    archive *z = archive_open(zip_path.c_str(), &err);
     if (!z) return 0;
 
     /* The archive stays, whole, plus the files that cannot be read out of
      * it.  Those are the ones already compressed, so their size in the
      * archive is close enough to their size on the card to count once. */
     uint64_t total = 0;
-    for (int i = 0; i < zip_count(z); i++) {
-        if (zip_entry_is_dir(z, i)) continue;
-        if (zipfs_needs_disk(zip_entry_name(z, i)))
-            total += zip_entry_size(z, i);
+    for (int i = 0; i < archive_count(z); i++) {
+        if (archive_entry_is_dir(z, i)) continue;
+        if (zipfs_needs_disk(archive_entry_name(z, i)))
+            total += archive_entry_size(z, i);
     }
-    zip_close(z);
+    archive_close(z);
 
     SceIoStat stat;
     memset(&stat, 0, sizeof(stat));
@@ -720,12 +733,12 @@ ZipInstallStatus ZipHandler::installCompressed(const std::string &zip_path,
                                                ZipProgressCallback callback,
                                                void *user) {
     int err = 0;
-    zip_reader *z = zip_open(zip_path.c_str(), &err);
+    archive *z = archive_open(zip_path.c_str(), &err);
     if (!z) return ZIP_INSTALL_BAD_ARCHIVE;
 
     char root[ZIP_MAX_NAME];
-    if (!zip_find_game_root(z, root, sizeof(root))) {
-        zip_close(z);
+    if (!archive_find_game_root(z, root, sizeof(root))) {
+        archive_close(z);
         return ZIP_INSTALL_NO_SCRIPT;
     }
 
@@ -738,19 +751,19 @@ ZipInstallStatus ZipHandler::installCompressed(const std::string &zip_path,
     /* No journal and no resuming here: the expensive part is one file
      * copy, and half a copy is not something to pick up in the middle. */
     if (checkFolderExist(dest.c_str())) {
-        zip_close(z);
+        archive_close(z);
         return ZIP_INSTALL_EXISTS;
     }
 
     const uint64_t needed = compressedInstallSize(zip_path);
     const uint64_t available = freeSpace();
     if (available > 0 && needed + INSTALL_SPACE_MARGIN > available) {
-        zip_close(z);
+        archive_close(z);
         return ZIP_INSTALL_NO_SPACE;
     }
 
     if (!ensureDirectory(GAME_INSTALL_FOLDER) || !ensureDirectory(dest)) {
-        zip_close(z);
+        archive_close(z);
         return ZIP_INSTALL_WRITE_FAILED;
     }
 
@@ -760,11 +773,11 @@ ZipInstallStatus ZipHandler::installCompressed(const std::string &zip_path,
     progress.percent     = 0;
 
     ZipInstallStatus status = ZIP_INSTALL_OK;
-    const int count = zip_count(z);
+    const int count = archive_count(z);
 
     for (int i = 0; i < count && status == ZIP_INSTALL_OK; i++) {
         char clean[ZIP_MAX_NAME];
-        if (zip_sanitize_name(zip_entry_name(z, i), clean, sizeof(clean)) != ZIP_OK)
+        if (zip_sanitize_name(archive_entry_name(z, i), clean, sizeof(clean)) != ZIP_OK)
             continue;
 
         std::string relative = clean;
@@ -773,7 +786,7 @@ ZipInstallStatus ZipHandler::installCompressed(const std::string &zip_path,
             relative.erase(0, prefix.size());
         }
         if (relative.empty()) continue;
-        if (zip_entry_is_dir(z, i)) continue;
+        if (archive_entry_is_dir(z, i)) continue;
 
         /* The rest stays in the archive: this is the whole point. */
         if (!zipfs_needs_disk(relative.c_str())) continue;
@@ -800,7 +813,7 @@ ZipInstallStatus ZipHandler::installCompressed(const std::string &zip_path,
 
         progress.current_file = relative;
 
-        int rc = zip_extract_entry(z, i, writeChunk, &ctx);
+        int rc = archive_extract_entry(z, i, writeChunk, &ctx);
         sceIoClose(fd);
 
         if (rc != ZIP_OK) {
@@ -810,7 +823,7 @@ ZipInstallStatus ZipHandler::installCompressed(const std::string &zip_path,
         }
     }
 
-    zip_close(z);
+    archive_close(z);
 
     if (status == ZIP_INSTALL_OK) {
         /* The archive itself, which the engine will read the game out of.
@@ -870,17 +883,17 @@ int ZipHandler::patchFit(const std::string &zip_path,
     if (files_matching) *files_matching = 0;
 
     int err = 0;
-    zip_reader *z = zip_open(zip_path.c_str(), &err);
+    archive *z = archive_open(zip_path.c_str(), &err);
     if (!z) return 0;
 
     /* The same root the install would strip, so the paths compared are the
      * paths that would be written. */
     char root[ZIP_MAX_NAME];
     if (patch_archive_kind(z) == PATCH_KIND_GAME) {
-        if (!zip_find_game_root(z, root, sizeof(root))) root[0] = '\0';
+        if (!archive_find_game_root(z, root, sizeof(root))) root[0] = '\0';
     }
     else if (!patch_overlay_root(z, root, sizeof(root))) {
-        zip_close(z);
+        archive_close(z);
         return 0;
     }
 
@@ -888,11 +901,11 @@ int ZipHandler::patchFit(const std::string &zip_path,
     if (!prefix.empty()) prefix += "/";
 
     int total = 0, matching = 0;
-    for (int i = 0; i < zip_count(z); i++) {
-        if (zip_entry_is_dir(z, i)) continue;
+    for (int i = 0; i < archive_count(z); i++) {
+        if (archive_entry_is_dir(z, i)) continue;
 
         char clean[ZIP_MAX_NAME];
-        if (zip_sanitize_name(zip_entry_name(z, i), clean, sizeof(clean)) != ZIP_OK)
+        if (zip_sanitize_name(archive_entry_name(z, i), clean, sizeof(clean)) != ZIP_OK)
             continue;
 
         std::string relative = clean;
@@ -905,7 +918,7 @@ int ZipHandler::patchFit(const std::string &zip_path,
         total++;
         if (checkFileExist((game_folder + "/" + relative).c_str())) matching++;
     }
-    zip_close(z);
+    archive_close(z);
 
     if (files_total)    *files_total = total;
     if (files_matching) *files_matching = matching;

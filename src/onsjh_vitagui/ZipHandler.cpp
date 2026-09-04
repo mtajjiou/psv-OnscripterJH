@@ -24,6 +24,9 @@ extern "C" {
 #include "zipreader.h"
 }
 
+/* C++ rather than C: it deals in std::string, like the installer does. */
+#include "installname.h"
+
 /* State threaded through the extraction callbacks. */
 namespace {
 
@@ -65,52 +68,6 @@ int writeChunk(void *user, const void *data, size_t len) {
     return 0;
 }
 
-/* Case-insensitive ".zip" test. Spelled out rather than using strcasecmp,
- * which the vitasdk toolchain does not declare via <string.h>. */
-bool hasZipSuffix(const char *name) {
-    size_t len = strlen(name);
-    if (len < 4) return false;
-
-    const char *ext = name + len - 4;
-    return ext[0] == '.' &&
-           (ext[1] == 'z' || ext[1] == 'Z') &&
-           (ext[2] == 'i' || ext[2] == 'I') &&
-           (ext[3] == 'p' || ext[3] == 'P');
-}
-
-/* The engine opens game paths with plain byte strings and chokes on names
- * carrying non-ASCII bytes, so fold anything unusual down to '_'. */
-std::string makeSafeFolderName(const std::string &raw) {
-    std::string out;
-
-    for (size_t i = 0; i < raw.size(); i++) {
-        unsigned char c = (unsigned char)raw[i];
-        if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
-            (c >= '0' && c <= '9') || c == '-' || c == '_' ||
-            c == '.' || c == '(' || c == ')') {
-            out += (char)c;
-        } else if (c == ' ' || c == '+') {
-            out += '_';
-        } else if (!out.empty() && out[out.size() - 1] != '_') {
-            out += '_';
-        }
-    }
-
-    /* Trailing separators and dots confuse the filesystem. */
-    while (!out.empty() && (out[out.size() - 1] == '_' ||
-                            out[out.size() - 1] == '.'))
-        out.erase(out.size() - 1);
-
-    if (out.empty()) out = "game";
-    if (out.size() > 64) out.erase(64);
-    return out;
-}
-
-std::string baseName(const std::string &path) {
-    size_t slash = path.find_last_of("/\\");
-    return (slash == std::string::npos) ? path : path.substr(slash + 1);
-}
-
 } /* namespace */
 
 bool ZipHandler::ensureDirectory(const std::string &path) {
@@ -147,7 +104,7 @@ void ZipHandler::scanOneFolder(const char *folder,
         res = sceIoDread(dfd, &dir);
         if (res <= 0) break;
         if (SCE_S_ISDIR(dir.d_stat.st_mode)) continue;
-        if (!hasZipSuffix(dir.d_name)) continue;
+        if (!install_has_zip_suffix(dir.d_name)) continue;
 
         ZipEntryInfo info;
         info.path = std::string(folder) + "/" + dir.d_name;
@@ -181,14 +138,7 @@ std::vector<ZipEntryInfo> ZipHandler::scanZipFolder() {
 }
 
 std::string ZipHandler::destinationName(const std::string &zip_path) {
-    /* The archive's file name is what the user typed and what they see in the
-     * list, so it names the installed folder.  A folder inside the archive is
-     * often a generic "Game" or "data", which would leave every install
-     * looking alike. */
-    std::string name = baseName(zip_path);
-    if (name.size() > 4 && hasZipSuffix(name.c_str()))
-        name.erase(name.size() - 4);
-    return makeSafeFolderName(name);
+    return install_destination_name(zip_path);
 }
 
 uint64_t ZipHandler::installedSize(const std::string &zip_path) {

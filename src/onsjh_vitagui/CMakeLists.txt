@@ -50,6 +50,7 @@ add_executable(${PROJECT_NAME}
   ./../common/formats.c
   ./../common/logfile.c
   ./../common/logtail.c
+  ./../common/installname.cpp
   ./../common/dictionary.c
   ./../common/iniparser.c
   ./../common/sha1.cpp

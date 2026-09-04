@@ -22,6 +22,15 @@ ${CC:-cc} -std=c99 -Wall -Wextra -g \
 
 "$work/test_zipreader" "$work"
 
+# --- the install decision chain, end to end -------------------------------
+${CXX:-c++} -std=c++11 -Wall -Wextra -g \
+  -I"$root/src/common" \
+  "$root/test/test_install_flow.cpp" "$root/src/common/zipreader.c" \
+  "$root/src/common/installname.cpp" \
+  -lz -o "$work/test_install_flow"
+
+"$work/test_install_flow" "$work"
+
 # --- script encoding detection --------------------------------------------
 ${CXX:-c++} -std=c++11 -Wall -Wextra -g \
   -I"$root/src/onsjh" \

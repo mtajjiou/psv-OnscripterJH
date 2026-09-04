@@ -339,7 +339,13 @@ ZipInstallStatus ZipHandler::install(const std::string &zip_path,
 
         if (archive_entry_is_dir(z, i)) {
             relative.erase(relative.size() - 1);  /* trailing '/' */
-            if (!relative.empty() && !ensureDirectory(dest + "/" + relative))
+            /* Its own parents first: an archive is free to list "a/b"
+             * before "a", and a folder whose parent is not there yet
+             * cannot be made.  ensureParents() stops at the last slash,
+             * which is exactly the parents of this folder. */
+            if (!relative.empty() &&
+                (!ensureParents(dest, relative) ||
+                 !ensureDirectory(dest + "/" + relative)))
                 status = ZIP_INSTALL_WRITE_FAILED;
             continue;
         }
@@ -574,8 +580,10 @@ ZipInstallStatus ZipHandler::installPatch(const std::string &zip_path,
 
         if (archive_entry_is_dir(z, i)) {
             relative.erase(relative.size() - 1);
+            /* Its own parents first: see install(). */
             if (!relative.empty() &&
-                !ensureDirectory(game_folder + "/" + relative))
+                (!ensureParents(game_folder, relative) ||
+                 !ensureDirectory(game_folder + "/" + relative)))
                 status = ZIP_INSTALL_WRITE_FAILED;
             continue;
         }

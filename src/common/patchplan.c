@@ -154,6 +154,34 @@ int patch_name_match(const char *patch_name, const char *game_name) {
     return (int)((60 * run) / shorter);
 }
 
+int patch_confidence(int name_score, int files_total, int files_matching) {
+    int overlap;
+
+    if (name_score < 0)   name_score = 0;
+    if (name_score > 100) name_score = 100;
+
+    /* An archive with nothing in it would be applied on its name alone,
+     * which is exactly the case where the name is all there is. */
+    if (files_total <= 0) return name_score;
+
+    if (files_matching < 0) files_matching = 0;
+    if (files_matching > files_total) files_matching = files_total;
+
+    overlap = (files_matching * 100) / files_total;
+
+    /* Most of what it carries is already in the game: it is a patch for
+     * this game whatever it happens to be called. */
+    if (overlap >= 50) return name_score > 80 ? name_score : 80;
+
+    /* Some of it is: enough to act on, and the name can raise it. */
+    if (overlap > 0) return name_score > 55 ? name_score : 55;
+
+    /* None of it is.  That is what a patch for another game looks like,
+     * and also what a voice pack that only adds files looks like, so the
+     * name is left to carry it -- at a discount. */
+    return (name_score * 3) / 5;
+}
+
 int patch_parse_line(const char *line, char *kind, char *path, size_t n) {
     size_t len;
 

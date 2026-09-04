@@ -85,7 +85,7 @@
 #define APPINFO_BUTTONS_WIDTH       (int)((APPINFO_PANEL_WIDTH / 2) - (APPINFO_PANEL_PADDING * 2))
 #define APPINFO_BUTTONS_HEIGHT      (int)((APPINFO_PANEL_HEIGHT / 2) - (APPINFO_PANEL_PADDING * 2))
 
-#define APPINFO_BUTTON              5
+#define APPINFO_BUTTON              6
 #define APPINFO_BUTTON_MARGIN       5
 #define APPINFO_BUTTON_WIDTH        (int)(APPINFO_BUTTONS_WIDTH - (APPINFO_BUTTON_MARGIN * 2))
 #define APPINFO_BUTTON_HEIGHT       (int)((APPINFO_BUTTONS_HEIGHT - (APPINFO_BUTTON_MARGIN * (APPINFO_BUTTON + 1))) / APPINFO_BUTTON)
@@ -232,6 +232,8 @@ typedef enum {
 	PATCH_REMOVE_DONE,
 	/* The plugins offered for a game, toggled one row at a time. */
 	PLUGIN_LIST,
+	/* The mods on the card, offered against the game whose panel this is. */
+	MOD_LIST,
 	/* Listening for a game sent from a browser. */
 	WIFI_UPLOAD,
 	/* Typing in where the saves go, then copying them to and from it. */

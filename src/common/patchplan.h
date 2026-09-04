@@ -69,6 +69,27 @@ int patch_overlay_root(const zip_reader *z, char *out, size_t n);
  * chooses from: a wrong guess costs a scroll, never a wrong write. */
 int patch_name_match(const char *patch_name, const char *game_name);
 
+/* How sure the launcher is that a patch belongs to a game, 0 (looks wrong)
+ * to 100 (certain), from two pieces of evidence:
+ *
+ *   name_score      what patch_name_match() made of the two names
+ *   files_total     files the patch would write
+ *   files_matching  how many of those the game already has
+ *
+ * The second is the stronger signal and the one a name cannot fake: a
+ * translation patch replaces the game's own files, so most of what it
+ * carries is already there.  It is not proof on its own -- a voice pack
+ * that only adds new archives legitimately overlaps nothing -- so a patch
+ * whose files are all new is believed on its name alone, and less than it
+ * would be otherwise.
+ *
+ * Below PATCH_CONFIDENCE_SURE the launcher warns before applying rather
+ * than refusing: both halves of this are guesses, and a player who knows
+ * what they downloaded should not be argued with. */
+#define PATCH_CONFIDENCE_SURE 50
+
+int patch_confidence(int name_score, int files_total, int files_matching);
+
 /* One line of a patch record.  'R' -- this file replaced one that was
  * there, whose original is in the backup folder.  'N' -- this file was new,
  * so removing the patch deletes it. */

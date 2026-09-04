@@ -271,6 +271,14 @@ enum UIStringId {
     UI_PLUGIN_FAILED,
     UI_PROMPT_TOGGLE,
 
+    /* Mods offered against the game whose panel is open */
+    UI_BTN_MODS,
+    UI_MOD_LIST_TITLE,
+    UI_MOD_NONE,
+    UI_MOD_APPLIED,
+    UI_MOD_ASK,
+    UI_MOD_WARN,
+
     /* Long text */
     UI_ABOUT,
 

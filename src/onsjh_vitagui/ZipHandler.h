@@ -22,6 +22,11 @@
 #define GAME_ZIP_FOLDER "ux0:data/game_zips"
 /* Where games live once installed. */
 #define GAME_INSTALL_FOLDER "ux0:onsemu"
+/* Where the launcher looks for mods: patches, voice packs, anything meant
+ * to go on top of a game that is already installed.  Separate from the
+ * archives waiting to be installed, because a mod is not a game and the
+ * game list has nothing to show for it. */
+#define GAME_MOD_FOLDER "ux0:data/game_mods"
 
 /* Keep this much of ux0: free after an install rather than filling the
  * card completely -- saves and the font cache still need room. */
@@ -112,6 +117,22 @@ public:
      * land on top of a game that is already there.  Installing one is the
      * same extraction with two differences: it writes into an existing
      * folder, and it keeps a record of what it did so it can be undone. */
+
+    /* Mods on the card: everything in GAME_MOD_FOLDER, which is created if
+     * missing, plus any archive in the drop folder that turned out to have
+     * no game in it -- that is where a patch ends up when it is downloaded
+     * beside the games. */
+    static std::vector<ZipEntryInfo> scanModFolder();
+
+    /* Does this archive look like it belongs on that game?
+     *
+     * Answers with patch_confidence(): the archive's name against the
+     * game's, and how much of what it would write the game already has.
+     * files_total and files_matching receive the counts behind it, so the
+     * prompt can show its working. */
+    static int patchFit(const std::string &zip_path,
+                        const std::string &game_folder,
+                        int *files_total = NULL, int *files_matching = NULL);
 
     /* Is this archive a game, a patch, or empty?  See patch_kind. */
     static int archiveKind(const std::string &zip_path);

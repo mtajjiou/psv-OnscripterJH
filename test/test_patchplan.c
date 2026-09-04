@@ -125,6 +125,39 @@ static void test_matching(void) {
           "the closer of two candidate games scores higher");
 }
 
+/* The check made before a mod is applied from the game panel: is this
+ * archive for this game?  Both halves are guesses, so what is checked here
+ * is that they add up the way the warning depends on. */
+static void test_confidence(void) {
+    /* A translation patch: named after the game, replacing its files. */
+    check(patch_confidence(90, 10, 8) >= PATCH_CONFIDENCE_SURE,
+          "a patch named after the game, replacing its files, is applied");
+    /* The same patch under a release group's name that matches nothing. */
+    check(patch_confidence(0, 10, 8) >= PATCH_CONFIDENCE_SURE,
+          "what its files are is worth more than what it is called");
+
+    /* The case the warning exists for: a patch for another game. */
+    check(patch_confidence(0, 10, 0) < PATCH_CONFIDENCE_SURE,
+          "a patch that shares no file and no name is warned about");
+    check(patch_confidence(20, 10, 0) < PATCH_CONFIDENCE_SURE,
+          "a weak name does not rescue it");
+
+    /* A voice pack that only adds files is legitimate, and its name is
+     * then the only evidence there is. */
+    check(patch_confidence(100, 10, 0) >= PATCH_CONFIDENCE_SURE,
+          "a patch that only adds files is believed on a name that matches");
+
+    /* Some overlap is enough to act on. */
+    check(patch_confidence(0, 10, 1) >= PATCH_CONFIDENCE_SURE,
+          "one file in common is enough to stop warning");
+
+    check(patch_confidence(80, 0, 0) == 80,
+          "an archive with no files is judged on its name alone");
+    check(patch_confidence(0, 0, 0) == 0, "and one with neither is not judged");
+    check(patch_confidence(150, 10, 20) <= 100,
+          "figures outside their range do not escape the scale");
+}
+
 static void test_records(void) {
     char kind = 0;
     char path[ZIP_MAX_NAME];
@@ -163,6 +196,7 @@ int main(int argc, char **argv) {
 
     test_kinds(dir);
     test_matching();
+    test_confidence();
     test_records();
 
     printf("patchplan: %d checks, %d failures\n", checks, failures);

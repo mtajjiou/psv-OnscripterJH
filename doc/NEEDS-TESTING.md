@@ -5,22 +5,31 @@ its issue is closed.
 
 ## Patches over an installed game — [#80](https://github.com/mtajjiou/psv-OnscripterJH/issues/80)
 
-Selecting an archive with no script in it asks which installed game it
-belongs to, extracts it over that game, and keeps the original of every
-file it replaces under `.mods/` in the game folder. **Patches** on the
-game's settings screen lists what is applied and takes one back off.
+Two ways in. Selecting an archive with no script in it from the game list
+asks which installed game it belongs to. Or open a game and press **Mods**,
+which lists what is in `ux0:data/game_mods/` against that game and checks
+whether the one you pick belongs there before writing anything. Either way
+the original of every replaced file is kept under `.mods/` in the game
+folder, and **Patches** on the game's settings screen takes one back off.
 
 Turn on **Write a debug log** first — the launcher writes what it did to
 `ux0:data/onsemu/`, and the log viewer is in the settings.
 
-1. Put a real translation patch `.zip` in `ux0:data/game_zips/` and select
-   it: it should ask **which game**, with the right one first.
-2. Apply it, start the game, see the patch.
-3. Game settings → **Patches** → remove it; start the game, see the
+1. Put a real translation patch `.zip` in `ux0:data/game_mods/`, open the
+   game it belongs to, and press **Mods**: it should be listed, and the
+   prompt should say how many of its files are already in the game.
+2. The same patch in `ux0:data/game_zips/`, selected from the game list:
+   it should ask **which game**, with the right one first.
+3. A patch for a *different* game, from the **Mods** button: the prompt
+   should warn that it may not belong there, and applying should still be
+   possible from that warning.
+4. Apply it, start the game, see the patch.
+5. Game settings → **Patches** → remove it; start the game, see the
    original back.
-4. Apply the same patch twice — the second time should say it is already
+6. Apply the same patch twice — the second time should say it is already
    applied rather than backing up the patch's own files over the game's.
-5. A patch wrapped in a folder named after itself: its *contents* should
+   A mod already on the game is marked *applied* in the Mods list.
+7. A patch wrapped in a folder named after itself: its *contents* should
    land in the game, not the folder.
 
 Plugins with `overlay = yes` (#81) lay their files on through the same

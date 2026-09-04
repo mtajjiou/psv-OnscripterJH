@@ -835,3 +835,89 @@ ZipInstallStatus ZipHandler::installCompressed(const std::string &zip_path,
     installed_path = dest;
     return ZIP_INSTALL_OK;
 }
+
+
+/* ------------------------------------------------------------------ *
+ *  Mods: what is on the card, and whether one belongs on a game
+ * ------------------------------------------------------------------ */
+
+std::vector<ZipEntryInfo> ZipHandler::scanModFolder() {
+    std::vector<ZipEntryInfo> mods;
+
+    /* Created here so the folder exists to be told about before anyone has
+     * put anything in it. */
+    ensureDirectory("ux0:data");
+    ensureDirectory(GAME_MOD_FOLDER);
+    scanOneFolder(GAME_MOD_FOLDER, mods);
+
+    /* A patch downloaded beside the games ends up in the drop folder, where
+     * it is not a game and cannot be installed as one.  Those belong on
+     * this list too -- but only those: an archive with a game in it is
+     * waiting to be installed, not applied. */
+    std::vector<ZipEntryInfo> dropped;
+    scanOneFolder(GAME_ZIP_FOLDER, dropped);
+    for (size_t i = 0; i < dropped.size(); i++)
+        if (archiveKind(dropped[i].path) == PATCH_KIND_PATCH)
+            mods.push_back(dropped[i]);
+
+    return mods;
+}
+
+int ZipHandler::patchFit(const std::string &zip_path,
+                         const std::string &game_folder,
+                         int *files_total, int *files_matching) {
+    if (files_total)    *files_total = 0;
+    if (files_matching) *files_matching = 0;
+
+    int err = 0;
+    zip_reader *z = zip_open(zip_path.c_str(), &err);
+    if (!z) return 0;
+
+    /* The same root the install would strip, so the paths compared are the
+     * paths that would be written. */
+    char root[ZIP_MAX_NAME];
+    if (patch_archive_kind(z) == PATCH_KIND_GAME) {
+        if (!zip_find_game_root(z, root, sizeof(root))) root[0] = '\0';
+    }
+    else if (!patch_overlay_root(z, root, sizeof(root))) {
+        zip_close(z);
+        return 0;
+    }
+
+    std::string prefix = root;
+    if (!prefix.empty()) prefix += "/";
+
+    int total = 0, matching = 0;
+    for (int i = 0; i < zip_count(z); i++) {
+        if (zip_entry_is_dir(z, i)) continue;
+
+        char clean[ZIP_MAX_NAME];
+        if (zip_sanitize_name(zip_entry_name(z, i), clean, sizeof(clean)) != ZIP_OK)
+            continue;
+
+        std::string relative = clean;
+        if (!prefix.empty()) {
+            if (relative.compare(0, prefix.size(), prefix) != 0) continue;
+            relative.erase(0, prefix.size());
+        }
+        if (relative.empty()) continue;
+
+        total++;
+        if (checkFileExist((game_folder + "/" + relative).c_str())) matching++;
+    }
+    zip_close(z);
+
+    if (files_total)    *files_total = total;
+    if (files_matching) *files_matching = matching;
+
+    /* The game's folder name is what the archive's name is matched
+     * against, since that is the name the player sees in the list. */
+    std::string game = game_folder;
+    const size_t slash = game.find_last_of("/\\");
+    if (slash != std::string::npos) game = game.substr(slash + 1);
+
+    const int name_score =
+        patch_name_match(install_base_name(zip_path).c_str(), game.c_str());
+
+    return patch_confidence(name_score, total, matching);
+}

@@ -340,6 +340,34 @@ const char *g_strings[UI_STRING_COUNT][UI_LANG_COUNT] = {
                                   "无法复制该插件的文件。" },
     /* UI_PROMPT_TOGGLE      */ { "turn on or off",           "开启/关闭" },
 
+    /* UI_BTN_MODS           */ { "Mods",                    "模组" },
+    /* UI_MOD_LIST_TITLE     */ { "Mods for %s",             "%s 的模组" },
+    /* UI_MOD_NONE           */ { "No mod archives found.\n"
+                                  "Put a patch .zip in ux0:data/game_mods/.",
+                                  "未找到模组压缩包。\n"
+                                  "请将补丁 .zip 放入 ux0:data/game_mods/。" },
+    /* UI_MOD_APPLIED        */ { "applied",                 "已应用" },
+    /* UI_MOD_ASK            */ { "Apply this mod?\n\n"
+                                  "  %s\n"
+                                  "  onto %s\n\n"
+                                  "  %d of its %d files are already in this game",
+                                  "应用此模组?\n\n"
+                                  "  %s\n"
+                                  "  到 %s\n\n"
+                                  "  其 %d/%d 个文件已存在于此游戏中" },
+    /* UI_MOD_WARN           */ { "This mod may not be for this game.\n\n"
+                                  "  %s\n"
+                                  "  onto %s\n\n"
+                                  "  only %d of its %d files are already in\n"
+                                  "  this game, and the names do not match.\n\n"
+                                  "Apply it anyway?",
+                                  "此模组可能不适用于该游戏。\n\n"
+                                  "  %s\n"
+                                  "  到 %s\n\n"
+                                  "  其 %d/%d 个文件已存在于此游戏中,\n"
+                                  "  且名称不匹配。\n\n"
+                                  "仍要应用吗?" },
+
     /* UI_ABOUT */
     { "About ONS Easy Setup\n\n"
       "ONScripter        <Ogapee>\n"
@@ -382,6 +410,21 @@ struct JapaneseString {
 };
 
 const JapaneseString g_japanese[] = {
+    { UI_BTN_MODS,                 "MOD" },
+    { UI_MOD_LIST_TITLE,           "%s の MOD" },
+    { UI_MOD_NONE,                 "MOD のアーカイブが見つかりません。\n"
+                                   "パッチの .zip を ux0:data/game_mods/ に置いてください。" },
+    { UI_MOD_APPLIED,              "適用済み" },
+    { UI_MOD_ASK,                  "この MOD を適用しますか?\n\n"
+                                   "  %s\n"
+                                   "  適用先 %s\n\n"
+                                   "  含まれる %d/%d 個のファイルはこのゲームにすでにあります" },
+    { UI_MOD_WARN,                 "この MOD はこのゲーム用ではないかもしれません。\n\n"
+                                   "  %s\n"
+                                   "  適用先 %s\n\n"
+                                   "  含まれるファイルのうち %d/%d 個しかこのゲームになく、\n"
+                                   "  名前も一致しません。\n\n"
+                                   "それでも適用しますか?" },
     { UI_SET_PLUGINS,              "プラグイン" },
     { UI_PLUGIN_LIST_TITLE,        "%s のプラグイン" },
     { UI_PLUGIN_NONE,              "このゲーム用のプラグインはありません。\n"

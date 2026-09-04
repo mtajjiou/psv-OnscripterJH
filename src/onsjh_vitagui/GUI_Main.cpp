@@ -749,6 +749,11 @@ void draw_appinfo(ScreenState state, int choose) {
 		ui_text(UI_BTN_COVER), TH_FONT_S,
 		(state == COVER_CONFIRM) ||
 		(state == PRINT_APPINFO && select_appinfo_button == 4));
+	draw_button(APPINFO_BUTTON_LEFT, APPINFO_BUTTON_TOP(5),
+		APPINFO_BUTTON_WIDTH, APPINFO_BUTTON_HEIGHT,
+		ui_text(UI_BTN_MODS), TH_FONT_S,
+		(state == MOD_LIST) ||
+		(state == PRINT_APPINFO && select_appinfo_button == 5));
 
 	/* The name, then the facts about the folder in the quiet weight.  The
 	 * old panel put all of it in one sprintf with labels on every line;
@@ -1717,6 +1722,11 @@ ScreenState run_install(int choose) {
  *  do instead.  Selecting one now asks which game it goes on.
  * ------------------------------------------------------------------ */
 
+/* Which way an install was started -- from a game's panel, or from the
+ * game list -- since that decides where cancelling goes back to.  Set by
+ * the two screens below. */
+static bool mod_from_panel = false;
+
 struct PatchCandidate {
 	std::string name;   /* what the list calls the game */
 	std::string path;   /* its folder */
@@ -1882,6 +1892,10 @@ static ScreenState on_pick_event(int &index, int count, ScreenState on_enter,
 }
 
 ScreenState on_patch_pick_event() {
+	/* Started from the game list, not from a game's panel: the difference
+	 * decides where cancelling the confirmation goes back to. */
+	mod_from_panel = false;
+
 	ScreenState state = on_pick_event(patch_pick_index,
 					  (int)patch_candidates.size(),
 					  PATCH_CONFIRM, MAIN_SCREEN);
@@ -2154,6 +2168,84 @@ ScreenState on_plugin_list_event() {
 	return UNKNOWN;
 }
 
+/* ------------------------------------------------------------------ *
+ *  Mods offered against the game whose panel is open
+ *
+ *  The other way round from selecting a patch in the game list: there the
+ *  archive is known and the game is picked, here the game is known and the
+ *  archive is picked.  Both end in the same install, so what is different
+ *  is only the question -- and that this one can check its answer, since
+ *  it knows both halves before anything is written.
+ * ------------------------------------------------------------------ */
+
+static std::vector<ZipEntryInfo> mod_list;
+static int  mod_index = 0;
+
+
+void prepare_mod_list(int choose) {
+	mod_index = 0;
+	mod_list.clear();
+
+	if (choose < 0 || choose >= (int)rom_list.size()) return;
+	if (rom_list[choose].is_zip) return;
+
+	patch_target_path = rom_list[choose].path;
+	patch_target_name = rom_list[choose].char_name();
+	mod_list = ZipHandler::scanModFolder();
+}
+
+void draw_mod_list() {
+	std::vector<std::string> rows;
+	for (size_t i = 0; i < mod_list.size(); i++) {
+		std::string row = mod_list[i].display_name;
+
+		/* A mod already on this game is worth saying so about: applying it
+		 * twice is refused, and the row is where that is explained. */
+		char record[128];
+		if (patch_record_name(mod_list[i].path.c_str(), record, sizeof(record))) {
+			const std::vector<std::string> applied =
+				ZipHandler::appliedPatches(patch_target_path);
+			for (size_t k = 0; k < applied.size(); k++) {
+				if (applied[k] != record) continue;
+				row += "  [";
+				row += ui_text(UI_MOD_APPLIED);
+				row += "]";
+				break;
+			}
+		}
+		rows.push_back(row);
+	}
+
+	char title[128];
+	snprintf(title, sizeof(title), ui_text(UI_MOD_LIST_TITLE),
+		 patch_target_name.c_str());
+
+	draw_pick_list(title, rows, mod_index, ui_text(UI_MOD_NONE),
+		       ui_text(UI_PROMPT_YES));
+}
+
+ScreenState on_mod_list_event() {
+	ScreenState state = on_pick_event(mod_index, (int)mod_list.size(),
+					  PATCH_CONFIRM, PRINT_APPINFO);
+	if (state != PATCH_CONFIRM) return state;
+
+	patch_zip_path = mod_list[mod_index].path;
+	mod_from_panel = true;
+
+	/* Checked before it is offered, not after it has been written: the
+	 * archive's name against the game's, and how much of what it would
+	 * write the game already has.  The second is what a name cannot fake. */
+	int total = 0, matching = 0;
+	const int fit = ZipHandler::patchFit(patch_zip_path, patch_target_path,
+					     &total, &matching);
+
+	snprintf(patch_confirm_message, sizeof(patch_confirm_message),
+		 ui_text(fit >= PATCH_CONFIDENCE_SURE ? UI_MOD_ASK : UI_MOD_WARN),
+		 install_base_name(patch_zip_path).c_str(),
+		 patch_target_name.c_str(), matching, total);
+	return PATCH_CONFIRM;
+}
+
 void draw_screen(ScreenState state, int curr, int choose, int slot) {
 
 	/* Opening a layer restarts it; moving between two layers does not, so
@@ -2255,6 +2347,11 @@ void draw_screen(ScreenState state, int curr, int choose, int slot) {
 		break;
 	case PATCH_DONE:
 		draw_alert(patch_message, FONT_SIZE);
+		break;
+	case MOD_LIST:
+		/* Over the game's panel, so it is clear whose mods these are. */
+		draw_appinfo(MOD_LIST, choose);
+		draw_mod_list();
 		break;
 	case PLUGIN_LIST:
 		draw_slots(choose, -1);
@@ -2927,6 +3024,7 @@ ScreenState on_appinfo_button_event(point p) {
 	static rectangle delete_button_area = APPINFO_BUTTON_AREA(2);
 	static rectangle reset_button_area = APPINFO_BUTTON_AREA(3);
 	static rectangle cover_button_area = APPINFO_BUTTON_AREA(4);
+	static rectangle mods_button_area = APPINFO_BUTTON_AREA(5);
 	if (IS_TOUCHED(backup_button_area, p)) {
 		return START_MODE;
 	}
@@ -2945,6 +3043,10 @@ ScreenState on_appinfo_button_event(point p) {
 
 	if (IS_TOUCHED(cover_button_area, p)) {
 		return COVER_CONFIRM;
+	}
+
+	if (IS_TOUCHED(mods_button_area, p)) {
+		return MOD_LIST;
 	}
 
 	return UNKNOWN;
@@ -3010,6 +3112,8 @@ ScreenState on_appinfo_event_with_dpad() {
 			return DELETE_MODE;
 		case 4:
 			return COVER_CONFIRM;
+		case 5:
+			return MOD_LIST;
 		}
 	}
 	return UNKNOWN;
@@ -3836,7 +3940,8 @@ int mainloop() {
 				break;
 			case PATCH_CONFIRM:
 				new_state = on_message_event(choose, NULL, PATCH_RUN,
-					MAIN_SCREEN, PATCH_PICK, 1);
+					MAIN_SCREEN,
+					mod_from_panel ? MOD_LIST : PATCH_PICK, 1);
 				break;
 			case PATCH_RUN:
 				new_state = run_patch();
@@ -3851,6 +3956,9 @@ int mainloop() {
 				break;
 			case PLUGIN_LIST:
 				new_state = on_plugin_list_event();
+				break;
+			case MOD_LIST:
+				new_state = on_mod_list_event();
 				break;
 			case PATCH_REMOVE_CONFIRM:
 				new_state = on_message_event(choose, NULL, PATCH_REMOVE_RUN,
@@ -3937,6 +4045,7 @@ int mainloop() {
 				/* Measuring the folder is a directory walk, so it happens
 				 * once here rather than in every frame of the prompt. */
 				if (new_state == DELETE_MODE) prepare_delete_confirm(choose);
+				if (new_state == MOD_LIST) prepare_mod_list(choose);
 				break;
 			case START_MODE:
 				if (choose >= 0 && choose < (int)rom_list.size() &&

@@ -57,6 +57,7 @@ add_executable(${PROJECT_NAME}
   ./../common/manifest.c
   ./../common/formats.c
   ./../common/logfile.c
+  ./../common/memreport.c
   ./../common/logtail.c
   ./../common/installname.cpp
   ./../common/dictionary.c

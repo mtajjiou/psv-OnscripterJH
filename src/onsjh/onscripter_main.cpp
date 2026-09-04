@@ -40,6 +40,7 @@
 
 extern "C" {
 #include "logfile.h"
+#include "memreport.h"
 #include "crashreport.h"
 }
 
@@ -453,6 +454,10 @@ extern "C"
         // ----------------------------------------
         // Run ONScripter
         if (ons.openScript()) exit(-1);
+        /* The script and its archives are open now: what a game costs
+         * before it has drawn anything, which is the floor everything
+         * after it is measured against. */
+        mem_report("script read");
 
         /* The script is decrypted but not yet parsed, so this is the one
          * moment where the raw bytes are available and swapping the codec
@@ -478,6 +483,11 @@ extern "C"
         }
         if (ons.init()) exit(-1);
         SDL_Log("## after ons.init()");
+        /* The surfaces the engine keeps for as long as it runs have been
+         * allocated by here.  A game that dies later died with these plus
+         * whatever it had loaded, and the difference between the two lines
+         * is what the game itself is using. */
+        mem_report("engine ready");
         ons.executeLabel();
         exit(0);
     }

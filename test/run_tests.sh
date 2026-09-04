@@ -31,6 +31,15 @@ ${CXX:-c++} -std=c++11 -Wall -Wextra -g \
 
 "$work/test_install_flow" "$work"
 
+# --- the heap report -------------------------------------------------------
+${CC:-cc} -std=c99 -Wall -Wextra -g \
+  -I"$root/src/common" \
+  "$root/test/test_memreport.c" "$root/src/common/memreport.c" \
+  "$root/src/common/logfile.c" \
+  -o "$work/test_memreport"
+
+"$work/test_memreport"
+
 # --- plugin manifests ------------------------------------------------------
 ${CC:-cc} -std=c99 -Wall -Wextra -g \
   -I"$root/src/common" \

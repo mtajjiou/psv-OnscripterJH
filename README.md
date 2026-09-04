@@ -388,22 +388,22 @@ on top of **zlib**, which the engine and launcher already link against.
 - [x] Install and launch from the launcher
 
 ### v1.1 (Polish)
-- [ ] Game icons in launcher
-- [ ] Video format warnings
-- [ ] Settings persistence
-- [ ] Touch mode presets
+- [x] Game icons in launcher
+- [x] Video format warnings
+- [x] Settings persistence
+- [x] Touch mode presets
 
 ### v1.2 (Advanced)
-- [ ] Game info parsing (caption, size)
-- [ ] Storage manager
-- [ ] Save file backup
-- [ ] Compatibility checker
+- [x] Game info parsing (caption, size)
+- [x] Storage manager
+- [x] Save file backup
+- [~] Compatibility checker *(the document exists; filling it in needs people playing games — see #59)*
 
 ### v1.3 (Optimization)
-- [ ] Parallel extraction
-- [ ] Lazy loading UI
-- [ ] Memory profiling
-- [ ] Performance tuning
+- [~] Parallel extraction *(not planned — the card, not inflate, is the limit; see #51)*
+- [x] Lazy loading UI
+- [x] Memory profiling
+- [x] Performance tuning
 
 ### v2.0 (Community)
 - [x] Web-based game list upload

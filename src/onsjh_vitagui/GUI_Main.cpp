@@ -51,6 +51,7 @@
 extern "C" {
 #include "logfile.h"
 #include "logtail.h"
+#include "memreport.h"
 }
 
 extern "C" {
@@ -1634,6 +1635,10 @@ ScreenState run_install(int choose) {
 						install_progress_callback, NULL)
 		: ZipHandler::install(rom_list[choose].path, installed_path,
 				      install_progress_callback, NULL);
+
+	/* After the extraction rather than during it: what an install cost
+	 * the heap is a number worth having beside the throughput. */
+	mem_report("install done");
 
 	if (install_status == ZIP_INSTALL_OK)
 		remember_install_rate(install_progress.bytes_done,
@@ -4129,6 +4134,10 @@ int main()
 
 		//load_config();
 		load_rom_list();//\BC\D3\D4\D8ͼ\B1\EA
+		/* Every game folder has been walked and every cover decoded by
+		 * here: the launcher's own footprint, before a game has been
+		 * started with what is left. */
+		mem_report("list built");
 		/* mainloop() returns 1 when it did something the list should show --
 		 * a game installed, a cover fetched -- and the list has to be built
 		 * again for that to be true.  It used to just re-enter the loop with

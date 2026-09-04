@@ -1,6 +1,7 @@
 /* -*- C++ -*-
  *
- *  GUI_Text.h -- the launcher's interface text, in English and Chinese
+ *  GUI_Text.h -- the launcher's interface text, in English, Chinese and
+ *                 Japanese
  *
  *  Upstream's labels are Chinese with an English gloss in brackets, which
  *  works if you read Chinese and is cramped and second-class if you do not.
@@ -22,6 +23,7 @@
 enum UILanguage {
     UI_LANG_EN = 0,
     UI_LANG_ZH = 1,
+    UI_LANG_JA = 2,
     UI_LANG_COUNT
 };
 

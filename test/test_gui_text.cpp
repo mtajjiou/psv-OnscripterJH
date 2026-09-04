@@ -19,6 +19,26 @@ static void check(int cond, const char *what)
     if (!cond) { failures++; printf("FAIL: %s\n", what); }
 }
 
+/* The conversions in a format string, in order, as one comparable string:
+ * "%d%s" for "%d files removed, %s freed".  Flags and widths are kept,
+ * since "%02d" and "%d" are not the same promise. */
+static void format_specs(const char *s, char *out, size_t n)
+{
+    size_t used = 0;
+
+    out[0] = '\0';
+    for (const char *p = s; *p; p++) {
+        if (*p != '%') continue;
+        if (p[1] == '%') { p++; continue; }
+
+        p++;
+        while (used + 2 < n && *p && strchr("diouxXeEfgGaAcspn", *p) == NULL)
+            out[used++] = *p++;
+        if (*p && used + 2 < n) out[used++] = *p;
+        out[used] = '\0';
+    }
+}
+
 int main(void)
 {
     /* Every id must have text in every language: an empty label is a blank
@@ -49,6 +69,35 @@ int main(void)
         if (high > 12) {
             failures++;
             printf("FAIL: english string %d has %d non-ascii bytes\n", id, high);
+        }
+    }
+
+    /* Every language's string must take exactly the arguments the English
+     * one takes, in the same order.
+     *
+     * This is the one translation mistake that is not a cosmetic problem:
+     * these strings are handed to snprintf with a fixed argument list, so a
+     * %s the translator dropped reads whatever was next on the stack, and
+     * one they added reads past the end of it.  A wrong word is a wrong
+     * word; a wrong conversion is a crash in a language nobody testing the
+     * build reads. */
+    for (int id = 0; id < UI_STRING_COUNT; id++) {
+        char want[64], got[64];
+
+        ui_set_language(UI_LANG_EN);
+        format_specs(ui_text((UIStringId)id), want, sizeof(want));
+
+        for (int lang = 0; lang < UI_LANG_COUNT; lang++) {
+            if (lang == UI_LANG_EN) continue;
+            ui_set_language((UILanguage)lang);
+            format_specs(ui_text((UIStringId)id), got, sizeof(got));
+
+            checks++;
+            if (strcmp(want, got) != 0) {
+                failures++;
+                printf("FAIL: string %d takes \"%s\" in english but \"%s\" "
+                       "in language %d\n", id, want, got, lang);
+            }
         }
     }
 

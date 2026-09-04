@@ -519,8 +519,12 @@ void draw_config() {
 			config.sort_mode == SORT_RECENT ? ui_text(UI_SORT_RECENT)
 				: (config.sort_mode == SORT_SIZE ? ui_text(UI_SORT_SIZE)
 								 : ui_text(UI_SORT_NAME))},
+		/* Each language named in itself, which is how a language
+		 * picker is read by the person who needs it. */
 		{ui_text(UI_CFG_LANGUAGE),
-			config.language == UI_LANG_ZH ? "\xE4\xB8\xAD\xE6\x96\x87" : "English"},
+			config.language == UI_LANG_ZH ? "\xE4\xB8\xAD\xE6\x96\x87"
+				: (config.language == UI_LANG_JA ? "\xE6\x97\xA5\xE6\x9C\xAC\xE8\xAA\x9E"
+								 : "English")},
 		/* Not a setting but an action, and this is where a player looks for
 		 * something that applies to the whole library rather than to the
 		 * game under the cursor. */

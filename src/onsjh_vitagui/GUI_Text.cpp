@@ -271,11 +271,233 @@ const char *g_strings[UI_STRING_COUNT][UI_LANG_COUNT] = {
 
 }  /* namespace */
 
+/* --- japanese ---------------------------------------------------------
+ *
+ * Added as its own table rather than as a third column of the one above.
+ * Two reasons, both about not breaking what already works: the rows above
+ * are positional, so a third element mistyped in one of a hundred and
+ * fifty of them shifts every string after it, while a wrong id here is one
+ * wrong string; and pairing an id with its text lets this block be read as
+ * a translation rather than as a diff.
+ *
+ * These are my translations and no native speaker has been over them. The
+ * strings a player sees most -- the buttons, the settings rows, the
+ * prompts -- are conventional enough to read normally; the longer
+ * explanations are the ones worth a second pair of eyes. Anything missing
+ * falls back to English, which is what ui_text() already does.
+ */
+struct JapaneseString {
+    UIStringId  id;
+    const char *text;
+};
+
+const JapaneseString g_japanese[] = {
+    { UI_SET_FULLSCREEN,           "強制フルスクリーン" },
+    { UI_SET_FONTCACHE,            "フォントをキャッシュ" },
+    { UI_SET_TEXTSHADOW,           "文字の影" },
+    { UI_SET_TEXTBOX,              "テキストボックスを表示" },
+    { UI_SET_ENCODING,             "文字コード" },
+    { UI_SET_TOUCH,                "タッチパネル" },
+    { UI_SET_BACKUP,               "セーブをバックアップ" },
+    { UI_SET_RESTORE,              "セーブを復元" },
+    { UI_CFG_TEXT_SPEED_GAME,      "文字表示速度" },
+    { UI_CFG_VOL_BGM_GAME,         "BGM音量" },
+    { UI_CFG_VOL_SE_GAME,          "効果音の音量" },
+    { UI_CFG_VOL_VOICE_GAME,       "音声の音量" },
+    { UI_SET_RESET,                "初期設定に戻す" },
+    { UI_SET_RETURN,               "戻る" },
+    { UI_ON,                       "オン" },
+    { UI_OFF,                      "オフ" },
+    { UI_AUTO,                     "自動" },
+    { UI_ENC_SJIS,                 "日本語" },
+    { UI_ENC_GBK,                  "中国語" },
+    { UI_CFG_GRAPHIC_MODE,         "一覧の表示方法" },
+    { UI_CFG_LIST,                 "リスト" },
+    { UI_CFG_ICON,                 "アイコン" },
+    { UI_CFG_ICON_ROW,             "アイコンの行数" },
+    { UI_CFG_ICON_COL,             "アイコンの列数" },
+    { UI_CFG_LIST_ROW,             "リストの行数" },
+    { UI_CFG_TOUCH_MODE,           "タッチ操作" },
+    { UI_TOUCH_OFF,                "オフ" },
+    { UI_TOUCH_FRONT,              "前面のみ" },
+    { UI_TOUCH_BOTH,               "前面と背面" },
+    { UI_TOUCH_BACK,               "背面のみ" },
+    { UI_TOUCH_DEFAULT,            "既定" },
+    { UI_CFG_LANGUAGE,             "表示言語" },
+    { UI_CFG_FETCH_COVERS,         "未取得のカバーを取得" },
+    { UI_CFG_CLEAN,                "一時ファイルを削除" },
+    { UI_CFG_TEXT_SPEED,           "文字表示速度（新規のみ）" },
+    { UI_CFG_VOL_BGM,              "BGM音量（新規のみ）" },
+    { UI_CFG_VOL_SE,               "効果音の音量（新規のみ）" },
+    { UI_CFG_VOL_VOICE,            "音声の音量（新規のみ）" },
+    { UI_CFG_DEBUG_LOG,            "デバッグログを書き出す" },
+    { UI_CFG_THEME,                "テーマ" },
+    { UI_THEME_DARK,               "ダーク" },
+    { UI_THEME_LIGHT,              "ライト" },
+    { UI_CFG_VIEW_LOG,             "ログを表示" },
+    { UI_LOG_OPEN,                 "開く" },
+    { UI_LOG_EMPTY,                "ログは空です。「デバッグログを書き出す」を\n"
+                                  "オンにしてから、もう一度実行してください。" },
+    { UI_LOG_ENGINE,               "エンジン" },
+    { UI_LOG_LAUNCHER,             "ランチャー" },
+    { UI_LOG_CRASH,                "前回の異常終了" },
+    { UI_PROMPT_SWITCH,            "ログを切替" },
+    { UI_RETRY,                    "再試行" },
+    { UI_RETRY_RESUME,             "続きから" },
+    { UI_CLEAN_RETRY,              "削除して再試行" },
+    { UI_FAIL_SPACE_HINT,          "\n\n"
+                                  "一時ファイルを削除すれば足りるかもしれません。" },
+    { UI_FAIL_RESUME_HINT,         "\n\n"
+                                  "%s まで展開済みです。再試行すると続きから進みます。" },
+    { UI_SPEED_SLOW,               "遅い" },
+    { UI_SPEED_NORMAL,             "普通" },
+    { UI_SPEED_FAST,               "速い" },
+    { UI_CFG_SORT,                 "並び順" },
+    { UI_SORT_NAME,                "名前" },
+    { UI_SORT_RECENT,              "最近プレイした順" },
+    { UI_SORT_SIZE,                "サイズ" },
+    { UI_BTN_START,                "起動" },
+    { UI_BTN_CONFIG,               "設定" },
+    { UI_BTN_INSTALL,              "インストール" },
+    { UI_BTN_COVER,                "カバー" },
+    { UI_BTN_DELETE,               "削除" },
+    { UI_PROMPT_NO,                "いいえ" },
+    { UI_PROMPT_YES,               "はい" },
+    { UI_PROMPT_CLOSE,             "閉じる" },
+    { UI_FOOTER_HINTS,             "%d / %d" },
+    { UI_HINT_SETTINGS,            "設定" },
+    { UI_HINT_HELP,                "ヘルプ" },
+    { UI_HINT_ABOUT,               "情報" },
+    { UI_INSTALLING,               "インストール中..." },
+    { UI_NOT_IMPLEMENTED,          "[未実装の機能です]" },
+    { UI_MAKE_PACKAGE_ASK,         "このゲームの起動用バブルを作成しますか？" },
+    { UI_MAKE_PACKAGE_RUN,         "バブルを作成しています...操作しないでください..." },
+    { UI_MAKE_PACKAGE_OK,          "バブルを作成しました。" },
+    { UI_MAKE_PACKAGE_FAIL,        "バブルを作成できませんでした。" },
+    { UI_COVER_ASK,                "vndb.org でこのゲームを検索してカバーを取得しますか？" },
+    { UI_COVER_RUN,                "vndb.org に問い合わせています..." },
+    { UI_COVER_OK,                 "カバーを保存しました。" },
+    { UI_COVER_NOT_FOUND,          "その名前のカバーは vndb.org にありません。" },
+    { UI_COVER_NO_NET,             "ネットワークに接続していません。" },
+    { UI_COVER_FAIL,               "vndb.org に接続できませんでした。" },
+    { UI_COVER_WRITE_FAIL,         "カバーを保存できませんでした。" },
+    { UI_COVERS_ALL_ASK,           "カバーのないゲームをすべて vndb.org で検索しますか？" },
+    { UI_COVERS_ALL_RUN,           "カバーを取得しています" },
+    { UI_COVERS_ALL_DONE,          "取得 %d 件、見つからず %d 件、取得済み %d 件" },
+    { UI_COVERS_START,             "開始" },
+    { UI_CLEAN_ASK,                "一時ファイルを削除しますか？\n\n"
+                                  "  バブル作成用の一時フォルダ\n"
+                                  "  残っている tmp.mus\n"
+                                  "  ランチャーの一覧キャッシュ\n\n"
+                                  "  セーブとゲームには影響しません" },
+    { UI_CLEAN_RUN,                "削除しています..." },
+    { UI_CLEAN_DONE,               "%d 個のファイルを削除し、%s を解放しました" },
+    { UI_CLEAN_NOTHING,            "削除するものはありません。" },
+    { UI_CLEAN_START,              "削除" },
+    { UI_SAVES_BACKED_UP,          "%d 個のセーブをバックアップしました。" },
+    { UI_SAVES_RESTORED,           "%d 個のセーブを復元しました。" },
+    { UI_SAVES_NONE,               "このゲームにはまだセーブがありません。" },
+    { UI_SAVES_NO_BACKUP,          "このゲームのバックアップはありません。" },
+    { UI_SAVES_FAIL,               "セーブをコピーできませんでした。" },
+    { UI_DELETE_ASK,               "%s を削除しますか？\n\n"
+                                  "  %s、ファイル %u 個\n"
+                                  "  ux0:onsemu 内\n\n"
+                                  "  フォルダ内のセーブも一緒に消えます" },
+    { UI_DELETE_ASK_ZIP,           "圧縮ファイル %s を削除しますか？\n\n"
+                                  "  %s\n\n"
+                                  "  インストール済みのゲームはそのままです" },
+    { UI_DELETE_RUN,               "削除しています..." },
+    { UI_DELETE_OK,                "削除しました。残り %s です。" },
+    { UI_DELETE_FAIL,              "削除できませんでした。" },
+    { UI_FREE_SPACE,               "残り %s" },
+    { UI_LAST_PLAYED,              "最終プレイ %s" },
+    { UI_NEVER_PLAYED,             "未プレイ" },
+    { UI_ZIP_INFO,                 "圧縮ファイル %s、展開後およそ %s" },
+    { UI_ZIP_INFO_TIME,            "インストールにおよそ %d 分 %02d 秒" },
+    { UI_SEARCH_TITLE,             "ゲームを検索" },
+    { UI_SEARCH_ACTIVE,            "\"%s\"" },
+    { UI_SEARCH_EMPTY,             "\"%s\" に一致するゲームはありません。\n\n"
+                                  "%s で検索を解除します。" },
+    { UI_HINT_SEARCH,              "検索" },
+    { UI_UNFINISHED,               "未完了" },
+    { UI_RESUME_ASK,               "このゲームのインストールを続けますか？\n\n"
+                                  "  %s\n"
+                                  "  %s / %s を展開済み\n\n"
+                                  "  残り %s" },
+    { UI_RESUME_BLOCKED,           "このゲームはインストールが完了していません。\n\n"
+                                  "圧縮ファイルからもう一度インストールするか、削除してください。" },
+    { UI_HELP_TITLE,               "ゲーム中の操作" },
+    { UI_HELP_CONFIRM,             "決定・進める" },
+    { UI_HELP_SKIP,                "押している間だけ早送り" },
+    { UI_HELP_AUTO,                "オートモード" },
+    { UI_HELP_MENU,                "メニュー・履歴を閉じる" },
+    { UI_HELP_SKIP_PAGE,           "このページを飛ばす" },
+    { UI_HELP_TOGGLE_SKIP,         "スキップの開始・停止" },
+    { UI_HELP_BACKLOG,             "履歴" },
+    { UI_HELP_CURSOR,              "選択肢を移動" },
+    { UI_HELP_STICK,               "方向キーと同じ" },
+    { UI_HELP_OVERLAY,             "ゲーム中にこの一覧を表示" },
+    { UI_LAUNCHER_TITLE,           "ランチャーの操作" },
+    { UI_LAUNCHER_START,           "ゲームを起動・圧縮ファイルをインストール" },
+    { UI_LAUNCHER_PANEL,           "このゲームの設定・セーブ・カバー" },
+    { UI_LAUNCHER_SETTINGS,        "全体の設定" },
+    { UI_LAUNCHER_HELP,            "この画面" },
+    { UI_LAUNCHER_SEARCH,          "ゲームを検索" },
+    { UI_LAUNCHER_ABOUT,           "このビルドについて" },
+    { UI_LAUNCHER_MOVE,            "一覧を移動" },
+    { UI_WHERE_TITLE,              "ゲームの置き場所" },
+    { UI_WHERE_ZIP,                "ux0:data/game_zips/  -- インストール前の圧縮ファイル" },
+    { UI_WHERE_FOLDER,             "ux0:onsemu/  -- インストール済みのゲーム、1つにつき1フォルダ" },
+    { UI_FIRST_RUN_TITLE,          "ゲームがありません" },
+    { UI_FIRST_RUN_BODY,           "メモリーカードにゲームを入れると、ここに表示されます。\n\n"
+                                  "  圧縮ファイル：  ux0:data/game_zips/\n"
+                                  "  この画面からインストールします。\n\n"
+                                  "  ゲームのフォルダ： ux0:onsemu/\n"
+                                  "  そのまま起動できます。\n\n"
+                                  "どちらのフォルダも作成済みです。" },
+    { UI_PROMPT_LAUNCHER,          "ランチャー" },
+    { UI_FORMATS_TITLE,            "このビルドが開ける形式" },
+    { UI_FORMATS_LEGEND,           "「変換」の形式はパソコンで変換してください" },
+    { UI_FORMATS_PLAYS,            "対応" },
+    { UI_FORMATS_SLOW,             "低速" },
+    { UI_FORMATS_CONVERT,          "変換" },
+    { UI_PROMPT_FORMATS,           "対応形式" },
+    { UI_PROMPT_CONTROLS,          "操作" },
+    { UI_ABOUT,                    "ONS Easy Setup について\n\n"
+                                  "ONScripter        <Ogapee>\n"
+                                  "ONScripter-jh     <jh10001>\n"
+                                  "vita-savemgr      <d3m3vilurr>\n"
+                                  "ONS-jh-PSV        <wetor>\n\n"
+                                  "Yurisizuku による保守と拡張、\n"
+                                  "https://github.com/YuriSizuku/psv-Onscripter\n" },
+};
+
+/* Read once into an array indexed by id: ui_text() is called for every
+ * label on every frame, and a scan through a hundred and fifty pairs each
+ * time would be a scan for nothing. */
+const char *japanese_text(UIStringId id)
+{
+    static const char *table[UI_STRING_COUNT];
+    static bool built = false;
+
+    if (!built) {
+        built = true;
+        for (size_t i = 0; i < sizeof(g_japanese) / sizeof(g_japanese[0]); i++) {
+            const JapaneseString &j = g_japanese[i];
+            if (j.id >= 0 && j.id < UI_STRING_COUNT) table[j.id] = j.text;
+        }
+    }
+
+    if (id < 0 || id >= UI_STRING_COUNT) return NULL;
+    return table[id];
+}
+
 const char *ui_text(UIStringId id)
 {
     if (id < 0 || id >= UI_STRING_COUNT) return "";
 
-    const char *s = g_strings[id][g_language];
+    const char *s = (g_language == UI_LANG_JA) ? japanese_text(id)
+                                              : g_strings[id][g_language];
     /* A missing translation falls back to English rather than showing an
      * empty label. */
     if (s == NULL || s[0] == '\0') s = g_strings[id][UI_LANG_EN];
@@ -294,11 +516,17 @@ UILanguage ui_get_language()
 
 const char *ui_language_name(UILanguage lang)
 {
-    return lang == UI_LANG_ZH ? "zh" : "en";
+    switch (lang) {
+    case UI_LANG_ZH: return "zh";
+    case UI_LANG_JA: return "ja";
+    default:         return "en";
+    }
 }
 
 UILanguage ui_language_from_name(const char *name)
 {
-    if (name && (name[0] == 'z' || name[0] == 'Z')) return UI_LANG_ZH;
+    if (name == NULL) return UI_LANG_EN;
+    if (name[0] == 'z' || name[0] == 'Z') return UI_LANG_ZH;
+    if (name[0] == 'j' || name[0] == 'J') return UI_LANG_JA;
     return UI_LANG_EN;
 }

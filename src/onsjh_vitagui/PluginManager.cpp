@@ -250,8 +250,12 @@ int PluginManager::appendArgs(const std::string &game_folder,
         if (!plugin_enabled(list.c_str(), plugins[i].id)) continue;
 
         for (int a = 0; a < plugins[i].arg_count && count < max; a++) {
-            char *argument = strdup(plugins[i].args[a]);
+            /* Copied by hand: this toolchain's <string.h> does not declare
+             * strdup, and the copy has to outlive this call either way. */
+            const size_t len = strlen(plugins[i].args[a]);
+            char *argument = (char *)malloc(len + 1);
             if (argument == NULL) break;
+            memcpy(argument, plugins[i].args[a], len + 1);
             argv[count++] = argument;
         }
     }

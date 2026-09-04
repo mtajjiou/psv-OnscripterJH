@@ -165,6 +165,26 @@ size_t zipfs_read(zipfs *fs, const char *name, unsigned char *buffer) {
     return s.written;
 }
 
+int zipfs_script_name(zipfs *fs, char *out, size_t n) {
+    int i;
+
+    if (out == NULL || n == 0) return 0;
+    out[0] = '\0';
+    if (fs == NULL) return 0;
+
+    for (i = 0; i < fs->count; i++) {
+        /* At the game root: a script one folder down belongs to something
+         * else -- a backup, or another game bundled beside this one. */
+        if (strchr(fs->entries[i].name, '/') != NULL) continue;
+        if (!zip_is_script_name(fs->entries[i].name)) continue;
+        if (strlen(fs->entries[i].name) >= n) return 0;
+
+        strcpy(out, fs->entries[i].name);
+        return 1;
+    }
+    return 0;
+}
+
 int zipfs_needs_disk(const char *name) {
     /* Everything the engine opens as a file and seeks around in, plus the
      * formats that are already compressed and would gain nothing. */
@@ -174,9 +194,18 @@ int zipfs_needs_disk(const char *name) {
         ".wmv", ".mkv", ".webm", ".ogv", ".rmvb", ".flv",
         ".ttf", ".otf", ".ttc"
     };
+    const char *base;
     size_t len, i;
 
     if (name == NULL) return 0;
+
+    /* The script is opened by name with fopen() before the mount exists,
+     * so it has to be a file on the card whatever else is not. */
+    base = name;
+    for (i = 0; name[i]; i++)
+        if (name[i] == '/' || name[i] == '\\') base = name + i + 1;
+    if (zip_is_script_name(base)) return 1;
+
     len = strlen(name);
 
     for (i = 0; i < sizeof(extensions) / sizeof(extensions[0]); i++) {

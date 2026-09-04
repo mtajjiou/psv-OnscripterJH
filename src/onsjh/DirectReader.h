@@ -66,6 +66,9 @@ protected:
      * as the game asks for it.  NULL for an ordinary install, which is
      * every install unless the player chose otherwise. */
     zipfs *zip_mount;
+    /* Puts the mount's script on the card when a compressed install left
+     * it inside the archive.  See the constructor. */
+    void extractScriptIfMissing();
 
     char *file_full_path;
     char *file_sub_path;

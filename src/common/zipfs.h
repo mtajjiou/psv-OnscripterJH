@@ -59,13 +59,23 @@ int zipfs_count(const zipfs *fs);
 
 /* True for a file that has to exist on the card rather than in the archive:
  * the game's own archives (.nsa, .sar, .ns2), its videos and its fonts, all
- * of which the engine opens as files and seeks around in, and none of which
- * deflate to anything worth having.  A compressed install extracts these
- * and leaves the rest inside the .zip.
+ * of which the engine opens as files and seeks around in and none of which
+ * deflate to anything worth having -- and the script, which the engine
+ * opens by name with fopen() before any of this exists.  A compressed
+ * install extracts these and leaves the rest inside the .zip.
  *
  * A pure function of the name so the launcher, the engine and the tests all
  * decide it the same way. */
 int zipfs_needs_disk(const char *name);
+
+/* The script inside the mount, if it holds one: the name it is addressed
+ * by, which is also the name it has to have on the card.  Returns 1 when
+ * there is one.
+ *
+ * Only useful for repairing a game installed compressed by a build that
+ * left the script inside the archive, which the engine cannot open: it
+ * finds its script with fopen() before there is a reader to ask. */
+int zipfs_script_name(zipfs *fs, char *out, size_t n);
 
 #ifdef __cplusplus
 }

@@ -32,6 +32,7 @@
 
 extern "C" {
 #include "crashreport.h"
+#include "logfile.h"
 }
 #include "Utils.h"
 #include "coding2utf16.h"
@@ -97,6 +98,13 @@ DirectReader::DirectReader( const char *path, const unsigned char *key_table )
             zip_mount = NULL;
         }
         delete[] archive;
+
+        /* The script is the one file this mount cannot serve: the engine
+         * looks for it by name with fopen() before there is a reader to
+         * ask, so a game whose script is only inside the archive never
+         * starts.  Installs write it out now; one made before they did is
+         * repaired here, once, rather than needing installing again. */
+        if ( zip_mount ) extractScriptIfMissing();
     }
 
     read_buf = new unsigned char[READ_LENGTH];
@@ -127,6 +135,49 @@ DirectReader::~DirectReader()
         last_registered_compression_type = last_registered_compression_type->next;
         delete cur;
     }
+}
+
+/* Writes the mount's script to the card when there is not one there
+ * already.  Silent when there is nothing to do, which is every game
+ * installed by a build that puts the script on disk in the first place. */
+void DirectReader::extractScriptIfMissing()
+{
+    /* Long enough for any name an archive can hold, which the reader caps
+     * well below this. */
+    char name[512];
+    if ( !zipfs_script_name( zip_mount, name, sizeof(name) ) ) return;
+
+    char *path = new char[ strlen(archive_path) + strlen(name) + 1 ];
+    sprintf( path, "%s%s", archive_path, name );
+
+    FILE *existing = ::fopen( path, "rb" );
+    if ( existing ){
+        fclose( existing );
+        delete[] path;
+        return;
+    }
+
+    const long size = zipfs_size( zip_mount, name );
+    if ( size <= 0 ){
+        delete[] path;
+        return;
+    }
+
+    unsigned char *buffer = new unsigned char[ size ];
+    const size_t got = zipfs_read( zip_mount, name, buffer );
+
+    if ( got == (size_t)size ){
+        FILE *fp = ::fopen( path, "wb" );
+        if ( fp ){
+            fwrite( buffer, 1, got, fp );
+            fclose( fp );
+            log_printf( "zip: wrote %s out of the archive so the engine can "
+                        "open it\n", name );
+        }
+    }
+
+    delete[] buffer;
+    delete[] path;
 }
 
 FILE *DirectReader::fopen(const char *path, const char *mode)

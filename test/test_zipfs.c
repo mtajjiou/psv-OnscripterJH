@@ -21,6 +21,14 @@ static void check(int cond, const char *what) {
     if (!cond) { failures++; printf("FAIL: %s\n", what); }
 }
 
+static void check_str_is(const char *got, const char *want, const char *what) {
+    checks++;
+    if (strcmp(got, want) != 0) {
+        failures++;
+        printf("FAIL: %s (got \"%s\", want \"%s\")\n", what, got, want);
+    }
+}
+
 static zipfs *mount(const char *dir, const char *name) {
     char path[512];
     zipfs *fs;
@@ -120,6 +128,28 @@ static void test_failure(void) {
     zipfs_close(NULL);
 }
 
+static void test_script_name(const char *dir) {
+    char name[128];
+    zipfs *fs = mount(dir, "nested.zip");
+
+    if (fs) {
+        check(zipfs_script_name(fs, name, sizeof(name)) == 1,
+              "a mount that holds a script says so");
+        check_str_is(name, "nscript.dat", "and names it as the engine will");
+        zipfs_close(fs);
+    }
+
+    fs = mount(dir, "patch.zip");
+    if (fs) {
+        check(zipfs_script_name(fs, name, sizeof(name)) == 0,
+              "a mount with no script in it has none to name");
+        zipfs_close(fs);
+    }
+
+    check(zipfs_script_name(NULL, name, sizeof(name)) == 0,
+          "and neither has a failed mount");
+}
+
 static void test_needs_disk(void) {
     check(zipfs_needs_disk("arc.nsa"), "a game archive goes to the card");
     check(zipfs_needs_disk("ARC.NSA"), "whatever its case");
@@ -127,7 +157,11 @@ static void test_needs_disk(void) {
     check(zipfs_needs_disk("video/op.mp4"), "and a video");
     check(zipfs_needs_disk("default.ttf"), "and a font");
 
-    check(!zipfs_needs_disk("nscript.dat"), "the script can be read from the zip");
+    /* The script is the one file the mount cannot serve: the engine opens
+     * it by name with fopen() before there is a reader to ask. */
+    check(zipfs_needs_disk("nscript.dat"), "the script goes to the card");
+    check(zipfs_needs_disk("0.txt"), "whichever of the names it has");
+    check(zipfs_needs_disk("MyGame/onscript.nt2"), "wherever in the archive");
     check(!zipfs_needs_disk("bg/title.png"), "so can a picture");
     check(!zipfs_needs_disk("se/click.wav"), "and a sound");
     check(!zipfs_needs_disk("nsa"), "an extension is not a whole name");
@@ -142,6 +176,7 @@ int main(int argc, char **argv) {
     test_subfolders(dir);
     test_separators(dir);
     test_failure();
+    test_script_name(dir);
     test_needs_disk();
 
     printf("zipfs: %d checks, %d failures\n", checks, failures);

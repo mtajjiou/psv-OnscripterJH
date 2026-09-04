@@ -70,9 +70,6 @@ protected:
      * it inside the archive.  See the constructor. */
     void extractScriptIfMissing();
 
-    char *file_full_path;
-    char *file_sub_path;
-    size_t file_path_len;
     char *capital_name;
     char *capital_name_tmp;
 

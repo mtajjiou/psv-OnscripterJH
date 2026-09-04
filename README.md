@@ -359,6 +359,7 @@ src/
     ├── lzma/                   # The SDK itself (public domain, unmodified)
     ├── zipfs.c/.h              # Reads a game out of its .zip at run time
     ├── patchplan.c/.h          # Is this archive a patch, and for which game
+    ├── pathmatch.c/.h          # Opening a file whose name is spelled otherwise
     ├── httpd.c/.h              # The Wi-Fi upload page's request parsing
     ├── ftpproto.c/.h           # The FTP client's reading half
     ├── plugins.c/.h            # Plugin manifests and what they apply to
@@ -373,6 +374,7 @@ test/
 ├── test_patchplan.c            # Patch detection, matching and records
 ├── test_zipfs.c                # Reading files out of a mounted archive
 ├── test_archive.c              # The same contents read as .zip and as .7z
+├── test_pathmatch.c            # Case-insensitive lookup, and its folder cache
 ├── test_httpd.c                # Request heads and split multipart uploads
 ├── test_ftpproto.c             # Replies, PASV, remote paths
 ├── test_plugins.c              # Manifests, matching, enabled lists

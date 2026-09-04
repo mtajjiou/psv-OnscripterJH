@@ -33,6 +33,7 @@
 extern "C" {
 #include "crashreport.h"
 #include "logfile.h"
+#include "pathmatch.h"
 }
 #include "Utils.h"
 #include "coding2utf16.h"
@@ -57,10 +58,6 @@ extern Coding2UTF16 *coding2utf16;
 
 DirectReader::DirectReader( const char *path, const unsigned char *key_table )
 {
-    file_full_path = NULL;
-    file_sub_path = NULL;
-    file_path_len = 0;
-
     capital_name = new char[MAX_FILE_NAME_LENGTH*2+1];
     capital_name_tmp = new char[MAX_FILE_NAME_LENGTH*3+1];
 
@@ -120,9 +117,9 @@ DirectReader::DirectReader( const char *path, const unsigned char *key_table )
 
 DirectReader::~DirectReader()
 {
+    /* The next game gets its own folders. */
+    path_match_forget();
     if (zip_mount) zipfs_close( zip_mount );
-    if (file_full_path) delete[] file_full_path;
-    if (file_sub_path)  delete[] file_sub_path;
 
     delete[] capital_name;
     delete[] capital_name_tmp;
@@ -182,66 +179,13 @@ void DirectReader::extractScriptIfMissing()
 
 FILE *DirectReader::fopen(const char *path, const char *mode)
 {
-    // printf("## DirectReader::fopen %s", path);
-    size_t len = strlen(archive_path) + strlen(path) + 1;
-    if (file_path_len < len){
-        file_path_len = len;
-        if (file_full_path) delete[] file_full_path;
-        file_full_path = new char[file_path_len];
-        if (file_sub_path) delete[] file_sub_path;
-        file_sub_path = new char[file_path_len];
-    }
-    sprintf( file_full_path, "%s%s", archive_path, path );
-
-    FILE *fp = ::fopen( file_full_path, mode );
-    if (fp) return fp;
-
-#if !defined(WIN32) && !defined(_WIN32) && !defined(MACOS9) && !defined(PSP) && !defined(__OS2__)
-    char *cur_p = NULL;
-    DIR *dp = NULL;
-    len = strlen(archive_path);
-    if (len > 0) dp = opendir(archive_path);
-    else         dp = opendir(".");
-    cur_p = file_full_path+len;
-
-    while(1){
-        if (dp == NULL) return NULL;
-
-        char *delim_p = NULL;
-        while(1){
-            delim_p = strchr( cur_p, (char)DELIMITER );
-            if (delim_p != cur_p) break;
-            cur_p++;
-        }
-        
-        if (delim_p) len = delim_p - cur_p;
-        else         len = strlen(cur_p);
-        memcpy(file_sub_path, cur_p, len);
-        file_sub_path[len] = '\0';
-        
-        struct dirent *entp;
-        while ( (entp = readdir(dp)) != NULL ){
-            if ( !strcasecmp( file_sub_path, entp->d_name ) ){
-                memcpy(cur_p, entp->d_name, len);
-                break;
-            }
-        }
-        closedir( dp );
-
-        if (entp == NULL) return NULL;
-        if (delim_p == NULL) break;
-
-        memcpy(file_sub_path, file_full_path, delim_p-file_full_path);
-        file_sub_path[delim_p-file_full_path]='\0';
-        dp = opendir(file_sub_path);
-
-        cur_p = delim_p+1;
-    }
-
-    fp = ::fopen( file_full_path, mode );
-#endif
-
-    return fp;
+    /* The spelling a script uses is not always the spelling on the card,
+     * so this is not a plain fopen(): see src/common/pathmatch.c, which
+     * also remembers what a folder holds.  That matters more than it
+     * sounds -- a game's art lives inside arc.nsa, so this call misses on
+     * nearly every file the game opens, twice, and the miss used to cost a
+     * directory read each time. */
+    return path_open_ci( archive_path, path, mode );
 }
 
 unsigned char DirectReader::readChar( FILE *fp )

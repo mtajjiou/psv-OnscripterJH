@@ -56,6 +56,14 @@ ${CXX:-c++} -std=c++11 -Wall -Wextra -g \
 
 "$work/test_install_flow" "$work"
 
+# --- finding a file whose name is spelled differently -----------------------
+${CC:-cc} -std=c99 -Wall -Wextra -g \
+  -I"$root/src/common" \
+  "$root/test/test_pathmatch.c" "$root/src/common/pathmatch.c" \
+  -o "$work/test_pathmatch"
+
+"$work/test_pathmatch" "$work"
+
 # --- the heap report -------------------------------------------------------
 ${CC:-cc} -std=c99 -Wall -Wextra -g \
   -I"$root/src/common" \

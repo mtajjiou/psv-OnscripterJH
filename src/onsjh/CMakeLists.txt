@@ -41,6 +41,7 @@ add_executable(${PROJECT_NAME}
   ./../common/vita_sbrk.c # use this to solve heap alloc restriction
   ./../common/logfile.c
   ./../common/memreport.c
+  ./../common/pathmatch.c
   ./../common/crashreport.c
   ./../common/videofmt.c
   ./../common/videodec.c

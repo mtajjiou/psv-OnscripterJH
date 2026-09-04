@@ -31,6 +31,14 @@ ${CXX:-c++} -std=c++11 -Wall -Wextra -g \
 
 "$work/test_install_flow" "$work"
 
+# --- plugin manifests ------------------------------------------------------
+${CC:-cc} -std=c99 -Wall -Wextra -g \
+  -I"$root/src/common" \
+  "$root/test/test_plugins.c" "$root/src/common/plugins.c" \
+  -o "$work/test_plugins"
+
+"$work/test_plugins"
+
 # --- the ftp client's reading half -----------------------------------------
 ${CC:-cc} -std=c99 -Wall -Wextra -g \
   -I"$root/src/common" \

@@ -39,6 +39,7 @@
 #include "ZipHandler.h"
 #include "WifiUpload.h"
 #include "SaveSync.h"
+#include "PluginManager.h"
 #include "VndbCovers.h"
 
 #include "GUI_common.h"
@@ -108,6 +109,7 @@ static void init_sittings_text()
 	sittings[SITTINGS_VOL_SE]     = ui_text(UI_CFG_VOL_SE_GAME);
 	sittings[SITTINGS_VOL_VOICE]  = ui_text(UI_CFG_VOL_VOICE_GAME);
 	sittings[SITTINGS_PATCHES] = ui_text(UI_SET_PATCHES);
+	sittings[SITTINGS_PLUGINS] = ui_text(UI_SET_PLUGINS);
 	sittings[SITTINGS_BACKUP]  = ui_text(UI_SET_BACKUP);
 	sittings[SITTINGS_RESTORE] = ui_text(UI_SET_RESTORE);
 	sittings[SITTINGS_DEFAULT] = ui_text(UI_SET_RESET);
@@ -2075,6 +2077,78 @@ ScreenState on_wifi_event() {
 	return UNKNOWN;
 }
 
+/* ------------------------------------------------------------------ *
+ *  Plugins offered for a game
+ * ------------------------------------------------------------------ */
+
+static std::vector<plugin_info> plugin_offered;
+static int         plugin_index = 0;
+static std::string plugin_game;     /* folder */
+static std::string plugin_game_name;
+static char        plugin_message[128];
+
+void prepare_plugin_list(int choose) {
+	plugin_index = 0;
+	plugin_offered.clear();
+	plugin_game.clear();
+	plugin_game_name.clear();
+	plugin_message[0] = '\0';
+
+	if (choose < 0 || choose >= (int)rom_list.size()) return;
+	if (rom_list[choose].is_zip) return;
+
+	plugin_game      = rom_list[choose].path;
+	plugin_game_name = rom_list[choose].char_name();
+	plugin_offered   = PluginManager::available(plugin_game);
+}
+
+void draw_plugin_list() {
+	std::vector<std::string> rows;
+	for (size_t i = 0; i < plugin_offered.size(); i++) {
+		std::string row = plugin_offered[i].name;
+		row += "  [";
+		row += PluginManager::enabled(plugin_game, plugin_offered[i].id)
+			? ui_text(UI_PLUGIN_ON) : ui_text(UI_PLUGIN_OFF);
+		row += "]";
+		/* What it does, where there is a line to say it on. */
+		if (plugin_offered[i].description[0]) {
+			row += "  ";
+			row += plugin_offered[i].description;
+		}
+		rows.push_back(row);
+	}
+
+	char title[128];
+	snprintf(title, sizeof(title), ui_text(UI_PLUGIN_LIST_TITLE),
+		 plugin_game_name.c_str());
+
+	draw_pick_list(title, rows, plugin_index, ui_text(UI_PLUGIN_NONE),
+		       ui_text(UI_PROMPT_TOGGLE));
+
+	if (plugin_message[0]) draw_alert(plugin_message, FONT_SIZE);
+}
+
+ScreenState on_plugin_list_event() {
+	/* A failure stays on screen until the next thing happens, rather than
+	 * becoming its own dialog for one line. */
+	ScreenState state = on_pick_event(plugin_index,
+					  (int)plugin_offered.size(),
+					  PLUGIN_LIST, SETTING_MODE);
+	if (state != PLUGIN_LIST) return state;
+
+	plugin_message[0] = '\0';
+	if (plugin_index < 0 || plugin_index >= (int)plugin_offered.size())
+		return UNKNOWN;
+
+	const plugin_info &plugin = plugin_offered[plugin_index];
+	const bool on = PluginManager::enabled(plugin_game, plugin.id);
+
+	if (!PluginManager::setEnabled(plugin_game, plugin, !on))
+		snprintf(plugin_message, sizeof(plugin_message), "%s",
+			 ui_text(UI_PLUGIN_FAILED));
+	return UNKNOWN;
+}
+
 void draw_screen(ScreenState state, int curr, int choose, int slot) {
 
 	/* Opening a layer restarts it; moving between two layers does not, so
@@ -2176,6 +2250,10 @@ void draw_screen(ScreenState state, int curr, int choose, int slot) {
 		break;
 	case PATCH_DONE:
 		draw_alert(patch_message, FONT_SIZE);
+		break;
+	case PLUGIN_LIST:
+		draw_slots(choose, -1);
+		draw_plugin_list();
 		break;
 	case PATCH_LIST:
 		/* Over the settings screen it was opened from, so it is clear
@@ -2976,6 +3054,9 @@ ScreenState slot_touch(int &slot) {
 			else if (slot == SITTINGS_PATCHES) {
 				return PATCH_LIST;
 			}
+			else if (slot == SITTINGS_PLUGINS) {
+				return PLUGIN_LIST;
+			}
 			return UNKNOWN;
 		}
 	}
@@ -3019,6 +3100,9 @@ ScreenState on_slot_event_with_dpad(int &slot) {
 		}
 		else if (slot == SITTINGS_PATCHES) {
 			return PATCH_LIST;
+		}
+		else if (slot == SITTINGS_PLUGINS) {
+			return PLUGIN_LIST;
 		}
 		return UNKNOWN;
 	}
@@ -3760,6 +3844,9 @@ int mainloop() {
 			case PATCH_LIST:
 				new_state = on_patch_list_event();
 				break;
+			case PLUGIN_LIST:
+				new_state = on_plugin_list_event();
+				break;
 			case PATCH_REMOVE_CONFIRM:
 				new_state = on_message_event(choose, NULL, PATCH_REMOVE_RUN,
 					PATCH_LIST, PATCH_LIST, 1);
@@ -3863,6 +3950,7 @@ int mainloop() {
 				if (!need_save) need_save = 1;
 				new_state = on_slot_event(slot);
 				if (new_state == PATCH_LIST) prepare_patch_list(choose);
+				if (new_state == PLUGIN_LIST) prepare_plugin_list(choose);
 				if (new_state == SAVES_DONE) {
 					if (slot == SITTINGS_BACKUP) run_backup_saves(choose);
 					else                         run_restore_saves(choose);
@@ -4142,6 +4230,10 @@ int main()
 		 * in that order, so a hand-written ons_args overrides a guess. */
 		cmd_num = appendAutoArgs(rom_path, cmd_str, cmd_num, CMD_MAX);
 		cmd_num = appendGameArgs(rom_path, cmd_str, cmd_num, CMD_MAX);
+		/* Last, so a plugin the player turned on for this game wins over
+		 * what was guessed for it. */
+		cmd_num = PluginManager::appendArgs(rom_path, cmd_str, cmd_num,
+						    CMD_MAX - 1);
 		cmd_str[cmd_num] = NULL;
 		for(int i=0; i<cmd_num; i++)
 		{

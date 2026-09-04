@@ -19,6 +19,9 @@ This is an enhanced fork of [YuriSizuku/psv-OnscripterJH](https://github.com/Yur
 - **Version you can actually read** — the app version is derived from the git commit count at build time (`01.21`, `01.22`, ...), never edited by hand, so every build differs from the one before. The launcher shows it with the commit hash in its title bar, and both binaries print `ONS Easy Setup <version> (<commit>, <date>)` at startup, so a log always says which build produced it
 - **Patches over an installed game** — a translation patch or voice pack is an archive with no script in it, and the installer used to refuse it twice over: no game inside, and a destination that already exists. Selecting one now asks which installed game it belongs to, likeliest first, extracts it over that game, and keeps the original of every file it replaces under `.mods/` in the game folder. **Patches** on the game's settings screen lists what is applied and takes one back off
 - **Install without extracting** — **Install mode** in the settings cycles between *extract* and *keep compressed*. A compressed install writes out only what the engine opens as a file — `.nsa`/`.sar` archives, videos, fonts — keeps the archive as `game.zip` in the game folder, and reads everything else out of it while the game runs. A game whose art and audio are loose files roughly halves what it costs on the card; one that ships everything in an `arc.nsa` saves nothing, since that file goes to the card either way
+- **Send a game over Wi-Fi** — the settings screen listens on the console's own address and serves one page: what is installed, and a box to send a `.zip` to. It lands in `ux0:data/game_zips/`, ready to install, with no FTP client and no taking the card out. It runs only while that screen is open, and takes `.zip` files only
+- **Saves on a server** — a save server (address, login, folder) in the settings, and two actions: send every game's saves up to it, or fetch them back down. FTP, because a NAS, a desktop and a router with a disk in it all speak it. Each game gets a folder named after its own
+- **Plugins** — a folder in `ux0:data/onsemu/plugins/` with a `plugin.ini` in it adds engine arguments to the games it names, and can bring files to lay over them. Turned on per game from that game's settings, and turned off again puts the game back. See [doc/PLUGINS.md](doc/PLUGINS.md). A plugin cannot run code: there is no sandbox on the console to run it in
 - **Automatic script encoding** — the engine reads the script and decides whether it is Shift-JIS (Japanese) or GBK (Chinese), instead of making you know your game's code page. A Japanese game read as GBK garbles every line and dies with `text cannot be displayed in define section`; that no longer happens by default. The per-game **文字编码 (encoding)** setting is `自动(auto)` out of the box and can be forced to `日文(sjis)` or `中文(gbk)`; on the command line these are `--enc:auto`, `--enc:sjis` and `--enc:gbk`
 
 **Not implemented yet** — see the checklist below:
@@ -334,11 +337,17 @@ src/
 │   ├── GUI_Main.cpp            # Screens, main loop, install flow
 │   ├── GUI_Utils.cpp           # Input, config, game list
 │   ├── ZipHandler.cpp/.h       # Installs a game from a .zip
+│   ├── WifiUpload.cpp/.h       # The upload page, served while its screen is open
+│   ├── SaveSync.cpp/.h         # Saves to and from an FTP server
+│   ├── PluginManager.cpp/.h    # Finds plugins, applies them per game
 │   └── vitaPackage.cpp         # Shortcut bubble installer
 └── common/
     ├── zipreader.c/.h          # Portable ZIP reader (stdio + zlib)
     ├── zipfs.c/.h              # Reads a game out of its .zip at run time
     ├── patchplan.c/.h          # Is this archive a patch, and for which game
+    ├── httpd.c/.h              # The Wi-Fi upload page's request parsing
+    ├── ftpproto.c/.h           # The FTP client's reading half
+    ├── plugins.c/.h            # Plugin manifests and what they apply to
     ├── filesystem.cpp
     ├── iniparser.c
     └── ...
@@ -349,6 +358,9 @@ test/
 ├── test_install_flow.cpp       # The install decisions, end to end
 ├── test_patchplan.c            # Patch detection, matching and records
 ├── test_zipfs.c                # Reading files out of a mounted archive
+├── test_httpd.c                # Request heads and split multipart uploads
+├── test_ftpproto.c             # Replies, PASV, remote paths
+├── test_plugins.c              # Manifests, matching, enabled lists
 ├── bench.c                     # What script/benchmark.sh runs
 └── make_fixtures.py            # Builds the test archives
 
@@ -394,10 +406,10 @@ on top of **zlib**, which the engine and launcher already link against.
 - [ ] Performance tuning
 
 ### v2.0 (Community)
-- [ ] Web-based game list upload
-- [ ] Cloud save sync (via FTP/SMB)
+- [x] Web-based game list upload
+- [x] Cloud save sync (via FTP/SMB)
 - [x] Mod loader integration
-- [ ] Plugin system
+- [x] Plugin system
 
 ---
 

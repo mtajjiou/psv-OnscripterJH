@@ -328,6 +328,18 @@ const char *g_strings[UI_STRING_COUNT][UI_LANG_COUNT] = {
                                   "服务器已响应,没有需要复制的内容。" },
     /* UI_SYNC_FAILED        */ { "Sync failed: %s",          "同步失败:%s" },
 
+    /* UI_SET_PLUGINS        */ { "Plugins",                 "插件" },
+    /* UI_PLUGIN_LIST_TITLE  */ { "Plugins for %s",           "%s 的插件" },
+    /* UI_PLUGIN_NONE        */ { "No plugins for this game.\n"
+                                  "A plugin is a folder in ux0:data/onsemu/plugins/.",
+                                  "此游戏没有插件。\n"
+                                  "插件是 ux0:data/onsemu/plugins/ 下的文件夹。" },
+    /* UI_PLUGIN_ON          */ { "on",                       "开启" },
+    /* UI_PLUGIN_OFF         */ { "off",                      "关闭" },
+    /* UI_PLUGIN_FAILED      */ { "That plugin's files could not be copied.",
+                                  "无法复制该插件的文件。" },
+    /* UI_PROMPT_TOGGLE      */ { "turn on or off",           "开启/关闭" },
+
     /* UI_ABOUT */
     { "About ONS Easy Setup\n\n"
       "ONScripter        <Ogapee>\n"
@@ -370,6 +382,14 @@ struct JapaneseString {
 };
 
 const JapaneseString g_japanese[] = {
+    { UI_SET_PLUGINS,              "プラグイン" },
+    { UI_PLUGIN_LIST_TITLE,        "%s のプラグイン" },
+    { UI_PLUGIN_NONE,              "このゲーム用のプラグインはありません。\n"
+                                   "プラグインは ux0:data/onsemu/plugins/ の中のフォルダです。" },
+    { UI_PLUGIN_ON,                "オン" },
+    { UI_PLUGIN_OFF,               "オフ" },
+    { UI_PLUGIN_FAILED,            "このプラグインのファイルをコピーできませんでした。" },
+    { UI_PROMPT_TOGGLE,            "切り替え" },
     { UI_CFG_SYNC_SERVER,          "セーブ用サーバー (FTP)" },
     { UI_CFG_SYNC_UP,              "セーブをサーバーへ送る" },
     { UI_CFG_SYNC_DOWN,            "セーブをサーバーから取得" },

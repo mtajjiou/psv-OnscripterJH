@@ -262,6 +262,15 @@ enum UIStringId {
     UI_SYNC_NOTHING,
     UI_SYNC_FAILED,
 
+    /* Plugins */
+    UI_SET_PLUGINS,
+    UI_PLUGIN_LIST_TITLE,
+    UI_PLUGIN_NONE,
+    UI_PLUGIN_ON,
+    UI_PLUGIN_OFF,
+    UI_PLUGIN_FAILED,
+    UI_PROMPT_TOGGLE,
+
     /* Long text */
     UI_ABOUT,
 

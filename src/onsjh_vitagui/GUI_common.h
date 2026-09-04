@@ -104,7 +104,7 @@
 
 #define SLOT_BUTTONS_TOP            (SLOT_HEADER_TOP + SLOT_HEADER_HEIGHT)
 #define SLOT_BUTTONS_HEIGHT         (SLOT_PANEL_HEIGHT - SLOT_HEADER_HEIGHT - (SLOT_PANEL_PADDING * 2))
-#define SLOT_BUTTON                 15
+#define SLOT_BUTTON                 16
 #define SLOT_BUTTON_MARGIN          5
 #define SLOT_BUTTON_WIDTH           (int)(SLOT_PANEL_WIDTH - (SLOT_BUTTON_MARGIN * 2))
 #define SLOT_BUTTON_HEIGHT          (int)((SLOT_BUTTONS_HEIGHT - (SLOT_BUTTON_MARGIN * (SLOT_BUTTON + 1))) / SLOT_BUTTON)
@@ -174,8 +174,10 @@
 
 /* The patches applied over this game, and the way to take one off. */
 #define SITTINGS_PATCHES 12
-#define SITTINGS_DEFAULT 13
-#define SITTINGS_RETURN 14
+/* The plugins offered for this game, and which of them it uses. */
+#define SITTINGS_PLUGINS 13
+#define SITTINGS_DEFAULT 14
+#define SITTINGS_RETURN 15
 
 #define SCE_CTRL_HOLD 0x80000000
 #define FONT_SIZE 24
@@ -228,6 +230,8 @@ typedef enum {
 	PATCH_REMOVE_CONFIRM,
 	PATCH_REMOVE_RUN,
 	PATCH_REMOVE_DONE,
+	/* The plugins offered for a game, toggled one row at a time. */
+	PLUGIN_LIST,
 	/* Listening for a game sent from a browser. */
 	WIFI_UPLOAD,
 	/* Typing in where the saves go, then copying them to and from it. */

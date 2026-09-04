@@ -1804,7 +1804,8 @@ static bool prepare_patch_pick(const std::string &zip_path) {
  * by "which game does this patch go on" and "which patch comes off". */
 static void draw_pick_list(const char *title, const std::vector<std::string> &rows,
 			   int index, const char *empty_text,
-			   const char *enter_label) {
+			   const char *enter_label,
+			   const char *square_label = NULL) {
 	const int padding = 24;
 	const int row_h   = 28;
 	const int visible = 8;
@@ -1864,12 +1865,21 @@ static void draw_pick_list(const char *title, const std::vector<std::string> &ro
 		width - padding * 2, 1, TH_LINE);
 
 	const int baseline = top + height - 22 + 6;
-	int enter_w = th_hint_width(th_glyph_enter, enter_label, TH_FONT_S);
-	int close_w = th_hint_width(th_glyph_cancel, ui_text(UI_PROMPT_CLOSE),
-				    TH_FONT_S);
-	int x = left + (width - (enter_w + 28 + close_w)) / 2;
+	int enter_w  = th_hint_width(th_glyph_enter, enter_label, TH_FONT_S);
+	int close_w  = th_hint_width(th_glyph_cancel, ui_text(UI_PROMPT_CLOSE),
+				     TH_FONT_S);
+	int square_w = square_label
+		? th_hint_width(th_glyph_square, square_label, TH_FONT_S) + 28 : 0;
+
+	int x = left + (width - (enter_w + 28 + close_w + square_w)) / 2;
 	x += th_hint(x, baseline, th_glyph_enter, enter_label, TH_TEXT, TH_FONT_S);
-	th_hint(x + 28, baseline, th_glyph_cancel, ui_text(UI_PROMPT_CLOSE),
+	x += 28;
+	if (square_label) {
+		x += th_hint(x, baseline, th_glyph_square, square_label,
+			     TH_TEXT_DIM, TH_FONT_S);
+		x += 28;
+	}
+	th_hint(x, baseline, th_glyph_cancel, ui_text(UI_PROMPT_CLOSE),
 		TH_TEXT_DIM, TH_FONT_S);
 }
 
@@ -1878,14 +1888,25 @@ void draw_patch_pick() {
 	for (size_t i = 0; i < patch_candidates.size(); i++)
 		rows.push_back(patch_candidates[i].name);
 
+	/* An archive with no script in it is nearly always a patch, and
+	 * sometimes a game that keeps its script inside arc.nsa or an .ns2.
+	 * Nothing in the file says which, so rather than guess and be wrong
+	 * about somebody's game, the other reading is one button away. */
 	draw_pick_list(ui_text(UI_PATCH_TITLE), rows, patch_pick_index,
-		       ui_text(UI_PATCH_NO_GAMES), ui_text(UI_PROMPT_YES));
+		       ui_text(UI_PATCH_NO_GAMES), ui_text(UI_PROMPT_YES),
+		       ui_text(UI_PATCH_AS_GAME));
 }
 
-/* Moves the selection, or leaves this screen.  UNKNOWN means stay. */
+/* Moves the selection, or leaves this screen.  UNKNOWN means stay -- which
+ * is also what on_square defaults to, so a screen without a third action
+ * simply has none.  read_buttons() is edge-triggered and keeps its own
+ * state, so it is called exactly once per frame, here. */
 static ScreenState on_pick_event(int &index, int count, ScreenState on_enter,
-				 ScreenState on_cancel) {
+				 ScreenState on_cancel,
+				 ScreenState on_square = UNKNOWN) {
 	int btn = read_buttons();
+
+	if (!(btn & SCE_CTRL_HOLD) && (btn & SCE_CTRL_SQUARE)) return on_square;
 
 	if (btn & SCE_CTRL_UP) {
 		if (index > 0) index--;
@@ -1906,9 +1927,12 @@ ScreenState on_patch_pick_event() {
 	 * decides where cancelling the confirmation goes back to. */
 	mod_from_panel = false;
 
+	/* SQUARE says "this is not a patch, it is a game" -- see
+	 * draw_patch_pick(). */
 	ScreenState state = on_pick_event(patch_pick_index,
 					  (int)patch_candidates.size(),
-					  PATCH_CONFIRM, MAIN_SCREEN);
+					  PATCH_CONFIRM, MAIN_SCREEN,
+					  INSTALL_CONFIRM);
 	if (state != PATCH_CONFIRM) return state;
 
 	patch_target_path = patch_candidates[patch_pick_index].path;
@@ -3947,6 +3971,11 @@ int mainloop() {
 				break;
 			case PATCH_PICK:
 				new_state = on_patch_pick_event();
+				/* The archive turned out to be a game after all:
+				 * the ordinary install prompt, for the row that
+				 * is still selected behind this. */
+				if (new_state == INSTALL_CONFIRM)
+					prepare_install_confirm(choose);
 				break;
 			case PATCH_CONFIRM:
 				new_state = on_message_event(choose, NULL, PATCH_RUN,

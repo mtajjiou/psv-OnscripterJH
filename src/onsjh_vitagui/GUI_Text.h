@@ -278,6 +278,7 @@ enum UIStringId {
     UI_MOD_APPLIED,
     UI_MOD_ASK,
     UI_MOD_WARN,
+    UI_PATCH_AS_GAME,
 
     /* Long text */
     UI_ABOUT,

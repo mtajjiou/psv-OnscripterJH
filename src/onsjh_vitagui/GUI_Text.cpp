@@ -368,6 +368,8 @@ const char *g_strings[UI_STRING_COUNT][UI_LANG_COUNT] = {
                                   "  且名称不匹配。\n\n"
                                   "仍要应用吗?" },
 
+    /* UI_PATCH_AS_GAME      */ { "install as a game",      "作为游戏安装" },
+
     /* UI_ABOUT */
     { "About ONS Easy Setup\n\n"
       "ONScripter        <Ogapee>\n"
@@ -411,6 +413,7 @@ struct JapaneseString {
 
 const JapaneseString g_japanese[] = {
     { UI_BTN_MODS,                 "MOD" },
+    { UI_PATCH_AS_GAME,            "ゲームとしてインストール" },
     { UI_MOD_LIST_TITLE,           "%s の MOD" },
     { UI_MOD_NONE,                 "MOD のアーカイブが見つかりません。\n"
                                    "パッチの .zip を ux0:data/game_mods/ に置いてください。" },

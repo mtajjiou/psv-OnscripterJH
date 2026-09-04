@@ -298,6 +298,12 @@ sh ./script/build_vitavpk.sh vpk [vitasdkdir]
 sh ./script/send_vitavpk.sh ./../build/VitaOns.vpk 10.2.12.6 ONSEASY01
 ```
 
+### What still needs a console
+
+Six features are written and build but have never run on a PSVita: see
+[doc/NEEDS-TESTING.md](doc/NEEDS-TESTING.md) for what they are and what to
+check. Their issues stay open until someone has.
+
 ### Tests
 
 The archive handling is portable C and is tested on a host machine, with no

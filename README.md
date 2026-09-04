@@ -300,9 +300,10 @@ sh ./script/send_vitavpk.sh ./../build/VitaOns.vpk 10.2.12.6 ONSEASY01
 
 ### What still needs a console
 
-Six features are written and build but have never run on a PSVita: see
-[doc/NEEDS-TESTING.md](doc/NEEDS-TESTING.md) for what they are and what to
-check. Their issues stay open until someone has.
+One feature is written and builds but has not been run on a PSVita yet:
+applying a patch over an installed game. See
+[doc/NEEDS-TESTING.md](doc/NEEDS-TESTING.md) for what to check; its issue
+stays open until someone has.
 
 ### Tests
 

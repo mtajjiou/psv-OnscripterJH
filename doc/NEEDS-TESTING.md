@@ -1,50 +1,42 @@
 # What still needs a console
 
-Everything here is written, compiles, and has whatever host tests its
-portable half allows. None of it has been run on a PSVita — the vitasdk is
-not available in the environment it was written in, so a build is the only
-check the console side has had.
+One thing, now. Everything else on this page has been run on hardware and
+its issue is closed.
 
-Each item is an open issue. They stay open until someone runs them on
-hardware; closing them on a green build would be closing them on the half
-of the work that can be checked without one.
+## Patches over an installed game — [#80](https://github.com/mtajjiou/psv-OnscripterJH/issues/80)
 
-## The six
+Selecting an archive with no script in it asks which installed game it
+belongs to, extracts it over that game, and keeps the original of every
+file it replaces under `.mods/` in the game folder. **Patches** on the
+game's settings screen lists what is applied and takes one back off.
 
-| # | Feature | Where it is |
+Turn on **Write a debug log** first — the launcher writes what it did to
+`ux0:data/onsemu/`, and the log viewer is in the settings.
+
+1. Put a real translation patch `.zip` in `ux0:data/game_zips/` and select
+   it: it should ask **which game**, with the right one first.
+2. Apply it, start the game, see the patch.
+3. Game settings → **Patches** → remove it; start the game, see the
+   original back.
+4. Apply the same patch twice — the second time should say it is already
+   applied rather than backing up the patch's own files over the game's.
+5. A patch wrapped in a folder named after itself: its *contents* should
+   land in the game, not the folder.
+
+Plugins with `overlay = yes` (#81) lay their files on through the same
+record, so a failure here is worth checking against those too.
+
+## Tested and closed
+
+| # | Feature | Notes |
 |---|---|---|
-| [#65](https://github.com/mtajjiou/psv-OnscripterJH/issues/65) | Install and launch a game from the launcher | select a `.zip` in the game list |
-| [#32](https://github.com/mtajjiou/psv-OnscripterJH/issues/32) | Install without extracting | settings → **Install mode** → *keep compressed* |
-| [#78](https://github.com/mtajjiou/psv-OnscripterJH/issues/78) | Send a game from a browser | settings → **Send a game over Wi-Fi** |
-| [#79](https://github.com/mtajjiou/psv-OnscripterJH/issues/79) | Saves to and from a server | settings → **Save server (FTP)**, then send/fetch |
-| [#80](https://github.com/mtajjiou/psv-OnscripterJH/issues/80) | A patch over an installed game | select a patch `.zip`; **Patches** on the game's settings |
-| [#81](https://github.com/mtajjiou/psv-OnscripterJH/issues/81) | Plugins | a folder in `ux0:data/onsemu/plugins/`; **Plugins** on the game's settings |
+| [#65](https://github.com/mtajjiou/psv-OnscripterJH/issues/65) | Install and launch from the launcher | |
+| [#32](https://github.com/mtajjiou/psv-OnscripterJH/issues/32) | Install without extracting | one bug found and fixed: the script has to be on the card, since the engine opens it before the mount exists |
+| [#78](https://github.com/mtajjiou/psv-OnscripterJH/issues/78) | Send a game from a browser | |
+| [#79](https://github.com/mtajjiou/psv-OnscripterJH/issues/79) | Saves to and from a server | FTP only; SMB is not implemented |
+| [#81](https://github.com/mtajjiou/psv-OnscripterJH/issues/81) | Plugins | |
 
-## Before testing any of it
-
-Turn on **Write a debug log** in the settings. Every one of these writes
-what it did to `ux0:data/onsemu/`, and a report saying "it did not work" is
-worth much less than the same report with the log attached. The log viewer
-is in the settings too, so the log can be read on the console.
-
-## What to check, per feature
-
-The check lists live on the issues themselves, so a tester has them in
-front of them while they file what they found. In short:
-
-- **#65** — archive to installed game to running game, without a PC.
-- **#32** — a loose-file game and an `arc.nsa` game, both installed
-  compressed; both should play, and the second should save no space (the
-  prompt says so before it starts).
-- **#78** — the address shown works from a phone; a large archive arrives
-  whole; a cancelled upload leaves nothing behind.
-- **#79** — against a real FTP server; a wrong password ends in a message
-  rather than a hang.
-- **#80** — a real translation patch on, then off, with the game started
-  in between each time.
-- **#81** — one plugin that only adds an argument, one that brings files.
-
-## What has been checked without a console
+## What is checked without a console
 
 `sh test/run_tests.sh` covers the portable halves: archive parsing and path
 safety, the install decision chain, patch detection and matching, reading a

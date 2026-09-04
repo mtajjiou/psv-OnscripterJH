@@ -145,7 +145,7 @@
  * so a row can be added without touching every signature. */
 #define CMD_OPTS 16
 
-#define CONFIG_NUM 17  /* ...the library actions, game defaults, logging, theme, log viewer */
+#define CONFIG_NUM 18  /* ...the library actions, game defaults, logging, theme, log viewer */
 
 #define PACKAGE_TEMP "ux0:onsemu/temp/"
 
@@ -228,6 +228,8 @@ typedef enum {
 	PATCH_REMOVE_CONFIRM,
 	PATCH_REMOVE_RUN,
 	PATCH_REMOVE_DONE,
+	/* Listening for a game sent from a browser. */
+	WIFI_UPLOAD,
 	PRINT_APPINFO,
 	START_MODE,
 	SETTING_MODE,

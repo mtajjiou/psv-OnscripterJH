@@ -41,6 +41,7 @@ add_executable(${PROJECT_NAME}
   GUI_Text.cpp
   GUI_Utils.cpp
   ZipHandler.cpp
+  WifiUpload.cpp
   VndbCovers.cpp
   GUI_Theme.cpp
   vitaPackage.cpp
@@ -48,6 +49,7 @@ add_executable(${PROJECT_NAME}
   ./../common/zipreader.c
   ./../common/patchplan.c
   ./../common/zipfs.c
+  ./../common/httpd.c
   ./../common/manifest.c
   ./../common/formats.c
   ./../common/logfile.c

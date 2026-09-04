@@ -31,6 +31,14 @@ ${CXX:-c++} -std=c++11 -Wall -Wextra -g \
 
 "$work/test_install_flow" "$work"
 
+# --- the wifi upload page's parsing ----------------------------------------
+${CC:-cc} -std=c99 -Wall -Wextra -g \
+  -I"$root/src/common" \
+  "$root/test/test_httpd.c" "$root/src/common/httpd.c" \
+  -o "$work/test_httpd"
+
+"$work/test_httpd"
+
 # --- reading a game out of its archive -------------------------------------
 ${CC:-cc} -std=c99 -Wall -Wextra -g \
   -I"$root/src/common" \

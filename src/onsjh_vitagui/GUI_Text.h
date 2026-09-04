@@ -237,6 +237,16 @@ enum UIStringId {
     UI_INSTALL_COMPRESSED,
     UI_INSTALL_COMPRESSED_OK,
 
+    /* Sending a game to the console from a browser */
+    UI_CFG_WIFI_UPLOAD,
+    UI_WIFI_OPEN,
+    UI_WIFI_TITLE,
+    UI_WIFI_WAITING,
+    UI_WIFI_RECEIVING,
+    UI_WIFI_RECEIVED,
+    UI_WIFI_FAILED,
+    UI_WIFI_HINT,
+
     /* Long text */
     UI_ABOUT,
 

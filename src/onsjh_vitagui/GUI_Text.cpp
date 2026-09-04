@@ -295,6 +295,19 @@ const char *g_strings[UI_STRING_COUNT][UI_LANG_COUNT] = {
                                   "已安装到\n%s\n\n"
                                   "游戏直接从压缩包运行:占用 %s,而非 %s。" },
 
+    /* UI_CFG_WIFI_UPLOAD    */ { "Send a game over Wi-Fi",  "通过 Wi-Fi 发送游戏" },
+    /* UI_WIFI_OPEN          */ { "open",                    "打开" },
+    /* UI_WIFI_TITLE         */ { "Open this address in a browser",
+                                  "在浏览器中打开此地址" },
+    /* UI_WIFI_WAITING       */ { "waiting for a file",       "等待文件" },
+    /* UI_WIFI_RECEIVING     */ { "receiving %s -- %s",       "正在接收 %s -- %s" },
+    /* UI_WIFI_RECEIVED      */ { "%d archive(s) received into game_zips",
+                                  "已接收 %d 个压缩包到 game_zips" },
+    /* UI_WIFI_FAILED        */ { "Cannot listen: %s",        "无法监听:%s" },
+    /* UI_WIFI_HINT          */ { "Any device on this network can send a game "
+                                  "while this screen is open.",
+                                  "此界面打开时,本网络上的任何设备都可以发送游戏。" },
+
     /* UI_ABOUT */
     { "About ONS Easy Setup\n\n"
       "ONScripter        <Ogapee>\n"
@@ -356,6 +369,15 @@ const JapaneseString g_japanese[] = {
     { UI_PATCH_REMOVED,            "パッチを取り外しました。" },
     { UI_PATCH_REMOVE_FAIL,        "パッチの記録を読み取れないため、何も変更していません。" },
     { UI_PROMPT_REMOVE,            "取り外す" },
+    { UI_CFG_WIFI_UPLOAD,          "Wi-Fi でゲームを送る" },
+    { UI_WIFI_OPEN,                "開く" },
+    { UI_WIFI_TITLE,               "このアドレスをブラウザで開いてください" },
+    { UI_WIFI_WAITING,             "ファイルを待っています" },
+    { UI_WIFI_RECEIVING,           "受信中 %s -- %s" },
+    { UI_WIFI_RECEIVED,            "%d 個のアーカイブを game_zips に受け取りました" },
+    { UI_WIFI_FAILED,              "待ち受けできません:%s" },
+    { UI_WIFI_HINT,                "この画面を開いている間、同じネットワーク上のどの機器からでも"
+                                   "ゲームを送れます。" },
     { UI_CFG_INSTALL_MODE,         "インストール方式" },
     { UI_INSTALL_EXTRACT,          "展開する" },
     { UI_INSTALL_COMPRESSED,       "圧縮のまま" },

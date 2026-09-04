@@ -37,6 +37,7 @@
 #include "vitaPackage.h"
 #include "filesystem.h"
 #include "ZipHandler.h"
+#include "WifiUpload.h"
 #include "VndbCovers.h"
 
 #include "GUI_common.h"
@@ -563,7 +564,10 @@ void draw_config() {
 		 * here that changes what an install leaves on the card. */
 		{ui_text(UI_CFG_INSTALL_MODE),
 			config.install_compressed ? ui_text(UI_INSTALL_COMPRESSED)
-						  : ui_text(UI_INSTALL_EXTRACT)}
+						  : ui_text(UI_INSTALL_EXTRACT)},
+		/* The other way a game gets onto the card: from a browser on
+		 * whatever else is on this network. */
+		{ui_text(UI_CFG_WIFI_UPLOAD), ui_text(UI_WIFI_OPEN)}
 	};
 
 	/* The settings sit on a card over a dimmed library rather than over a
@@ -1927,6 +1931,108 @@ ScreenState run_patch_remove() {
 	return PATCH_REMOVE_DONE;
 }
 
+/* ------------------------------------------------------------------ *
+ *  Sending a game to the console from a browser
+ * ------------------------------------------------------------------ */
+
+void draw_wifi_screen() {
+	const WifiUpload::Status &status = WifiUpload::status();
+
+	const int padding = 26;
+	const int width   = SCREEN_WIDTH - 160;
+	const int height  = 230;
+	const int left    = (SCREEN_WIDTH - width) / 2;
+	const int top     = (SCREEN_HEIGHT - height) / 2;
+
+	vita2d_draw_rectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, TH_SCRIM);
+	th_shadow(left, top, width, height);
+	th_card(left, top, width, height, TH_SURFACE, TH_BG);
+	th_border(left, top, width, height, 1, TH_LINE);
+
+	last_dialog_area.left   = left;
+	last_dialog_area.top    = top;
+	last_dialog_area.right  = left + width;
+	last_dialog_area.bottom = top + height;
+
+	int y = top + padding + TH_FONT_M;
+
+	if (status.state == WifiUpload::FAILED) {
+		char line[256];
+		snprintf(line, sizeof(line), ui_text(UI_WIFI_FAILED),
+			 status.message.c_str());
+		th_text(left + padding, y, TH_DANGER, TH_FONT_M, line);
+	}
+	else {
+		th_text(left + padding, y, TH_TEXT_DIM, TH_FONT_S,
+			ui_text(UI_WIFI_TITLE));
+
+		/* The address is the one thing on this screen that has to be
+		 * readable from across a room. */
+		y += 44;
+		th_text(left + padding, y, TH_ACCENT, TH_FONT_L,
+			status.address.c_str());
+
+		y += 40;
+		if (status.state == WifiUpload::RECEIVING) {
+			char size_str[16];
+			char line[320];
+			getSizeString(size_str, status.bytes);
+			snprintf(line, sizeof(line), ui_text(UI_WIFI_RECEIVING),
+				 status.file.c_str(), size_str);
+			th_text(left + padding, y, TH_TEXT, TH_FONT_S,
+				th_fit(line, TH_FONT_S, width - padding * 2));
+
+			/* A bar only where the browser said how much is coming. */
+			if (status.expected > 0) {
+				const int bar_w = width - padding * 2;
+				int done = (int)((status.bytes * bar_w) / status.expected);
+				if (done > bar_w) done = bar_w;
+				vita2d_draw_rectangle(left + padding, y + 10, bar_w, 6,
+						      TH_LINE);
+				vita2d_draw_rectangle(left + padding, y + 10, done, 6,
+						      TH_ACCENT);
+			}
+		}
+		else {
+			th_text(left + padding, y, TH_TEXT_DIM, TH_FONT_S,
+				ui_text(UI_WIFI_WAITING));
+		}
+
+		y += 34;
+		if (status.received > 0) {
+			char line[128];
+			snprintf(line, sizeof(line), ui_text(UI_WIFI_RECEIVED),
+				 status.received);
+			th_text(left + padding, y, TH_TEXT, TH_FONT_S, line);
+		}
+		else {
+			th_text(left + padding, y, TH_TEXT_DIM, TH_FONT_S,
+				th_fit(ui_text(UI_WIFI_HINT), TH_FONT_S,
+				       width - padding * 2));
+		}
+	}
+
+	vita2d_draw_rectangle(left + padding, top + height - 44,
+			      width - padding * 2, 1, TH_LINE);
+	th_hint(left + padding, top + height - 22 + 6, th_glyph_cancel,
+		ui_text(UI_PROMPT_CLOSE), TH_TEXT_DIM, TH_FONT_S);
+}
+
+/* The server does a frame's worth of work per frame, so leaving this
+ * screen is what stops it: an upload cannot go on behind the game list. */
+ScreenState on_wifi_event() {
+	WifiUpload::poll();
+
+	int btn = read_buttons();
+	if (!(btn & SCE_CTRL_HOLD) && (btn & SCE_CTRL_CANCEL)) {
+		WifiUpload::stop();
+		/* Whatever arrived is a new archive in the drop folder, so the
+		 * list is read again on the way out. */
+		return RELOAD_MAINSCREEN;
+	}
+	return UNKNOWN;
+}
+
 void draw_screen(ScreenState state, int curr, int choose, int slot) {
 
 	/* Opening a layer restarts it; moving between two layers does not, so
@@ -1984,7 +2090,7 @@ void draw_screen(ScreenState state, int curr, int choose, int slot) {
 	/* States that belong to the settings screen rather than to a game, so
 	 * the settings are what is drawn behind them.  They sit past
 	 * PRINT_APPINFO in the enum only because they were added last. */
-	bool from_settings = (state == COVERS_ALL_CONFIRM || state == COVERS_ALL_RUN ||
+	bool from_settings = (state == WIFI_UPLOAD || state == COVERS_ALL_CONFIRM || state == COVERS_ALL_RUN ||
 			      state == COVERS_ALL_DONE ||
 			      state == CLEAN_CONFIRM || state == CLEAN_DONE ||
 			      state == LOG_VIEW);
@@ -1998,6 +2104,9 @@ void draw_screen(ScreenState state, int curr, int choose, int slot) {
 	/* Drawn after the settings behind it, so it sits on top. */
 	if (state == LOG_VIEW) {
 		draw_log_screen();
+	}
+	if (state == WIFI_UPLOAD) {
+		draw_wifi_screen();
 	}
 
 	switch (state) {
@@ -2404,6 +2513,9 @@ static ScreenState activate_config_row(int row) {
 	case 16:
 		config.install_compressed = !config.install_compressed;
 		break;
+	case 17:
+		WifiUpload::start();
+		return WIFI_UPLOAD;
 	default:
 		break;
 	}
@@ -3523,6 +3635,10 @@ int mainloop() {
 				return 1;
 			case CONFIG_SCREEN:
 				new_state = on_config_event();
+				break;
+			case WIFI_UPLOAD:
+				new_state = on_wifi_event();
+				if (new_state == RELOAD_MAINSCREEN) return 1;
 				break;
 			case HELP_MSG:
 				new_state = on_help_event(FORMATS_MSG);

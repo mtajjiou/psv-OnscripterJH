@@ -55,6 +55,9 @@ struct zip_reader {
      * stack, where a 32K frame is a lot to ask of a thread. */
     unsigned char *in_buf;
     unsigned char *out_buf;
+    /* Entries the directory declared and this reader could not name, so a
+     * caller can say so rather than silently install fewer files. */
+    int skipped_names;
 };
 
 static uint16_t rd16(const unsigned char *p) {
@@ -142,7 +145,7 @@ static int read_central_directory(zip_reader *z, uint32_t cd_offset,
                                   uint32_t cd_size, int count) {
     unsigned char *cd;
     unsigned char *p, *end;
-    int i;
+    int i, kept;
 
     cd = (unsigned char *)malloc(cd_size);
     if (!cd) return ZIP_ERR_MEMORY;
@@ -160,13 +163,16 @@ static int read_central_directory(zip_reader *z, uint32_t cd_offset,
 
     p = cd;
     end = cd + cd_size;
+    /* kept counts what is stored, which is not always what the directory
+     * declares: an entry can be skipped without losing the rest. */
+    kept = 0;
     for (i = 0; i < count; i++) {
         uint16_t name_len, extra_len, comment_len;
-        zip_entry *e = &z->entries[i];
+        zip_entry *e = &z->entries[kept];
         size_t len;
 
         if (p + CENTRAL_SIZE > end || rd32(p) != SIG_CENTRAL) {
-            free_entries(z->entries, i);
+            free_entries(z->entries, kept);
             z->entries = NULL;
             free(cd);
             return ZIP_ERR_FORMAT;
@@ -182,17 +188,43 @@ static int read_central_directory(zip_reader *z, uint32_t cd_offset,
         comment_len        = rd16(p + 32);
         e->local_offset    = rd32(p + 42);
 
-        if (p + CENTRAL_SIZE + name_len > end || name_len >= ZIP_MAX_NAME) {
-            free_entries(z->entries, i);
+        /* A name that runs past the end of the directory is a corrupt
+         * archive and there is nothing sensible to do with the rest of it. */
+        if (p + CENTRAL_SIZE + name_len > end) {
+            free_entries(z->entries, kept);
             z->entries = NULL;
             free(cd);
             return ZIP_ERR_FORMAT;
         }
 
+        /* A name longer than the reader will hold is one unusable entry,
+         * not an unusable archive: it is skipped and the rest is read.
+         * Refusing the whole archive meant one deep path -- a translation
+         * patch nested a few folders down, say -- made a game impossible to
+         * install, and the file that could not be named is one the console
+         * could not have opened by that path either. */
+        if (name_len >= ZIP_MAX_NAME) {
+            p += CENTRAL_SIZE + name_len + extra_len + comment_len;
+            z->skipped_names++;
+            continue;
+        }
+
+        /* 0xFFFFFFFF in a size or an offset means "the real value is in the
+         * zip64 extra field", which this reader does not parse.  Taken at
+         * face value it asks for four gigabytes from a file that has not
+         * got them, so it is refused as what it is. */
+        if (e->compressed_size == 0xFFFFFFFFu || e->size == 0xFFFFFFFFu ||
+            e->local_offset == 0xFFFFFFFFu) {
+            free_entries(z->entries, kept);
+            z->entries = NULL;
+            free(cd);
+            return ZIP_ERR_ZIP64;
+        }
+
         len = name_len;
         e->name = (char *)malloc(len + 1);
         if (!e->name) {
-            free_entries(z->entries, i);
+            free_entries(z->entries, kept);
             z->entries = NULL;
             free(cd);
             return ZIP_ERR_MEMORY;
@@ -213,10 +245,11 @@ static int read_central_directory(zip_reader *z, uint32_t cd_offset,
                      e->name[len - 1] == '/');
         if (!e->is_dir) z->total_size += e->size;
 
+        kept++;
         p += CENTRAL_SIZE + name_len + extra_len + comment_len;
     }
 
-    z->count = count;
+    z->count = kept;
     free(cd);
     return ZIP_OK;
 }
@@ -298,6 +331,10 @@ void zip_close(zip_reader *z) {
     free(z->in_buf);
     free(z->out_buf);
     free(z);
+}
+
+int zip_skipped_names(const zip_reader *z) {
+    return z ? z->skipped_names : 0;
 }
 
 int zip_count(const zip_reader *z) {

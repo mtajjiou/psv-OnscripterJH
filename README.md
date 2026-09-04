@@ -264,7 +264,7 @@ harmless.
 - [ ] **Integration Tests** — Full game launch workflows
 - [ ] **Compatibility Matrix** — Games tested and verified
 - [ ] **Performance Benchmarks** — Launch time, extraction speed
-- [ ] **Edge Cases** — Symlinks, special characters, large files, etc.
+- [x] **Edge Cases** — Symlinks, special characters, large files, etc.
 
 ---
 

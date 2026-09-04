@@ -57,6 +57,11 @@ uint32_t    zip_entry_compressed_size(const zip_reader *z, int i);
 int         zip_entry_is_dir(const zip_reader *z, int i);
 uint64_t    zip_total_size(const zip_reader *z);             /* sum of all entries */
 
+/* How many entries were dropped because their names are longer than this
+ * reader holds.  Normally 0; anything else means the archive installs
+ * without those files, and the caller can decide whether to say so. */
+int         zip_skipped_names(const zip_reader *z);
+
 /* Inflate entry i, handing the plain bytes to cb in order.  Returns ZIP_OK
  * or a ZIP_ERR_* code.  Directory entries succeed without calling cb. */
 int zip_extract_entry(zip_reader *z, int i, zip_write_cb cb, void *user);

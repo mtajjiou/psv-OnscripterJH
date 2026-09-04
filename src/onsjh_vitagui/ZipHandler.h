@@ -92,6 +92,19 @@ public:
     /* How many bytes of this archive are already on the card, or 0. */
     static uint64_t resumableBytes(const std::string &zip_path);
 
+    /* Install zip_path without extracting all of it: the files the engine
+     * opens as files are written out, the archive itself is kept as
+     * <dest>/game.zip, and everything else is read from it while the game
+     * runs.  Roughly halves what a game costs on the card. */
+    static ZipInstallStatus installCompressed(const std::string &zip_path,
+                                              std::string &installed_path,
+                                              ZipProgressCallback callback = NULL,
+                                              void *user = NULL);
+
+    /* What a compressed install of this archive would take on the card,
+     * against installedSize()'s answer for an ordinary one. */
+    static uint64_t compressedInstallSize(const std::string &zip_path);
+
     /* --- patches (mods) applied over a game that is already installed ---
      *
      * An archive with no script in it is not a game; it is almost always a

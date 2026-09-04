@@ -51,6 +51,10 @@ typedef struct configure {
 	 * for is a log nobody reads. */
 	int debug_log;
 	int theme;         /* ThemeMode: dark or light */
+	/* Whether an install keeps the archive and reads the game out of it
+	 * instead of extracting it whole.  Off by default: it halves what a
+	 * game costs on the card and is the newer of the two paths. */
+	int install_compressed;
 } configure;
 
 /* How the game list is ordered.  Name is free -- it is already in memory.

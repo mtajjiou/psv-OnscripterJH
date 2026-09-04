@@ -285,6 +285,16 @@ const char *g_strings[UI_STRING_COUNT][UI_LANG_COUNT] = {
                                   "无法读取该补丁的记录,未做任何更改。" },
     /* UI_PROMPT_REMOVE      */ { "remove",                 "移除" },
 
+    /* UI_CFG_INSTALL_MODE   */ { "Install mode",           "安装方式" },
+    /* UI_INSTALL_EXTRACT    */ { "extract",                "解压" },
+    /* UI_INSTALL_COMPRESSED */ { "keep compressed",        "保留压缩包" },
+    /* UI_INSTALL_COMPRESSED_OK */
+                                { "Installed to\n%s\n\n"
+                                  "The game runs from its archive: %s on the\n"
+                                  "card instead of %s.",
+                                  "已安装到\n%s\n\n"
+                                  "游戏直接从压缩包运行:占用 %s,而非 %s。" },
+
     /* UI_ABOUT */
     { "About ONS Easy Setup\n\n"
       "ONScripter        <Ogapee>\n"
@@ -346,6 +356,12 @@ const JapaneseString g_japanese[] = {
     { UI_PATCH_REMOVED,            "パッチを取り外しました。" },
     { UI_PATCH_REMOVE_FAIL,        "パッチの記録を読み取れないため、何も変更していません。" },
     { UI_PROMPT_REMOVE,            "取り外す" },
+    { UI_CFG_INSTALL_MODE,         "インストール方式" },
+    { UI_INSTALL_EXTRACT,          "展開する" },
+    { UI_INSTALL_COMPRESSED,       "圧縮のまま" },
+    { UI_INSTALL_COMPRESSED_OK,    "インストールしました\n%s\n\n"
+                                   "ゲームはアーカイブから動作します。カードの使用量は %s で、"
+                                   "展開した場合の %s ではありません。" },
     { UI_SET_FULLSCREEN,           "強制フルスクリーン" },
     { UI_SET_FONTCACHE,            "フォントをキャッシュ" },
     { UI_SET_TEXTSHADOW,           "文字の影" },

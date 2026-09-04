@@ -21,6 +21,7 @@
 #include "ZipHandler.h"
 #include "zipreader.h"
 #include "manifest.h"   /* zip_is_script_name: one definition of "this is a game" */
+#include "zipfs.h"      /* ZIPFS_ARCHIVE_NAME: a game kept in its archive */
 
 int SCE_CTRL_ENTER;
 int SCE_CTRL_CANCEL;
@@ -233,6 +234,7 @@ DEFAULT:
 	config.vol_se     = iniparser_getint(ini, "GAME:vol_se", 100);
 	config.vol_voice  = iniparser_getint(ini, "GAME:vol_voice", 100);
 	config.debug_log  = iniparser_getint(ini, "GUI:debug_log", 0);
+	config.install_compressed = iniparser_getint(ini, "GAME:install_compressed", 0);
 	config.theme = th_theme_from_name(
 		iniparser_getstring(ini, "GUI:theme", "dark"));
 	th_set_theme((ThemeMode)config.theme);
@@ -273,6 +275,8 @@ void save_config() {
 	iniparser_set(ini, "GAME:vol_voice", itc);
 	sprintf(itc, "%d", config.debug_log);
 	iniparser_set(ini, "GUI:debug_log", itc);
+	sprintf(itc, "%d", config.install_compressed);
+	iniparser_set(ini, "GAME:install_compressed", itc);
 	iniparser_set(ini, "GUI:theme", th_theme_name((ThemeMode)config.theme));
 
 	FILE *fp = fopen(CONFIG_FILE, "w");
@@ -341,7 +345,11 @@ static bool folder_has_script(const string &dir) {
 		res = sceIoDread(dfd, &entry);
 		if (res <= 0 || SCE_S_ISDIR(entry.d_stat.st_mode)) continue;
 
+		/* A game installed compressed has no script on the card at all:
+		 * the archive beside it is the game, and the engine reads the
+		 * script out of it. */
 		if (zip_is_script_name(entry.d_name) ||
+		    strcasecmp(entry.d_name, ZIPFS_ARCHIVE_NAME) == 0 ||
 		    strcasecmp(entry.d_name, "arc.nsa") == 0 ||
 		    strcasecmp(entry.d_name, "arc.sar") == 0) {
 			found = true;

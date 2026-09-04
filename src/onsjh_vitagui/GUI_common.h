@@ -145,7 +145,7 @@
  * so a row can be added without touching every signature. */
 #define CMD_OPTS 16
 
-#define CONFIG_NUM 16  /* ...the library actions, game defaults, logging, theme, log viewer */
+#define CONFIG_NUM 17  /* ...the library actions, game defaults, logging, theme, log viewer */
 
 #define PACKAGE_TEMP "ux0:onsemu/temp/"
 

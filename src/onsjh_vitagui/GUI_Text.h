@@ -231,6 +231,12 @@ enum UIStringId {
     UI_PATCH_REMOVE_FAIL,
     UI_PROMPT_REMOVE,
 
+    /* Installing without extracting */
+    UI_CFG_INSTALL_MODE,
+    UI_INSTALL_EXTRACT,
+    UI_INSTALL_COMPRESSED,
+    UI_INSTALL_COMPRESSED_OK,
+
     /* Long text */
     UI_ABOUT,
 

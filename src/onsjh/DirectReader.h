@@ -28,6 +28,10 @@
 #include "BaseReader.h"
 #include <string.h>
 
+extern "C" {
+#include "zipfs.h"
+}
+
 #define MAX_FILE_NAME_LENGTH 256
 
 class DirectReader : public BaseReader
@@ -51,7 +55,18 @@ public:
     static void convertCodingToUTF8( char *dst_buf, const char *src_buf );
     static void convertFromUTF8ToCoding( char *dst_buf, const char *src_buf );
     
+    /* True when this game is running out of its own archive, which is
+     * worth being able to say in a log: a missing file means something
+     * different then. */
+    bool isCompressedInstall() const { return zip_mount != NULL; }
+
 protected:
+    /* A game installed compressed keeps its archive beside the handful of
+     * files that had to be extracted, and everything else is read from it
+     * as the game asks for it.  NULL for an ordinary install, which is
+     * every install unless the player chose otherwise. */
+    zipfs *zip_mount;
+
     char *file_full_path;
     char *file_sub_path;
     size_t file_path_len;

@@ -82,6 +82,23 @@ DirectReader::DirectReader( const char *path, const unsigned char *key_table )
         for (i=0 ; i<256 ; i++) this->key_table[i] = i;
     }
 
+    /* Mounted once, here, rather than looked for on every missing file:
+     * an ordinary install has no archive and must not pay for the
+     * possibility on each open. */
+    {
+        const char *name = ZIPFS_ARCHIVE_NAME;
+        char *archive = new char[ strlen(archive_path) + strlen(name) + 1 ];
+        sprintf( archive, "%s%s", archive_path, name );
+        zip_mount = zipfs_open( archive );
+        if ( zip_mount && zipfs_count( zip_mount ) == 0 ){
+            /* An archive with nothing readable in it would answer "not
+             * found" to everything, slowly.  Better not mounted. */
+            zipfs_close( zip_mount );
+            zip_mount = NULL;
+        }
+        delete[] archive;
+    }
+
     read_buf = new unsigned char[READ_LENGTH];
     decomp_buffer = new unsigned char[N*2];
     decomp_buffer_len = N*2;
@@ -95,6 +112,7 @@ DirectReader::DirectReader( const char *path, const unsigned char *key_table )
 
 DirectReader::~DirectReader()
 {
+    if (zip_mount) zipfs_close( zip_mount );
     if (file_full_path) delete[] file_full_path;
     if (file_sub_path)  delete[] file_sub_path;
 
@@ -343,7 +361,16 @@ size_t DirectReader::getFileLength( const char *file_name )
     FILE *fp = getFileHandle( file_name, compression_type, &len );
 
     if ( fp ) fclose( fp );
-    
+
+    /* Not on the card: it may still be in the archive this game runs from.
+     * The size comes out of the archive's directory, so asking costs no
+     * inflating -- which matters, since the engine asks for the length of
+     * every file before it reads it. */
+    if ( fp == NULL && zip_mount ){
+        long size = zipfs_size( zip_mount, file_name );
+        if ( size >= 0 ) return (size_t)size;
+    }
+
     return len;
 }
 
@@ -356,7 +383,17 @@ size_t DirectReader::getFile( const char *file_name, unsigned char *buffer, int 
     int compression_type;
     size_t len, c, total = 0;
     FILE *fp = getFileHandle( file_name, compression_type, &len );
-    
+
+    if ( fp == NULL && zip_mount ){
+        /* Read straight out of the archive into the caller's buffer, which
+         * it sized from getFileLength() above. */
+        size_t got = zipfs_read( zip_mount, file_name, buffer );
+        if ( got > 0 ){
+            if ( location ) *location = ARCHIVE_TYPE_NONE;
+            return got;
+        }
+    }
+
     if ( fp ){
         if      ( compression_type & NBZ_COMPRESSION ) return decodeNBZ( fp, 0, buffer );
         else if ( compression_type & SPB_COMPRESSION ) return decodeSPB( fp, 0, buffer );

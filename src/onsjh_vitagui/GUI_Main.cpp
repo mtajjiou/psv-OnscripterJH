@@ -53,6 +53,7 @@ extern "C" {
 extern "C" {
 #include "formats.h"
 #include "patchplan.h"
+#include "zipfs.h"
 }
 #include "GUI_Utils.h"
 #include "version.h"
@@ -556,7 +557,13 @@ void draw_config() {
 		{ui_text(UI_CFG_THEME),
 			config.theme == TH_MODE_LIGHT ? ui_text(UI_THEME_LIGHT)
 						      : ui_text(UI_THEME_DARK)},
-		{ui_text(UI_CFG_VIEW_LOG), ui_text(UI_LOG_OPEN)}
+		{ui_text(UI_CFG_VIEW_LOG), ui_text(UI_LOG_OPEN)},
+		/* Whether the next install extracts the archive or keeps it and
+		 * reads the game out of it.  Last, because it is the one setting
+		 * here that changes what an install leaves on the card. */
+		{ui_text(UI_CFG_INSTALL_MODE),
+			config.install_compressed ? ui_text(UI_INSTALL_COMPRESSED)
+						  : ui_text(UI_INSTALL_EXTRACT)}
 	};
 
 	/* The settings sit on a card over a dimmed library rather than over a
@@ -1542,13 +1549,20 @@ void prepare_install_confirm(int choose) {
 			done_str, needed_str, free_str);
 		return;
 	}
+	/* A compressed install writes far less, so the figure the prompt
+	 * shows has to be the one for the mode that is about to run. */
+	if (config.install_compressed)
+		getSizeString(needed_str, ZipHandler::compressedInstallSize(zip_path));
+
 	snprintf(install_confirm_message, sizeof(install_confirm_message),
 		"Install this game?\n\n"
 		"  %s\n"
 		"  to ux0:onsemu/%s\n\n"
-		"  needs %s, %s free",
+		"  %s: needs %s, %s free",
 		rom_list[choose].char_name(),
 		ZipHandler::destinationName(zip_path).c_str(),
+		config.install_compressed ? ui_text(UI_INSTALL_COMPRESSED)
+					  : ui_text(UI_INSTALL_EXTRACT),
 		needed_str, free_str);
 }
 
@@ -1567,17 +1581,35 @@ ScreenState run_install(int choose) {
 	 * this card and this console actually managed. */
 	const uint64_t started_us = sceKernelGetProcessTimeWide();
 
-	install_status = ZipHandler::install(rom_list[choose].path, installed_path,
-		install_progress_callback, NULL);
+	install_status = config.install_compressed
+		? ZipHandler::installCompressed(rom_list[choose].path, installed_path,
+						install_progress_callback, NULL)
+		: ZipHandler::install(rom_list[choose].path, installed_path,
+				      install_progress_callback, NULL);
 
 	if (install_status == ZIP_INSTALL_OK)
 		remember_install_rate(install_progress.bytes_done,
 			(uint32_t)((sceKernelGetProcessTimeWide() - started_us) / 1000));
 
 	if (install_status == ZIP_INSTALL_OK) {
-		snprintf(install_message, sizeof(install_message),
-			"Installed to\n%s\n\nThe archive was kept in\n" GAME_ZIP_FOLDER,
-			installed_path.c_str());
+		if (config.install_compressed) {
+			/* Worth saying in numbers: the whole reason to choose this
+			 * mode is what it does not write, and the archive has
+			 * moved, so "it was kept in game_zips" would be wrong. */
+			const std::string archive =
+				installed_path + "/" + ZIPFS_ARCHIVE_NAME;
+			char kept_str[16], full_str[16];
+			getSizeString(kept_str, ZipHandler::compressedInstallSize(archive));
+			getSizeString(full_str, ZipHandler::installedSize(archive));
+			snprintf(install_message, sizeof(install_message),
+				ui_text(UI_INSTALL_COMPRESSED_OK),
+				installed_path.c_str(), kept_str, full_str);
+		}
+		else {
+			snprintf(install_message, sizeof(install_message),
+				"Installed to\n%s\n\nThe archive was kept in\n" GAME_ZIP_FOLDER,
+				installed_path.c_str());
+		}
 		return INSTALL_DONE;
 	}
 
@@ -2369,6 +2401,9 @@ static ScreenState activate_config_row(int row) {
 		break;
 	case 15:
 		return LOG_VIEW;
+	case 16:
+		config.install_compressed = !config.install_compressed;
+		break;
 	default:
 		break;
 	}
@@ -2509,6 +2544,9 @@ ScreenState on_config_event() {
 			config.theme = (config.theme + 1) % TH_MODE_COUNT;
 			th_set_theme((ThemeMode)config.theme);
 			break;
+		case 16:
+			config.install_compressed = !config.install_compressed;
+			break;
 		default:
 			break;
 		}
@@ -2576,6 +2614,9 @@ ScreenState on_config_event() {
 		case 14:
 			config.theme = (config.theme + 1) % TH_MODE_COUNT;
 			th_set_theme((ThemeMode)config.theme);
+			break;
+		case 16:
+			config.install_compressed = !config.install_compressed;
 			break;
 		default:
 			break;

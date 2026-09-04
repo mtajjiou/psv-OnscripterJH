@@ -23,6 +23,7 @@
 extern "C" {
 #include "zipreader.h"
 #include "patchplan.h"
+#include "zipfs.h"
 }
 
 /* C++ rather than C: it deals in std::string, like the installer does. */
@@ -683,4 +684,154 @@ bool ZipHandler::removePatch(const std::string &game_folder,
     removePath(backups);
     sceIoRemove(record.c_str());
     return true;
+}
+
+
+/* ------------------------------------------------------------------ *
+ *  Installing without extracting
+ * ------------------------------------------------------------------ */
+
+uint64_t ZipHandler::compressedInstallSize(const std::string &zip_path) {
+    int err = 0;
+    zip_reader *z = zip_open(zip_path.c_str(), &err);
+    if (!z) return 0;
+
+    /* The archive stays, whole, plus the files that cannot be read out of
+     * it.  Those are the ones already compressed, so their size in the
+     * archive is close enough to their size on the card to count once. */
+    uint64_t total = 0;
+    for (int i = 0; i < zip_count(z); i++) {
+        if (zip_entry_is_dir(z, i)) continue;
+        if (zipfs_needs_disk(zip_entry_name(z, i)))
+            total += zip_entry_size(z, i);
+    }
+    zip_close(z);
+
+    SceIoStat stat;
+    memset(&stat, 0, sizeof(stat));
+    if (sceIoGetstat(zip_path.c_str(), &stat) >= 0)
+        total += (uint64_t)stat.st_size;
+
+    return total;
+}
+
+ZipInstallStatus ZipHandler::installCompressed(const std::string &zip_path,
+                                               std::string &installed_path,
+                                               ZipProgressCallback callback,
+                                               void *user) {
+    int err = 0;
+    zip_reader *z = zip_open(zip_path.c_str(), &err);
+    if (!z) return ZIP_INSTALL_BAD_ARCHIVE;
+
+    char root[ZIP_MAX_NAME];
+    if (!zip_find_game_root(z, root, sizeof(root))) {
+        zip_close(z);
+        return ZIP_INSTALL_NO_SCRIPT;
+    }
+
+    std::string prefix = root;
+    if (!prefix.empty()) prefix += "/";
+
+    const std::string dest =
+        std::string(GAME_INSTALL_FOLDER) + "/" + destinationName(zip_path);
+
+    /* No journal and no resuming here: the expensive part is one file
+     * copy, and half a copy is not something to pick up in the middle. */
+    if (checkFolderExist(dest.c_str())) {
+        zip_close(z);
+        return ZIP_INSTALL_EXISTS;
+    }
+
+    const uint64_t needed = compressedInstallSize(zip_path);
+    const uint64_t available = freeSpace();
+    if (available > 0 && needed + INSTALL_SPACE_MARGIN > available) {
+        zip_close(z);
+        return ZIP_INSTALL_NO_SPACE;
+    }
+
+    if (!ensureDirectory(GAME_INSTALL_FOLDER) || !ensureDirectory(dest)) {
+        zip_close(z);
+        return ZIP_INSTALL_WRITE_FAILED;
+    }
+
+    ZipInstallProgress progress;
+    progress.bytes_done  = 0;
+    progress.bytes_total = needed;
+    progress.percent     = 0;
+
+    ZipInstallStatus status = ZIP_INSTALL_OK;
+    const int count = zip_count(z);
+
+    for (int i = 0; i < count && status == ZIP_INSTALL_OK; i++) {
+        char clean[ZIP_MAX_NAME];
+        if (zip_sanitize_name(zip_entry_name(z, i), clean, sizeof(clean)) != ZIP_OK)
+            continue;
+
+        std::string relative = clean;
+        if (!prefix.empty()) {
+            if (relative.compare(0, prefix.size(), prefix) != 0) continue;
+            relative.erase(0, prefix.size());
+        }
+        if (relative.empty()) continue;
+        if (zip_entry_is_dir(z, i)) continue;
+
+        /* The rest stays in the archive: this is the whole point. */
+        if (!zipfs_needs_disk(relative.c_str())) continue;
+
+        if (!ensureParents(dest, relative)) {
+            status = ZIP_INSTALL_WRITE_FAILED;
+            break;
+        }
+
+        SceUID fd = sceIoOpen((dest + "/" + relative).c_str(),
+                              SCE_O_WRONLY | SCE_O_CREAT | SCE_O_TRUNC, 0777);
+        if (fd < 0) {
+            status = ZIP_INSTALL_WRITE_FAILED;
+            break;
+        }
+
+        WriteContext ctx;
+        ctx.fd           = fd;
+        ctx.write_failed = false;
+        ctx.canceled     = false;
+        ctx.progress     = &progress;
+        ctx.callback     = callback;
+        ctx.user         = user;
+
+        progress.current_file = relative;
+
+        int rc = zip_extract_entry(z, i, writeChunk, &ctx);
+        sceIoClose(fd);
+
+        if (rc != ZIP_OK) {
+            if (ctx.canceled)          status = ZIP_INSTALL_CANCELED;
+            else if (ctx.write_failed) status = ZIP_INSTALL_WRITE_FAILED;
+            else                       status = ZIP_INSTALL_BAD_ARCHIVE;
+        }
+    }
+
+    zip_close(z);
+
+    if (status == ZIP_INSTALL_OK) {
+        /* The archive itself, which the engine will read the game out of.
+         * Moved when it can be -- a rename within ux0: is instant, where
+         * copying a four gigabyte archive is not -- and copied when it
+         * cannot, which is when it lives on another partition. */
+        const std::string archive = dest + "/" + ZIPFS_ARCHIVE_NAME;
+        progress.current_file = ZIPFS_ARCHIVE_NAME;
+        if (callback) callback(progress, user);
+
+        if (sceIoRename(zip_path.c_str(), archive.c_str()) < 0 &&
+            copyFile(zip_path.c_str(), archive.c_str()) < 0)
+            status = ZIP_INSTALL_WRITE_FAILED;
+    }
+
+    if (status != ZIP_INSTALL_OK) {
+        /* Nothing here is resumable, so nothing here is worth keeping. */
+        removePath(dest);
+        return status;
+    }
+
+    installed_path = dest;
+    return ZIP_INSTALL_OK;
 }

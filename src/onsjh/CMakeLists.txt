@@ -43,6 +43,10 @@ add_executable(${PROJECT_NAME}
   ./../common/crashreport.c
   ./../common/videofmt.c
   ./../common/videodec.c
+  # Reading a game out of its own .zip, for an install that was kept
+  # compressed rather than extracted.
+  ./../common/zipreader.c
+  ./../common/zipfs.c
   AnimationInfo.cpp
   DirectReader.cpp
   DirtyRect.cpp

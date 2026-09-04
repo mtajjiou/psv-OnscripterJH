@@ -47,6 +47,7 @@ add_executable(${PROJECT_NAME}
   ./../common/filesystem.cpp
   ./../common/zipreader.c
   ./../common/patchplan.c
+  ./../common/zipfs.c
   ./../common/manifest.c
   ./../common/formats.c
   ./../common/logfile.c

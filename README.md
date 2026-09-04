@@ -17,6 +17,8 @@ This is an enhanced fork of [YuriSizuku/psv-OnscripterJH](https://github.com/Yur
 - **Video playback for formats the hardware refuses** — `sceAvPlayer` decodes only H.264/AAC in an MP4, and anything else used to fail inside it with no message, so the scene silently did nothing. The engine now reads the file's own bytes to identify the container and, when the hardware will not take it, decodes it in software with libavcodec: MPEG-1/2 (`.mpg`), MPEG-4/DivX and MSMPEG4 (`.avi`), WMV/VC-1, Theora, VP8/9 and more. Audio is resampled and fed to the mixer; cross or start skips, as with a hardware video. A converted `<name>.mp4` beside the original is still preferred when present, since the hardware decoder is cheaper
 - **English, Chinese and Japanese interface** — the launcher's menus, settings, prompts, help and about screens were Chinese with a bracketed English gloss; every string now exists properly in all three languages (`src/onsjh_vitagui/GUI_Text.cpp`) and the **Language** row in the config menu cycles between them, each named in its own script. English is the default; set `language` to `en`, `zh` or `ja` under `[GUI]` in `ux0:data/onsemu/ONSConfig.ini`, or flip the setting. The Japanese strings are the author's own and have not been reviewed by a native speaker — corrections welcome
 - **Version you can actually read** — the app version is derived from the git commit count at build time (`01.21`, `01.22`, ...), never edited by hand, so every build differs from the one before. The launcher shows it with the commit hash in its title bar, and both binaries print `ONS Easy Setup <version> (<commit>, <date>)` at startup, so a log always says which build produced it
+- **Patches over an installed game** — a translation patch or voice pack is an archive with no script in it, and the installer used to refuse it twice over: no game inside, and a destination that already exists. Selecting one now asks which installed game it belongs to, likeliest first, extracts it over that game, and keeps the original of every file it replaces under `.mods/` in the game folder. **Patches** on the game's settings screen lists what is applied and takes one back off
+- **Install without extracting** — **Install mode** in the settings cycles between *extract* and *keep compressed*. A compressed install writes out only what the engine opens as a file — `.nsa`/`.sar` archives, videos, fonts — keeps the archive as `game.zip` in the game folder, and reads everything else out of it while the game runs. A game whose art and audio are loose files roughly halves what it costs on the card; one that ships everything in an `arc.nsa` saves nothing, since that file goes to the card either way
 - **Automatic script encoding** — the engine reads the script and decides whether it is Shift-JIS (Japanese) or GBK (Chinese), instead of making you know your game's code page. A Japanese game read as GBK garbles every line and dies with `text cannot be displayed in define section`; that no longer happens by default. The per-game **文字编码 (encoding)** setting is `自动(auto)` out of the box and can be forced to `日文(sjis)` or `中文(gbk)`; on the command line these are `--enc:auto`, `--enc:sjis` and `--enc:gbk`
 
 **Not implemented yet** — see the checklist below:
@@ -225,7 +227,7 @@ harmless.
 
 ### Storage & Memory Management
 - [x] **Storage Monitor** — Shows free space on `ux0:` partition
-- [ ] **Compression Option** — Optional ZIP caching instead of full extraction
+- [x] **Compression Option** — Optional ZIP caching instead of full extraction
 - [x] **Cleanup Tool** — Remove extracted games from menu, free space
 - [x] **Save File Manager** — Backup/restore game saves
 - [x] **Cache Cleaner** — Clear font cache, temp files
@@ -335,6 +337,8 @@ src/
 │   └── vitaPackage.cpp         # Shortcut bubble installer
 └── common/
     ├── zipreader.c/.h          # Portable ZIP reader (stdio + zlib)
+    ├── zipfs.c/.h              # Reads a game out of its .zip at run time
+    ├── patchplan.c/.h          # Is this archive a patch, and for which game
     ├── filesystem.cpp
     ├── iniparser.c
     └── ...
@@ -343,6 +347,8 @@ test/
 ├── run_tests.sh                # Host-side test runner
 ├── test_zipreader.c            # Archive parsing / path safety tests
 ├── test_install_flow.cpp       # The install decisions, end to end
+├── test_patchplan.c            # Patch detection, matching and records
+├── test_zipfs.c                # Reading files out of a mounted archive
 ├── bench.c                     # What script/benchmark.sh runs
 └── make_fixtures.py            # Builds the test archives
 
@@ -390,7 +396,7 @@ on top of **zlib**, which the engine and launcher already link against.
 ### v2.0 (Community)
 - [ ] Web-based game list upload
 - [ ] Cloud save sync (via FTP/SMB)
-- [ ] Mod loader integration
+- [x] Mod loader integration
 - [ ] Plugin system
 
 ---

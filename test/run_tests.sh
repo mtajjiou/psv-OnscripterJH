@@ -31,6 +31,14 @@ ${CXX:-c++} -std=c++11 -Wall -Wextra -g \
 
 "$work/test_install_flow" "$work"
 
+# --- the ftp client's reading half -----------------------------------------
+${CC:-cc} -std=c99 -Wall -Wextra -g \
+  -I"$root/src/common" \
+  "$root/test/test_ftpproto.c" "$root/src/common/ftpproto.c" \
+  -o "$work/test_ftpproto"
+
+"$work/test_ftpproto"
+
 # --- the wifi upload page's parsing ----------------------------------------
 ${CC:-cc} -std=c99 -Wall -Wextra -g \
   -I"$root/src/common" \

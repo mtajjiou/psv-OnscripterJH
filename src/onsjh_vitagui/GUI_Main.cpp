@@ -38,6 +38,7 @@
 #include "filesystem.h"
 #include "ZipHandler.h"
 #include "WifiUpload.h"
+#include "SaveSync.h"
 #include "VndbCovers.h"
 
 #include "GUI_common.h"
@@ -55,6 +56,7 @@ extern "C" {
 #include "formats.h"
 #include "patchplan.h"
 #include "zipfs.h"
+#include "ftpproto.h"
 }
 #include "GUI_Utils.h"
 #include "version.h"
@@ -516,6 +518,40 @@ static int config_panel_width = SCREEN_WIDTH;
 static int config_panel_top = HEADER_HEIGHT;
 static int config_panel_height = ITEMS_PANEL_HEIGHT;
 
+/* The save server as one line for the settings row: "10.0.0.5:21", or the
+ * words that say why sending saves does nothing yet. */
+static const char *sync_server_text() {
+	static char text[64];
+	const SaveSync::Server server = SaveSync::settings();
+
+	if (server.host.empty()) return ui_text(UI_SYNC_NOT_SET);
+	snprintf(text, sizeof(text), "%s:%d", server.host.c_str(), server.port);
+	return text;
+}
+
+/* What a finished sync says. */
+static char sync_result_message[256];
+
+static void run_sync(bool sending) {
+	const SaveSync::Server server = SaveSync::settings();
+	const SaveSync::Result result = sending ? SaveSync::upload()
+						: SaveSync::download();
+
+	if (!result.ok) {
+		snprintf(sync_result_message, sizeof(sync_result_message),
+			 ui_text(UI_SYNC_FAILED), result.message.c_str());
+		return;
+	}
+	if (result.files == 0) {
+		snprintf(sync_result_message, sizeof(sync_result_message), "%s",
+			 ui_text(UI_SYNC_NOTHING));
+		return;
+	}
+	snprintf(sync_result_message, sizeof(sync_result_message),
+		 ui_text(sending ? UI_SYNC_UPLOADED : UI_SYNC_DOWNLOADED),
+		 result.files, result.games, server.host.c_str());
+}
+
 void draw_config() {
 	struct config_item items[] = {
 		{ui_text(UI_CFG_GRAPHIC_MODE),
@@ -567,7 +603,13 @@ void draw_config() {
 						  : ui_text(UI_INSTALL_EXTRACT)},
 		/* The other way a game gets onto the card: from a browser on
 		 * whatever else is on this network. */
-		{ui_text(UI_CFG_WIFI_UPLOAD), ui_text(UI_WIFI_OPEN)}
+		{ui_text(UI_CFG_WIFI_UPLOAD), ui_text(UI_WIFI_OPEN)},
+		/* Where the saves go, and the two directions they go in.  The
+		 * address is the row's value, since "not set" is the answer to
+		 * why the other two do nothing. */
+		{ui_text(UI_CFG_SYNC_SERVER), sync_server_text()},
+		{ui_text(UI_CFG_SYNC_UP),   ui_text(UI_WIFI_OPEN)},
+		{ui_text(UI_CFG_SYNC_DOWN), ui_text(UI_WIFI_OPEN)}
 	};
 
 	/* The settings sit on a card over a dimmed library rather than over a
@@ -2090,7 +2132,8 @@ void draw_screen(ScreenState state, int curr, int choose, int slot) {
 	/* States that belong to the settings screen rather than to a game, so
 	 * the settings are what is drawn behind them.  They sit past
 	 * PRINT_APPINFO in the enum only because they were added last. */
-	bool from_settings = (state == WIFI_UPLOAD || state == COVERS_ALL_CONFIRM || state == COVERS_ALL_RUN ||
+	bool from_settings = (state == WIFI_UPLOAD || state == SYNC_RUN_UP ||
+			      state == SYNC_RUN_DOWN || state == SYNC_DONE || state == COVERS_ALL_CONFIRM || state == COVERS_ALL_RUN ||
 			      state == COVERS_ALL_DONE ||
 			      state == CLEAN_CONFIRM || state == CLEAN_DONE ||
 			      state == LOG_VIEW);
@@ -2107,6 +2150,12 @@ void draw_screen(ScreenState state, int curr, int choose, int slot) {
 	}
 	if (state == WIFI_UPLOAD) {
 		draw_wifi_screen();
+	}
+	if (state == SYNC_RUN_UP || state == SYNC_RUN_DOWN) {
+		draw_alert((char *)ui_text(UI_SYNC_RUN), FONT_SIZE);
+	}
+	if (state == SYNC_DONE) {
+		draw_alert(sync_result_message, FONT_SIZE);
 	}
 
 	switch (state) {
@@ -2516,6 +2565,15 @@ static ScreenState activate_config_row(int row) {
 	case 17:
 		WifiUpload::start();
 		return WIFI_UPLOAD;
+	case 18:
+		/* Four questions in a row rather than a screen of fields: the
+		 * console's keyboard is the only way to type here, and this is
+		 * answered once. */
+		return SYNC_ASK;
+	case 19:
+		return SYNC_RUN_UP;
+	case 20:
+		return SYNC_RUN_DOWN;
 	default:
 		break;
 	}
@@ -3336,6 +3394,111 @@ static void utf16_to_utf8(const SceWChar16 *in, char *out, int max)
  * The dialog draws itself over the application, which has to keep drawing
  * for it to appear at all -- hence the loop, which is the launcher's normal
  * frame with the dialog composited on top. */
+static bool run_keyboard(ScreenState behind, int curr, int choose, int slot,
+			 const char *prompt, const std::string &current,
+			 std::string &typed)
+{
+	static SceWChar16 title[64];
+	static SceWChar16 initial[SCE_IME_DIALOG_MAX_TEXT_LENGTH + 1];
+	static SceWChar16 buffer[SCE_IME_DIALOG_MAX_TEXT_LENGTH + 1];
+
+	utf8_to_utf16(prompt, title, 64);
+	utf8_to_utf16(current.c_str(), initial, SCE_IME_DIALOG_MAX_TEXT_LENGTH);
+	memset(buffer, 0, sizeof(buffer));
+
+	SceImeDialogParam param;
+	sceImeDialogParamInit(&param);
+	param.supportedLanguages = 0;
+	param.languagesForced    = SCE_FALSE;
+	param.type               = SCE_IME_TYPE_DEFAULT;
+	param.title              = title;
+	param.maxTextLength      = 63;
+	param.initialText        = initial;
+	param.inputTextBuffer    = buffer;
+
+	if (sceImeDialogInit(&param) < 0) return false;
+
+	while (1) {
+		draw_screen(behind, curr, choose, slot);
+
+		SceCommonDialogStatus status = sceImeDialogGetStatus();
+		if (status == SCE_COMMON_DIALOG_STATUS_FINISHED) {
+			SceImeDialogResult result;
+			memset(&result, 0, sizeof(result));
+			sceImeDialogGetResult(&result);
+
+			bool confirmed = (result.button == SCE_IME_DIALOG_BUTTON_ENTER);
+			if (confirmed) {
+				char text[128];
+				utf16_to_utf8(buffer, text, sizeof(text));
+				typed = text;
+			}
+			sceImeDialogTerm();
+			return confirmed;
+		}
+		if (status == SCE_COMMON_DIALOG_STATUS_NONE) return false;
+	}
+}
+
+/* Where the saves go: the address, who to log in as, and the folder.
+ * Asked one after another, since the console has one keyboard and no
+ * screen of fields to put four of them on.  Cancelling any of them leaves
+ * the setting as it was. */
+static void run_sync_setup(int curr, int choose, int slot)
+{
+	SaveSync::Server server = SaveSync::settings();
+
+	/* Shown as it was typed: the port only appears when it is not the
+	 * usual one, since most people never type it. */
+	std::string typed = server.host;
+	if (!server.host.empty() && server.port != FTP_DEFAULT_PORT) {
+		char address[80];
+		snprintf(address, sizeof(address), "%s:%d", server.host.c_str(),
+			 server.port);
+		typed = address;
+	}
+
+	if (!run_keyboard(CONFIG_SCREEN, curr, choose, slot,
+			  ui_text(UI_SYNC_ASK_HOST), typed, typed))
+		return;
+
+	/* "10.0.0.5" or "10.0.0.5:2121": one field, because that is how an
+	 * address is written down. */
+	server.port = FTP_DEFAULT_PORT;
+	{
+		size_t colon = typed.find_last_of(':');
+		if (colon != std::string::npos) {
+			int port = atoi(typed.c_str() + colon + 1);
+			if (port > 0 && port < 65536) {
+				server.port = port;
+				typed.erase(colon);
+			}
+		}
+	}
+	server.host = typed;
+
+	typed = server.user;
+	if (!run_keyboard(CONFIG_SCREEN, curr, choose, slot,
+			  ui_text(UI_SYNC_ASK_USER), typed, typed))
+		return;
+	server.user = typed;
+
+	typed = server.password;
+	if (!run_keyboard(CONFIG_SCREEN, curr, choose, slot,
+			  ui_text(UI_SYNC_ASK_PASSWORD), typed, typed))
+		return;
+	server.password = typed;
+
+	typed = server.path;
+	if (!run_keyboard(CONFIG_SCREEN, curr, choose, slot,
+			  ui_text(UI_SYNC_ASK_PATH), typed, typed))
+		return;
+	if (!typed.empty() && typed[0] != '/') typed = "/" + typed;
+	server.path = typed;
+
+	SaveSync::saveSettings(server);
+}
+
 static void run_search(ScreenState behind, int curr, int choose, int slot)
 {
 	static SceWChar16 title[64];
@@ -3639,6 +3802,22 @@ int mainloop() {
 			case WIFI_UPLOAD:
 				new_state = on_wifi_event();
 				if (new_state == RELOAD_MAINSCREEN) return 1;
+				break;
+			case SYNC_ASK:
+				run_sync_setup(curr, choose, slot);
+				new_state = CONFIG_SCREEN;
+				break;
+			case SYNC_RUN_UP:
+			case SYNC_RUN_DOWN:
+				/* Drawn once before it starts: the sync blocks on the
+				 * network, so this frame is the last one until it is
+				 * done. */
+				draw_screen(new_state, curr, choose, slot);
+				run_sync(new_state == SYNC_RUN_UP);
+				new_state = SYNC_DONE;
+				break;
+			case SYNC_DONE:
+				new_state = on_alert_event(CONFIG_SCREEN);
 				break;
 			case HELP_MSG:
 				new_state = on_help_event(FORMATS_MSG);

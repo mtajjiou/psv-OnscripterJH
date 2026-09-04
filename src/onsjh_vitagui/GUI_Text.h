@@ -247,6 +247,21 @@ enum UIStringId {
     UI_WIFI_FAILED,
     UI_WIFI_HINT,
 
+    /* Copying saves to a server on the same network */
+    UI_CFG_SYNC_SERVER,
+    UI_CFG_SYNC_UP,
+    UI_CFG_SYNC_DOWN,
+    UI_SYNC_NOT_SET,
+    UI_SYNC_ASK_HOST,
+    UI_SYNC_ASK_USER,
+    UI_SYNC_ASK_PASSWORD,
+    UI_SYNC_ASK_PATH,
+    UI_SYNC_RUN,
+    UI_SYNC_UPLOADED,
+    UI_SYNC_DOWNLOADED,
+    UI_SYNC_NOTHING,
+    UI_SYNC_FAILED,
+
     /* Long text */
     UI_ABOUT,
 

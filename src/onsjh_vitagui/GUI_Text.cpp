@@ -308,6 +308,26 @@ const char *g_strings[UI_STRING_COUNT][UI_LANG_COUNT] = {
                                   "while this screen is open.",
                                   "此界面打开时,本网络上的任何设备都可以发送游戏。" },
 
+    /* UI_CFG_SYNC_SERVER    */ { "Save server (FTP)",       "存档服务器(FTP)" },
+    /* UI_CFG_SYNC_UP        */ { "Send saves to the server", "上传存档到服务器" },
+    /* UI_CFG_SYNC_DOWN      */ { "Fetch saves from the server",
+                                  "从服务器取回存档" },
+    /* UI_SYNC_NOT_SET       */ { "not set",                  "未设置" },
+    /* UI_SYNC_ASK_HOST      */ { "Server address (host or host:port)",
+                                  "服务器地址(主机或 主机:端口)" },
+    /* UI_SYNC_ASK_USER      */ { "User name",                "用户名" },
+    /* UI_SYNC_ASK_PASSWORD  */ { "Password",                 "密码" },
+    /* UI_SYNC_ASK_PATH      */ { "Folder on the server",     "服务器上的文件夹" },
+    /* UI_SYNC_RUN           */ { "Talking to the server...", "正在与服务器通信..." },
+    /* UI_SYNC_UPLOADED      */ { "%d saves from %d games sent to\n%s",
+                                  "已发送 %d 个存档(来自 %d 个游戏)到\n%s" },
+    /* UI_SYNC_DOWNLOADED    */ { "%d saves for %d games fetched from\n%s",
+                                  "已取回 %d 个存档(来自 %d 个游戏),来自\n%s" },
+    /* UI_SYNC_NOTHING       */ { "The server answered, and there was nothing "
+                                  "to copy.",
+                                  "服务器已响应,没有需要复制的内容。" },
+    /* UI_SYNC_FAILED        */ { "Sync failed: %s",          "同步失败:%s" },
+
     /* UI_ABOUT */
     { "About ONS Easy Setup\n\n"
       "ONScripter        <Ogapee>\n"
@@ -350,6 +370,19 @@ struct JapaneseString {
 };
 
 const JapaneseString g_japanese[] = {
+    { UI_CFG_SYNC_SERVER,          "セーブ用サーバー (FTP)" },
+    { UI_CFG_SYNC_UP,              "セーブをサーバーへ送る" },
+    { UI_CFG_SYNC_DOWN,            "セーブをサーバーから取得" },
+    { UI_SYNC_NOT_SET,             "未設定" },
+    { UI_SYNC_ASK_HOST,            "サーバーのアドレス(ホスト、または ホスト:ポート)" },
+    { UI_SYNC_ASK_USER,            "ユーザー名" },
+    { UI_SYNC_ASK_PASSWORD,        "パスワード" },
+    { UI_SYNC_ASK_PATH,            "サーバー上のフォルダ" },
+    { UI_SYNC_RUN,                 "サーバーと通信しています..." },
+    { UI_SYNC_UPLOADED,            "%d 個のセーブ(%d 本のゲーム)を送信しました\n%s" },
+    { UI_SYNC_DOWNLOADED,          "%d 個のセーブ(%d 本のゲーム)を取得しました\n%s" },
+    { UI_SYNC_NOTHING,             "サーバーは応答しましたが、コピーするものはありませんでした。" },
+    { UI_SYNC_FAILED,              "同期に失敗しました:%s" },
     { UI_SET_PATCHES,              "パッチ" },
     { UI_PATCH_TITLE,              "このパッチをどのゲームに適用しますか?" },
     { UI_PATCH_NO_GAMES,           "適用できるゲームがインストールされていません。" },

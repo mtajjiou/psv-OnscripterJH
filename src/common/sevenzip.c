@@ -171,6 +171,22 @@ static int read_directory(sevenzip_reader *z) {
                 if (name[k] == '\\') name[k] = '/';
         }
 
+        /* A zip writes a folder as a name ending in '/' and a 7z writes it
+         * as a flag on a name that does not.  Everything above this reads
+         * either archive through one interface and strips that slash, so a
+         * folder whose name does not have one loses a letter instead --
+         * "Textbox - Alternatives" becomes "Textbox - Alternative", and
+         * every file under the real folder then fails to write.  The
+         * slash is added here, where the difference between the two
+         * formats belongs. */
+        if (z->entries[i].is_dir) {
+            const size_t len = strlen(name);
+            if (len + 2 <= sizeof(name)) {
+                name[len]     = '/';
+                name[len + 1] = '\0';
+            }
+        }
+
         z->entries[i].name = (char *)malloc(strlen(name) + 1);
         if (z->entries[i].name == NULL) { free(utf16); return 0; }
         strcpy(z->entries[i].name, name);

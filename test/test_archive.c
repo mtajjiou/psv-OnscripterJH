@@ -197,6 +197,51 @@ static void test_names_7z(const char *dir) {
     archive_close(a);
 }
 
+/* The difference between the two formats that everything above the reader
+ * would otherwise have to know about: a zip writes a folder as a name
+ * ending in '/', a 7z as a flag on a name that does not.  The installer
+ * strips that slash, so a 7z folder reported without one loses a letter
+ * and every file under it fails to write. */
+static void test_directory_names(const char *dir) {
+    const char *names[] = { "nested.zip", "nested.7z", "patch.7z" };
+    size_t k;
+
+    for (k = 0; k < sizeof(names) / sizeof(names[0]); k++) {
+        archive *a;
+        int i, dirs = 0, slashed = 0;
+
+        if (!have(dir, names[k])) continue;
+        a = open_fixture(dir, names[k]);
+        if (a == NULL) continue;
+
+        for (i = 0; i < archive_count(a); i++) {
+            const char *name = archive_entry_name(a, i);
+            const size_t len = strlen(name);
+
+            if (!archive_entry_is_dir(a, i)) {
+                checks++;
+                if (len > 0 && name[len - 1] == '/') {
+                    failures++;
+                    printf("FAIL: %s: a file's name ends in a slash (%s)\n",
+                           names[k], name);
+                }
+                continue;
+            }
+
+            dirs++;
+            if (len > 0 && name[len - 1] == '/') slashed++;
+        }
+
+        checks++;
+        if (dirs != slashed) {
+            failures++;
+            printf("FAIL: %s: %d of %d folders end in a slash\n",
+                   names[k], slashed, dirs);
+        }
+        archive_close(a);
+    }
+}
+
 static void test_suffixes(void) {
     check(archive_has_suffix("game.zip"), "a .zip is an archive");
     check(archive_has_suffix("game.7z"), "so is a .7z");
@@ -226,6 +271,7 @@ int main(int argc, char **argv) {
     test_both(dir);
     test_patch_7z(dir);
     test_names_7z(dir);
+    test_directory_names(dir);
     test_suffixes();
     test_failure();
 

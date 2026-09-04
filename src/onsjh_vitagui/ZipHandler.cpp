@@ -863,15 +863,16 @@ std::vector<ZipEntryInfo> ZipHandler::scanModFolder() {
     ensureDirectory(GAME_MOD_FOLDER);
     scanOneFolder(GAME_MOD_FOLDER, mods);
 
-    /* A patch downloaded beside the games ends up in the drop folder, where
-     * it is not a game and cannot be installed as one.  Those belong on
-     * this list too -- but only those: an archive with a game in it is
-     * waiting to be installed, not applied. */
-    std::vector<ZipEntryInfo> dropped;
-    scanOneFolder(GAME_ZIP_FOLDER, dropped);
-    for (size_t i = 0; i < dropped.size(); i++)
-        if (archiveKind(dropped[i].path) == PATCH_KIND_PATCH)
-            mods.push_back(dropped[i]);
+    /* A mod downloaded beside the games ends up in the drop folder, so
+     * those are listed here too -- all of them, whatever is inside.
+     *
+     * Filtering by "has no script in it" was wrong: a 16:9 patch, a
+     * retranslation, anything that changes what the game says all ship
+     * a script of their own, and those are patches by any useful reading.
+     * Nothing in an archive says which it is, and the list is not where
+     * that gets decided: patchFit() weighs the archive against the game
+     * the player picked it for, which is evidence rather than a guess. */
+    scanOneFolder(GAME_ZIP_FOLDER, mods);
 
     return mods;
 }
